@@ -244,8 +244,9 @@ def get_fitness_frame_from_OD(notebook_dir,
             slopes.append(popt[0])
             slopes_err.append( np.sqrt(pcov[0,0]) )
         
-    fitness_frame['fitness'] = slopes
-    fitness_frame['fitness_err'] = slopes_err
+    ref_fitness = np.log(10)
+    fitness_frame['fitness'] = slopes/ref_fitness + 1
+    fitness_frame['fitness_err'] = slopes_err/ref_fitness
     
     os.chdir(notebook_dir)
     pickle_file = experiment + '_fitness_from_OD.df_pkl'
@@ -335,7 +336,6 @@ def plot_fitness_curves_from_OD(fitness_frame,
     plt.rcParams["figure.figsize"] = [12, 9]
     fig, axs = plt.subplots(1, 1)
     
-    ref_fitness = np.log(10)
     current_palette = sns.color_palette()
     plot_colors = current_palette
     for conc in Tet_concentrations:
@@ -343,16 +343,17 @@ def plot_fitness_curves_from_OD(fitness_frame,
             frame = fitness_frame[(fitness_frame['tet_concentration']==conc)]
             frame = frame[(frame['plasmid']==plas)]
             x = list(1000*frame['inducerConcentration'])
-            y = frame['fitness']/ref_fitness + 1
-            y_err = frame['fitness_err']/ref_fitness
+            y = frame['fitness']
+            y_err = frame['fitness_err']
             size = 10 #if conc==0 else 6
             marker = "-o" if conc==0 else "-^"
             label=plas + f', {conc}' if conc==0 else ""
             axs.errorbar(x, y, yerr=y_err, fmt=marker, label=label, markersize=size, color=c)
-    axs.set_xscale('symlog', linthreshx=2)
+    linthreshx = min([i for i in x if i>0])
+    axs.set_xscale('symlog', linthreshx=linthreshx)
     if (y_min is not None) and (y_max is not None):
         axs.set_ylim(y_min, y_max);
-    axs.set_xlim(-x[4]/10, 2*max(x));
+    axs.set_xlim(-linthreshx/10, 2*max(x));
     leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.1), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
     leg.get_frame().set_edgecolor('k');
     axs.set_xlabel(f'[{inducer}] (umol/L)', size=20)
@@ -658,26 +659,17 @@ def analyze_bar_seq(notebook_dir,experiment=None, show_plots=False, cutoff=None,
     return barcode_frame
 
 
-def fit_and_plot_barcode_fitness(barcode_frame,
-                                 notebook_dir,
-                                 experiment=None,
-                                 show_plots=False,
-                                 inducer_conc_list=None,
-                                 max_fits=None):
+def fit_barcode_fitness(barcode_frame,
+                        notebook_dir,
+                        experiment=None,
+                        inducer_conc_list=None,
+                        max_fits=None):
+    
     if max_fits is not None:
         barcode_frame = barcode_frame.iloc[:max_fits]
         
     if experiment is None:
         experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
-        
-    # Turn interactive plotting on or off depending on show_plots
-    if show_plots:
-        plt.ion()
-    else:
-        plt.ioff()
-    
-    pdf_file = 'barcode fitness plots.pdf'
-    pdf = PdfPages(pdf_file)
         
     data_directory = notebook_dir + "\\barcode_analysis"
     os.chdir(data_directory)
@@ -732,105 +724,145 @@ def fit_and_plot_barcode_fitness(barcode_frame,
         barcode_frame["read_count_0_" + str(i)] = counts_0
         barcode_frame["read_count_tet_" + str(i)] = counts_tet
 
-    spike_in_fitness_0 = np.array([0.97280301, 0.97280301, 0.97280301, 0.97280301, 0.97280301,
-                                   0.97280301, 0.97280301, 0.97280301, 0.97280301, 0.97280301,
-                                   0.97280301, 0.97280301])
-    spike_in_fitness_tet = np.array([0.93202979, 0.93202979, 0.93202979, 0.93202979, 0.93202979,
-                                     0.93202979, 0.93202979, 0.93202979, 0.93202979, 0.93202979,
-                                     0.93202979, 0.93202979])
+    spike_in_fitness_0 = {"AO-B": np.array([0.9637]*12), "AO-E": np.array([0.9666]*12)}
+    spike_in_fitness_tet = {"AO-B": np.array([0.8972]*12), "AO-E": np.array([0.8757]*12)}
 
-    spike_in_row_b = barcode_frame[ref_index_b:ref_index_b+1]
-    spike_in_row_e = barcode_frame[ref_index_e:ref_index_e+1]
+    spike_in_row = {"AO-B": barcode_frame[ref_index_b:ref_index_b+1], "AO-E": barcode_frame[ref_index_e:ref_index_e+1]}
 
     #Fit to barcode log(ratios) over time to get slopes = fitness
-    x = [1, 2, 3, 4]
-    f_tet_est_list = []
-    f_0_est_list = []
-    f_tet_err_list = []
-    f_0_err_list = []
-
-    spike_in_reads_0_b = [ spike_in_row_b[f'read_count_0_{plate_num}'].values[0] for plate_num in range(2,6) ]
-    spike_in_reads_tet_b = [ spike_in_row_b[f'read_count_tet_{plate_num}'].values[0] for plate_num in range(2,6) ]
-    spike_in_reads_0_e = [ spike_in_row_e[f'read_count_0_{plate_num}'].values[0] for plate_num in range(2,6) ]
-    spike_in_reads_tet_e = [ spike_in_row_e[f'read_count_tet_{plate_num}'].values[0] for plate_num in range(2,6) ]
-
-    x0 = [2, 3, 4, 5]
-
-    if max_fits is None:
-        fit_frame = barcode_frame
-    else:
-        fit_frame = barcode_frame[:max_fits]
-
-    for index, row in fit_frame.iterrows(): # iterate over barcodes
-        slopes_b = []
-        errors_b = []
-        n_reads = [ row[f'read_count_0_{plate_num}'] for plate_num in range(2,6) ]
+    #Run for both AO-B and AO-E
+    for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
+        x = [1, 2, 3, 4]
+        f_tet_est_list = []
+        f_0_est_list = []
+        f_tet_err_list = []
+        f_0_err_list = []
     
-        for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-            x = []
-            y = []
-            s = []
-            for i in range(len(n_reads)): # iteration over time points 0-3
-                if (n_reads[i][j]>0 and spike_in_reads_0_b[i][j]>0):
-                    x.append(x0[i])
-                    y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0_b[i][j]))
-                    s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0_b[i][j]))
-            if len(x)>1:
-                popt, pcov = curve_fit(line_funct, x, y, sigma=s, absolute_sigma=True)
-                slopes_b.append(popt[0])
-                errors_b.append(np.sqrt(pcov[0,0]))
-            else:
-                slopes_b.append(np.nan)
-                errors_b.append(np.nan)
+        spike_in_reads_0 = [ spike_in_row[spike_in][f'read_count_0_{plate_num}'].values[0] for plate_num in range(2,6) ]
+        spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_tet_{plate_num}'].values[0] for plate_num in range(2,6) ]
+    
+        x0 = [2, 3, 4, 5]
+    
+        if max_fits is None:
+            fit_frame = barcode_frame
+        else:
+            fit_frame = barcode_frame[:max_fits]
+    
+        for index, row in fit_frame.iterrows(): # iterate over barcodes
+            slopes = []
+            errors = []
+            n_reads = [ row[f'read_count_0_{plate_num}'] for plate_num in range(2,6) ]
         
-            if j==0:
+            for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                x = []
+                y = []
+                s = []
+                for i in range(len(n_reads)): # iteration over time points 0-3
+                    if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
+                        x.append(x0[i])
+                        y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0[i][j]))
+                        s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))
                 if len(x)>1:
-                    slope_0 = popt[0]
+                    popt, pcov = curve_fit(line_funct, x, y, sigma=s, absolute_sigma=True)
+                    slopes.append(popt[0])
+                    errors.append(np.sqrt(pcov[0,0]))
                 else:
-                    slope_0 = 0
-        
-        slopes_b = np.asarray(slopes_b)
-        errors_b = np.asarray(errors_b)
-        f_0_est = spike_in_fitness_0 + slopes_b/np.log(10)
-        f_0_err = errors_b/np.log(10)
-    
-        slopes_b = []
-        errors_b = []
-        n_reads = [ row[f'read_count_tet_{plate_num}'] for plate_num in range(2,6) ]
-    
-        for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-            x = []
-            y = []
-            s = []
-            for i in range(len(n_reads)): # iteration over time points 0-3
-                if (n_reads[i][j]>0 and spike_in_reads_tet_b[i][j]>0):
-                    x.append(x0[i])
-                    y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet_b[i][j]))
-                    s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet_b[i][j]))
-            if len(x)>1:
-                def fit_funct(xp, mp, bp): return bi_linear_funct(xp, mp, bp, slope_0, alpha=np.log(5))
+                    slopes.append(np.nan)
+                    errors.append(np.nan)
             
-                popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
-                slopes_b.append(popt[0])
-                errors_b.append(np.sqrt(pcov[0,0]))
-            else:
-                slopes_b.append(np.nan)
-                errors_b.append(np.nan)
+                if j==0:
+                    if len(x)>1:
+                        slope_0 = popt[0]
+                    else:
+                        slope_0 = 0
+            
+            slopes = np.asarray(slopes)
+            errors = np.asarray(errors)
+            f_0_est = spike_in_fitness_0[spike_in] + slopes/np.log(10)
+            f_0_err = errors/np.log(10)
         
-        slopes_b = np.asarray(slopes_b)
-        errors_b = np.asarray(errors_b)
-        f_tet_est = spike_in_fitness_tet + slopes_b/np.log(10)
-        f_tet_err = errors_b/np.log(10)
+            slopes = []
+            errors = []
+            n_reads = [ row[f'read_count_tet_{plate_num}'] for plate_num in range(2,6) ]
         
-        f_tet_est_list.append(f_tet_est)
-        f_0_est_list.append(f_0_est)
-        f_tet_err_list.append(f_tet_err)
-        f_0_err_list.append(f_0_err)
+            for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                x = []
+                y = []
+                s = []
+                for i in range(len(n_reads)): # iteration over time points 0-3
+                    if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
+                        x.append(x0[i])
+                        y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet[i][j]))
+                        s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))
+                if len(x)>1:
+                    def fit_funct(xp, mp, bp): return bi_linear_funct(xp, mp, bp, slope_0, alpha=np.log(5))
+                    bounds = ([-np.log(10), -50], [slope_0, 50])
+                    popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True, bounds=bounds)
+                    slopes.append(popt[0])
+                    errors.append(np.sqrt(pcov[0,0]))
+                else:
+                    slopes.append(np.nan)
+                    errors.append(np.nan)
+            
+            slopes = np.asarray(slopes)
+            errors = np.asarray(errors)
+            f_tet_est = spike_in_fitness_tet["AO-B"] + slopes/np.log(10)
+            f_tet_err = errors/np.log(10)
+            
+            f_tet_est_list.append(f_tet_est)
+            f_0_est_list.append(f_0_est)
+            f_tet_err_list.append(f_tet_err)
+            f_0_err_list.append(f_0_err)
+        
+        barcode_frame[f'fitness_tet_estimate_{initial}'] = f_tet_est_list
+        barcode_frame[f'fitness_0_estimate_{initial}'] = f_0_est_list
+        barcode_frame[f'fitness_tet_err_{initial}'] = f_tet_err_list
+        barcode_frame[f'fitness_0_err_{initial}'] = f_0_err_list
     
-    barcode_frame['fitness_tet_estimate'] = f_tet_est_list
-    barcode_frame['fitness_0_estimate'] = f_0_est_list
-    barcode_frame['fitness_tet_err'] = f_tet_err_list
-    barcode_frame['fitness_0_err'] = f_0_err_list
+
+    os.chdir(data_directory)
+    pickle_file = experiment + '_counts_and_fitness.df_pkl'
+    with open(pickle_file, 'wb') as f:
+        pickle.dump(barcode_frame, f)
+
+    pickle_file = experiment + '_inducer_conc_list.pkl'
+    with open(pickle_file, 'wb') as f:
+        pickle.dump(inducer_conc_list, f)
+        
+    return barcode_frame
+
+def plot_barcode_fitness(barcode_frame,
+                         notebook_dir,
+                         experiment=None,
+                         show_plots=True,
+                         save_plots=False,
+                         inducer_conc_list=None,
+                         max_fits=None):
+    
+    if max_fits is not None:
+        barcode_frame = barcode_frame.iloc[:max_fits]
+        
+    if experiment is None:
+        experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
+    
+    if inducer_conc_list is None:
+        inducer_conc_list = [0, 2]
+        for i in range(10):
+            inducer_conc_list.append(2*inducer_conc_list[-1])
+        
+    # Turn interactive plotting on or off depending on show_plots
+    if show_plots:
+        plt.ion()
+    else:
+        plt.ioff()
+    
+    if save_plots:
+        pdf_file = 'barcode fitness plots.pdf'
+        pdf = PdfPages(pdf_file)
+        
+    data_directory = notebook_dir + "\\barcode_analysis"
+    os.chdir(data_directory)
+    
     
     #plot fitness curves
     plt.rcParams["figure.figsize"] = [12,8*(len(barcode_frame))]
@@ -857,22 +889,13 @@ def fit_and_plot_barcode_fitness(barcode_frame,
         axs[index].set_xlabel('[IPTG] (umol/L)', size=20)
         axs[index].set_ylabel('Fitness (log(10)/plate)', size=20)
         axs[index].tick_params(labelsize=16);
-    pdf.savefig()
+    if save_plots:
+        pdf.savefig()
     if not show_plots:
         plt.close(fig)
 
-    pdf.close()
-
-    os.chdir(data_directory)
-    pickle_file = experiment + '_counts_and_fitness.df_pkl'
-    with open(pickle_file, 'wb') as f:
-        pickle.dump(barcode_frame, f)
-
-    pickle_file = experiment + '_inducer_conc_list.pkl'
-    with open(pickle_file, 'wb') as f:
-        pickle.dump(inducer_conc_list, f)
-
-    return barcode_frame
+    if save_plots:
+        pdf.close()
 
         
 def exp_funct(x, background, A, doubling_time):
