@@ -26,7 +26,7 @@ sns.set()
 
 from IPython.display import display
 
-def get_fitness_frame(notebook_dir, experiment=None, show_plots=False, wavelength='600'):
+def get_fitness_frame_from_OD(notebook_dir, experiment=None, show_plots=False, wavelength='600'):
     # Turn interactive plotting on or off depending on show_plots
     if show_plots:
         plt.ion()
