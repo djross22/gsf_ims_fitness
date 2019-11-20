@@ -186,7 +186,7 @@ def get_fitness_frame_from_OD(notebook_dir,
     #start with linear fit for fitness estimate
     slopes = []
     x_list = [2, 3, 4, 5]
-    bounds = ([-np.log(10), -10], [10, 10])
+    bounds = ([-np.log(10), -15], [10, 15])
     
     for index, row in fitness_frame.iterrows():
         y = row['density_list']
@@ -213,7 +213,6 @@ def get_fitness_frame_from_OD(notebook_dir,
     #then redo fits for non-zero tet, using bi-linear form
     slopes = []
     slopes_err = []
-    bounds = ([-np.log(10), -10], [10, 10])
     
     no_tet_frame = fitness_frame[fitness_frame["tet_concentration"] == 0]
     
