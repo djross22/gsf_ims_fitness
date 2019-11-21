@@ -439,7 +439,9 @@ def bar_seq_quality_plots(barcode_frame,
                           show_plots=True,
                           save_plots=False,
                           cutoff=None,
-                          num_to_plot=None):
+                          num_to_plot=None,
+                          export_trimmed_file=False,
+                          trimmed_export_file=None):
     
     # Turn interactive plotting on or off depending on show_plots
     if show_plots:
@@ -486,6 +488,11 @@ def bar_seq_quality_plots(barcode_frame,
     
     barcode_frame = barcode_frame[barcode_frame["total_counts"]>cutoff].copy()
     barcode_frame.reset_index(drop=True, inplace=True)
+    if export_trimmed_file:
+        if trimmed_export_file is None:
+            trimmed_export_file = f"{experiment}.trimmed_sorted_counts.csv"
+        print(f"Exporting trimmed barcode counts data to: {}")
+        barcode_frame.to_csv(trimmed_export_file)
 
     rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
     columns = [i for i in range(1,13)]
