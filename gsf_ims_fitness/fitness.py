@@ -374,7 +374,8 @@ def bar_seq_threshold_plot(notebook_dir,
                            save_plots=False,
                            cutoff=None,
                            hist_bin_max=None,
-                           num_bins=50):
+                           num_bins=50,
+                           barcode_file=None):
     
     # Turn interactive plotting on or off depending on show_plots
     if show_plots:
@@ -398,7 +399,9 @@ def bar_seq_threshold_plot(notebook_dir,
     data_directory = notebook_dir + "\\barcode_analysis"
     os.chdir(data_directory)
 
-    barcode_file = glob.glob("*.sorted_counts.csv")[0]
+    if barcode_file is None:
+        barcode_file = glob.glob("*.sorted_counts.csv")[0]
+    print(f"Importing BarSeq count data from file: {barcode_file}")
     barcode_frame_0 = pd.read_csv(barcode_file, skipinitialspace=True)
 
     barcode_frame_0.sort_values('total_counts', ascending=False, inplace=True)
