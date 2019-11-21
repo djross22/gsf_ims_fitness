@@ -448,10 +448,22 @@ def bar_seq_quality_plots(barcode_frame,
         pdf_file = 'barcode quality plots.pdf'
         pdf = PdfPages(pdf_file)
         
-    top_directory = notebook_dir[:notebook_dir.rfind("\\")]
-    os.chdir(top_directory)
     ref_seq_file = "reference_sequences.csv"
-    ref_seq_frame = pd.read_csv(ref_seq_file, skipinitialspace=True)
+    ref_seq_file_found = False
+    top_directory = notebook_dir
+    while not ref_seq_file_found:
+        find_result = top_directory.rfind("\\")
+        if find_result == -1:
+            break
+        else:
+            top_directory = top_directory[:find_result]
+            os.chdir(top_directory)
+            ref_seq_file_found = os.path.isfile(ref_seq_file)
+    
+    if ref_seq_file_found:
+        ref_seq_frame = pd.read_csv(ref_seq_file, skipinitialspace=True)
+    else:
+        ref_seq_frame = None
 
     data_directory = notebook_dir + "\\barcode_analysis"
     os.chdir(data_directory)
@@ -539,25 +551,24 @@ def bar_seq_quality_plots(barcode_frame,
         pdf.savefig()
     if not show_plots:
         plt.close(fig)
-
-    RS_names = ref_seq_frame["RS_name"]
     
     name_list = [""]*len(barcode_frame)
     barcode_frame["RS_name"] = name_list
 
-    for index, row in ref_seq_frame.iterrows():
-        display_frame = barcode_frame[barcode_frame["forward_BC"].str.contains(row["forward_lin_tag"])]
-        display_frame = display_frame[display_frame["reverse_BC"].str.contains(row["reverse_lin_tag"])]
-        display_frame = display_frame[["RS_name", "forward_BC", "reverse_BC", "total_counts"]]
-        if len(display_frame)>0:
-            display_frame["RS_name"].iloc[0] = row["RS_name"]
-            barcode_frame.loc[display_frame.index[0], "RS_name"] = row["RS_name"]
-        display(display_frame)
-
-    total_reads = barcode_frame["total_counts"].sum()
-    print(f"total reads: {total_reads}")
-    total_RS_reads = barcode_frame[barcode_frame["RS_name"]!=""]["total_counts"].sum()
-    print(f"reference sequence reads: {total_RS_reads}")
+    if ref_seq_frame is not None:
+        for index, row in ref_seq_frame.iterrows():
+            display_frame = barcode_frame[barcode_frame["forward_BC"].str.contains(row["forward_lin_tag"])]
+            display_frame = display_frame[display_frame["reverse_BC"].str.contains(row["reverse_lin_tag"])]
+            display_frame = display_frame[["RS_name", "forward_BC", "reverse_BC", "total_counts"]]
+            if len(display_frame)>0:
+                display_frame["RS_name"].iloc[0] = row["RS_name"]
+                barcode_frame.loc[display_frame.index[0], "RS_name"] = row["RS_name"]
+            display(display_frame)
+    
+        total_reads = barcode_frame["total_counts"].sum()
+        print(f"total reads: {total_reads}")
+        total_RS_reads = barcode_frame[barcode_frame["RS_name"]!=""]["total_counts"].sum()
+        print(f"reference sequence reads: {total_RS_reads}")
 
     total = []
     for index, row in barcode_frame[wells_by_column[:24]].iterrows():
@@ -786,7 +797,6 @@ def fit_barcode_fitness(barcode_frame,
     #Fit to barcode log(ratios) over time to get slopes = fitness
     #Run for both AO-B and AO-E
     for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
-        x = [1, 2, 3, 4]
         f_tet_est_list = []
         f_0_est_list = []
         f_tet_err_list = []
@@ -849,7 +859,7 @@ def fit_barcode_fitness(barcode_frame,
                         y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet[i][j]))
                         s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))
                 if len(x)>1:
-                    def fit_funct(xp, mp, bp): return bi_linear_funct(xp, mp, bp, slope_0, alpha=np.log(5))
+                    def fit_funct(xp, mp, bp): return bi_linear_funct(xp-2, mp, bp, slope_0, alpha=np.log(5))
                     #bounds = ([-np.log(10), -50], [slope_0, 50])
                     popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)#, bounds=bounds)
                     slopes.append(popt[0])
