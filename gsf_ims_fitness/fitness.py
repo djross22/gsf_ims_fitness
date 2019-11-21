@@ -26,6 +26,9 @@ sns.set()
 
 from IPython.display import display
 
+import ipywidgets as widgets
+from ipywidgets import interact, interact_manual
+
 def get_fitness_frame_from_OD(notebook_dir,
                               experiment=None,
                               show_plots=False,
@@ -370,7 +373,6 @@ def plot_fitness_curves_from_OD(fitness_frame,
 
 def bar_seq_threshold_plot(notebook_dir,
                            experiment=None,
-                           show_plots=True,
                            save_plots=False,
                            cutoff=None,
                            hist_bin_max=None,
@@ -378,10 +380,7 @@ def bar_seq_threshold_plot(notebook_dir,
                            barcode_file=None):
     
     # Turn interactive plotting on or off depending on show_plots
-    if show_plots:
-        plt.ion()
-    else:
-        plt.ioff()
+    plt.ion()
     
     if save_plots:
         pdf_file = 'barcode histogram plot.pdf'
@@ -406,27 +405,40 @@ def bar_seq_threshold_plot(notebook_dir,
 
     barcode_frame_0.sort_values('total_counts', ascending=False, inplace=True)
     barcode_frame_0.reset_index(drop=True, inplace=True)
-
-    #Plot histogram of Barcode counts to enable decision about threshold
-    plt.rcParams["figure.figsize"] = [16,8]
-    fig, axs = plt.subplots(1, 2)
+    
     if hist_bin_max is None:
         hist_bin_max = barcode_frame_0[int(len(barcode_frame_0)/50):int(len(barcode_frame_0)/50)+1]["total_counts"].values[0]
-    bins = np.linspace(-0.5, hist_bin_max + 0.5, num_bins)
-    for ax in axs.flatten():
-        ax.hist(barcode_frame_0['total_counts'], bins=bins);
-        ax.set_xlabel('Barcode Count', size=20)
-        ax.set_ylabel('Number of Barcodes', size=20)
-        ax.tick_params(labelsize=16);
-    axs[0].hist(barcode_frame_0['total_counts'], bins=bins, histtype='step', cumulative=-1);
-    axs[0].set_yscale('log');
-    axs[1].set_yscale('log');
-    axs[1].set_xlim(0,hist_bin_max/3);
+
+    #Allow user to replot with different hist_bin_max
+    interact_hist = interact.options(manual=True, manual_name="(re)plot histogram")
+    @interact_hist()
+    def plot_histogram(hist_max=str(hist_bin_max)):
+        #Plot histogram of Barcode counts to enable decision about threshold
+        
+        plt.rcParams["figure.figsize"] = [16,8]
+        fig, axs = plt.subplots(1, 2)
+        try:
+            hist_bin_max = float(hist_max)
+            bins = np.linspace(-0.5, hist_bin_max + 0.5, num_bins)
+            for ax in axs.flatten():
+                ax.hist(barcode_frame_0['total_counts'], bins=bins);
+                ax.set_xlabel('Barcode Count', size=20)
+                ax.set_ylabel('Number of Barcodes', size=20)
+                ax.tick_params(labelsize=16);
+            axs[0].hist(barcode_frame_0['total_counts'], bins=bins, histtype='step', cumulative=-1);
+            axs[0].set_yscale('log');
+            axs[1].set_yscale('log');
+            axs[1].set_xlim(0,hist_bin_max/3);
+        except:
+            print("hist_max needs to be a number")
+        
+    #im = interact_manual(plot_histogram, manunal_name="(re)plot histogram");
+    #im.widget.children[0].description = 'click to (re)plot histogram'
+    #display(im);
+        
     if save_plots:
         pdf.savefig()
-    if not show_plots:
-        plt.close(fig)
-        
+            
     if save_plots:
         pdf.close()
         
@@ -491,7 +503,7 @@ def bar_seq_quality_plots(barcode_frame,
     if export_trimmed_file:
         if trimmed_export_file is None:
             trimmed_export_file = f"{experiment}.trimmed_sorted_counts.csv"
-        print(f"Exporting trimmed barcode counts data to: {}")
+        print(f"Exporting trimmed barcode counts data to: {trimmed_export_file}")
         barcode_frame.to_csv(trimmed_export_file)
 
     rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
