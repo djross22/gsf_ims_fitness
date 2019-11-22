@@ -155,6 +155,7 @@ class BarSeqFitnessFrame:
         barcode_frame["forward_parent"] = np.nan
         barcode_frame["reverse_parent"] = np.nan
         barcode_frame["parent_geo_mean"] = np.nan
+        barcode_frame["parent_geo_mean_p2"] = np.nan
         
         for index, row in barcode_frame[1:].iterrows():
             if use_faster_search:
@@ -173,6 +174,8 @@ class BarSeqFitnessFrame:
                 barcode_frame.at[index, "reverse_parent"] = rev_matches.index[0]
                 geo_mean = np.sqrt(rev_matches["total_counts"].values[0]*for_matches["total_counts"].values[0])
                 barcode_frame.at[index, "parent_geo_mean"] = geo_mean
+                geo_mean_p2 = np.sqrt(rev_matches["total_counts_plate_2"].values[0]*for_matches["total_counts_plate_2"].values[0])
+                barcode_frame.at[index, "parent_geo_mean_p2"] = geo_mean_p2
         
         chimera_frame = barcode_frame[barcode_frame["possibleChimera"]]
         print(f"Number of potential chimera barcodes identified: {len(chimera_frame)}")
