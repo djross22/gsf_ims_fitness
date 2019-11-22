@@ -9,4 +9,5 @@
 __version__ = '0.1'
 
 from .ODFitnessFrame import ODFitnessFrame
+from .BarSeqFitnessFrame import BarSeqFitnessFrame
 from .fitness import *
