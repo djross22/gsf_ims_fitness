@@ -667,6 +667,54 @@ class BarSeqFitnessFrame:
     
         if save_plots:
             pdf.close()
+            
+    def plot_chimera_plot(self,
+                          save_plots=False,
+                          chimera_cut_line=None):
+            
+        barcode_frame = self.barcode_frame[self.barcode_frame["possibleChimera"]]
+        
+        # Turn interactive plotting on or off depending on show_plots
+        plt.ion()
+        
+        os.chdir(self.data_directory)
+        if save_plots:
+            pdf_file = 'barcode fitness plots.pdf'
+            pdf = PdfPages(pdf_file)
+        
+        plt.rcParams["figure.figsize"] = [8,8]
+        fig, axs = plt.subplots(1, 1)
+        axs.set_ylabel('Chimera Read Count per Sample', size=20)
+        axs.set_xlabel('Geometric Mean of Parental Read Counts', size=20);
+        axs.tick_params(labelsize=16);
+    
+        #axs.plot(np.sqrt(for_parent_count_list_96*rev_parent_count_list_96), chimera_count_list_96, 'o', ms=5,
+        #        label="Individual Sample Counts");
+        x = barcode_frame["parent_geo_mean"]/96
+        y = barcode_frame["total_counts"]/96
+        axs.plot(x, y, 'o', ms=7, label="Total Counts ÷ 96");
+        
+        x = barcode_frame["parent_geo_mean_p2"]/24
+        y = barcode_frame["total_counts_plate_2"]/24
+        axs.plot(x, y, 'o', ms=5, label="Total from Time Point 1 ÷ 24");
+        leg = axs.legend(loc='upper left', bbox_to_anchor= (0.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+        leg.get_frame().set_edgecolor('k');
+        
+        axs.set_xscale("log");
+        axs.set_yscale("log");
+        ylim = axs.get_ylim()
+        xlim = axs.get_xlim()
+        
+        if chimera_cut_line is not None: 
+            x_line = np.logspace(np.log10(xlim[0]), np.log10(xlim[1]))
+            axs.plot(x_line, chimera_cut_line(x_line), color='k');
+            axs.set_ylim(ylim);
+        
+        if save_plots:
+            pdf.savefig()
+    
+        if save_plots:
+            pdf.close()
         
     def save_as_pickle(self, notebook_dir=None, experiment=None, pickle_file=None):
         if notebook_dir is None:
