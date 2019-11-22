@@ -439,15 +439,15 @@ def bar_seq_threshold_plot(notebook_dir,
     return barcode_frame_0
 
 
-def bar_seq_quality_plots(barcode_frame,
-                          notebook_dir,
-                          experiment=None,
-                          show_plots=True,
-                          save_plots=False,
-                          cutoff=None,
-                          num_to_plot=None,
-                          export_trimmed_file=False,
-                          trimmed_export_file=None):
+def total_plate_2_and_plot_bar_seq_quality(barcode_frame,
+                                           notebook_dir,
+                                           experiment=None,
+                                           show_plots=True,
+                                           save_plots=False,
+                                           cutoff=None,
+                                           num_to_plot=None,
+                                           export_trimmed_file=False,
+                                           trimmed_export_file=None):
     
     # Turn interactive plotting on or off depending on show_plots
     if show_plots:
@@ -623,14 +623,45 @@ def bar_seq_quality_plots(barcode_frame,
         pdf.savefig()
     if not show_plots:
         plt.close(fig)
+        
+    return barcode_frame
 
+
+def plot_bar_seq_read_fractions(barcode_frame,
+                                notebook_dir,
+                                experiment=None,
+                                show_plots=True,
+                                save_plots=False,
+                                num_to_plot=None):
+
+    # Turn interactive plotting on or off depending on show_plots
+    if show_plots:
+        plt.ion()
+    else:
+        plt.ioff()
+    
+    if save_plots:
+        pdf_file = 'barcode read fraction plots.pdf'
+        pdf = PdfPages(pdf_file)
+
+    data_directory = notebook_dir + "\\barcode_analysis"
+    os.chdir(data_directory)
+    
     if experiment is None:
         experiment = get_exp_id(notebook_dir)
+    
     #Plot read fraction across all samples for first several barcodes
     plt.rcParams["figure.figsize"] = [16,6*num_to_plot]
     fig, axs = plt.subplots(num_to_plot, 1)
 
     f_data = barcode_frame[:num_to_plot]
+            
+    plot_colors = sns.hls_palette(12, l=.4, s=.8)
+
+    plot_colors12 = [ ]
+    for c in plot_colors:
+        for i in range(8):
+            plot_colors12.append(c)
 
     for index, row in f_data.iterrows():
         y = []
@@ -659,64 +690,94 @@ def bar_seq_quality_plots(barcode_frame,
     if not show_plots:
         plt.close(fig)
 
+    if save_plots:
+        pdf.close()
+
+
+def plot_bar_seq_stdev(barcode_frame,
+                       notebook_dir,
+                       experiment=None,
+                       show_plots=True,
+                       save_plots=False,
+                       count_cutoff=500):
+
+    # Turn interactive plotting on or off depending on show_plots
+    if show_plots:
+        plt.ion()
+    else:
+        plt.ioff()
+    
+    if save_plots:
+        pdf_file = 'barcode read standard deviation plot.pdf'
+        pdf = PdfPages(pdf_file)
+
+    data_directory = notebook_dir + "\\barcode_analysis"
+    os.chdir(data_directory)
+    
     if experiment is None:
         experiment = get_exp_id(notebook_dir)
 
     #Plot standard deviation of barcode read fractions (across wells in time point 1) vs mean read fraction 
-    # data from 2019-10-02:
-    x_test = [0.23776345382258504, 0.21428834768303265, 0.14955568743012018, 0.10527042635253019, 0.08814193520270863,
-              0.07140559171457407, 0.032268913991628186, 0.02486533840744069, 0.009370452839984682, 0.0021539027931815613,
-              0.0001936817014361814]
-    y_test = [0.0019726945744597706, 0.0028398295224567756, 0.0027140121666701543, 0.0016422861817864806,
-              0.0012364410886752844, 0.0014467832918787287, 0.0009412184378809117, 0.0007090217957749182,
-              0.00034552377974558844, 0.00017198555940160456, 4.958998052635534e-05]
-    poisson_err_test = [0.001391130466104952, 0.001320415964490587, 0.0011032026255463198, 0.0009247685041703838,
-                        0.0008466282838575875, 0.0007620910541483005, 0.0005123905962175842, 0.000449754496329767,
-                        0.00027605091052578906, 0.0001323496187650663, 3.929704870026295e-05]
-    ####
+    # data from 2019-10-02: #################################################################################
+    x_test = np.asarray([0.23776345382258504, 0.21428834768303265, 0.14955568743012018, 0.10527042635253019, 0.08814193520270863,
+                         0.07140559171457407, 0.032268913991628186, 0.02486533840744069, 0.009370452839984682, 0.0021539027931815613,
+                         0.0001936817014361814])
+    y_test = np.asarray([0.0019726945744597706, 0.0028398295224567756, 0.0027140121666701543, 0.0016422861817864806,
+                         0.0012364410886752844, 0.0014467832918787287, 0.0009412184378809117, 0.0007090217957749182,
+                         0.00034552377974558844, 0.00017198555940160456, 4.958998052635534e-05])
+    poisson_err_test = np.asarray([0.001391130466104952, 0.001320415964490587, 0.0011032026255463198, 0.0009247685041703838,
+                                   0.0008466282838575875, 0.0007620910541483005, 0.0005123905962175842, 0.000449754496329767,
+                                   0.00027605091052578906, 0.0001323496187650663, 3.929704870026295e-05])
+    #####################################################################################################
 
-    # data from 2019-10-08:
-    x_small = [0.08251274176535274, 0.0962239061597132, 0.08539004578198717, 0.08675701439383578, 0.07400424816228543,
-               0.07566109361860245, 0.0699367739242362, 0.06963680434271374, 0.06384195016208481, 0.06321931248609224,
-               0.06334894239678983, 0.02536420185939611, 0.03923343837910993, 0.020238576239101202]
-    y_small = [0.003020200426682457, 0.003374150359051314, 0.00374541788260866, 0.0035764736646941536,
-               0.002598176841078495, 0.003669639858790278, 0.0021759993522437074, 0.002827475646549457,
-               0.0038335541520843315, 0.002201298340428577, 0.008012477386731139, 0.001454772893578839,
-               0.0012788004626381614, 0.0021763030793714206]
-    poisson_err_small = [0.0008661333092282185, 0.0009340439480853888, 0.0008821889073372234, 0.0008856945951456786,
-                         0.000820757229296616, 0.000830315430739499, 0.0007963057526756344, 0.0007963629310250612,
-                         0.000763102677224598, 0.0007575749124137182, 0.0007546065015548847, 0.0004797418835729835,
-                         0.000596486425619687, 0.00042833165436399073]
-    ###
+    # data from 2019-10-08: #############################################################################
+    x_small = np.asarray([0.08251274176535274, 0.0962239061597132, 0.08539004578198717, 0.08675701439383578, 0.07400424816228543,
+                          0.07566109361860245, 0.0699367739242362, 0.06963680434271374, 0.06384195016208481, 0.06321931248609224,
+                          0.06334894239678983, 0.02536420185939611, 0.03923343837910993, 0.020238576239101202])
+    y_small = np.asarray([0.003020200426682457, 0.003374150359051314, 0.00374541788260866, 0.0035764736646941536,
+                          0.002598176841078495, 0.003669639858790278, 0.0021759993522437074, 0.002827475646549457,
+                          0.0038335541520843315, 0.002201298340428577, 0.008012477386731139, 0.001454772893578839,
+                          0.0012788004626381614, 0.0021763030793714206])
+    poisson_err_small = np.asarray([0.0008661333092282185, 0.0009340439480853888, 0.0008821889073372234, 0.0008856945951456786,
+                                    0.000820757229296616, 0.000830315430739499, 0.0007963057526756344, 0.0007963629310250612,
+                                    0.000763102677224598, 0.0007575749124137182, 0.0007546065015548847, 0.0004797418835729835,
+                                    0.000596486425619687, 0.00042833165436399073])
+    ##############################################################################################
 
 
-    fraction_list = ["fraction_" + w for w in wells_by_column[:24] ]
+    fraction_list = ["fraction_" + w for w in wells_by_column()[:24] ]
 
-    plt.rcParams["figure.figsize"] = [8,8]
-    fig, axs = plt.subplots(1, 1)
+    plt.rcParams["figure.figsize"] = [16,8]
+    fig, axs = plt.subplots(1, 2)
     #fig.suptitle('First Time Point Only (Plate 2)', fontsize=24, position=(0.5, 0.925))
 
-    axs.plot(x_test, y_test, "o", ms=10, label="Library Prep Test, 2019-10-02");
-    axs.plot(x_test, poisson_err_test, c="gray");
+    axs[0].plot(x_test, y_test, "o", ms=10, label="Library Prep Test, 2019-10-02");
+    axs[0].plot(x_test, poisson_err_test, c="gray");
+    axs[0].plot(x_small, y_small, "o", ms=10, label="Small Library Selection, 2019-10-08");
+    axs[1].plot(x_test, y_test/x_test, "o", ms=10, label="Library Prep Test, 2019-10-02");
+    axs[1].plot(x_test, poisson_err_test/x_test, c="gray");
+    axs[1].plot(x_small, y_small/x_small, "o", ms=10, label="Small Library Selection, 2019-10-08");
 
-    axs.plot(x_small, y_small, "o", ms=10, label="Small Library Selection, 2019-10-08");
+    f_data = barcode_frame[barcode_frame["total_counts"]>count_cutoff]
 
-    f_data = barcode_frame[barcode_frame["total_counts"]>500]
+    y = np.asarray([ f_data[fraction_list].iloc[i].std() for i in range(len(f_data)) ])
+    x = np.asarray([ f_data[fraction_list].iloc[i].mean() for i in range(len(f_data)) ])
+    err_est = np.asarray([ ( f_data[fraction_list].iloc[i].mean() ) / ( np.sqrt( f_data[wells_by_column()[:24]].iloc[i].mean() ) ) for i in range(len(f_data)) ])
 
-    y = [ f_data[fraction_list].iloc[i].std() for i in range(len(f_data)) ]
-    x = [ f_data[fraction_list].iloc[i].mean() for i in range(len(f_data)) ]
-    err_est = [ ( f_data[fraction_list].iloc[i].mean() ) / ( np.sqrt( f_data[wells_by_column[:24]].iloc[i].mean() ) ) for i in range(len(f_data)) ]
+    axs[0].plot(x, y, "o", ms=5, label = experiment);
+    axs[0].plot(x, err_est, c="darkgreen");
+    axs[0].set_ylabel('Stdev(barcode fraction per sample)', size=20);
+    axs[0].plot(x, y/x, "o", ms=5, label = experiment);
+    axs[0].plot(x, err_est/x, c="darkgreen");
+    axs[0].set_ylabel('Relative Stdev(barcode fraction per sample)', size=20);
 
-    axs.plot(x, y, "o", ms=5, label = experiment);
-    axs.plot(x, err_est, c="darkgreen");
-    axs.set_xscale("log");
-    axs.set_yscale("log");
-    axs.set_xlabel('Mean(barcode fraction per sample)', size=20)
-    axs.set_ylabel('Stdev(barcode fraction per sample)', size=20);
-    axs.tick_params(labelsize=16);
-
-    leg = axs.legend(loc='upper left', bbox_to_anchor= (0.025, 0.93), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
-    leg.get_frame().set_edgecolor('k');
+    for ax in axs.flatten():
+        ax.set_xlabel('Mean(barcode fraction per sample)', size=20);
+        ax.tick_params(labelsize=16);
+        ax.set_xscale("log");
+        ax.set_yscale("log");
+        leg = ax.legend(loc='upper left', bbox_to_anchor= (0.025, 0.93), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+        leg.get_frame().set_edgecolor('k');
     if save_plots:
         pdf.savefig()
     if not show_plots:
@@ -724,9 +785,6 @@ def bar_seq_quality_plots(barcode_frame,
 
     if save_plots:
         pdf.close()
-
-    return barcode_frame
-
 
 def fit_barcode_fitness(barcode_frame,
                         notebook_dir,
