@@ -82,7 +82,10 @@ class BarSeqFitnessFrame:
                 counts += row[t]
             total.append(counts)
         barcode_frame['total_counts_plate_2'] = total
-        barcode_frame['fraction_total_p2'] = barcode_frame['total_counts_plate_2']/barcode_frame['total_counts_plate_2'].sum()        
+        barcode_frame['fraction_total_p2'] = barcode_frame['total_counts_plate_2']/barcode_frame['total_counts_plate_2'].sum()  
+        
+        fraction_list = ["fraction_" + w for w in fitness.wells_by_column()[:24] ]
+        barcode_frame.barcode_frame["fraction_p2_std"] = barcode_frame.barcode_frame[fraction_list].std(axis=1)
         
         self.barcode_frame = barcode_frame
         
@@ -551,8 +554,6 @@ class BarSeqFitnessFrame:
         ##############################################################################################
     
         #Plot standard deviation of barcode read fractions (across wells in time point 1) vs mean read fraction 
-        fraction_list = ["fraction_" + w for w in fitness.wells_by_column()[:24] ]
-    
         plt.rcParams["figure.figsize"] = [16,8]
         fig, axs = plt.subplots(1, 2)
         #fig.suptitle('First Time Point Only (Plate 2)', fontsize=24, position=(0.5, 0.925))
@@ -564,10 +565,10 @@ class BarSeqFitnessFrame:
         axs[1].plot(x_test, poisson_err_test/x_test, c="gray");
         axs[1].plot(x_small, y_small/x_small, "o", ms=10, label="Small Library Selection, 2019-10-08");
     
-        y = np.asarray([ f_data[fraction_list].iloc[i].std() for i in range(len(f_data)) ])
-        x = np.asarray([ f_data[fraction_list].iloc[i].mean() for i in range(len(f_data)) ])
-        err_est = np.asarray([ ( f_data[fraction_list].iloc[i].mean() ) / ( np.sqrt( f_data[fitness.wells_by_column()[:24]].iloc[i].mean() ) ) for i in range(len(f_data)) ])
-    
+        y = f_data["fraction_p2_std"]
+        x = f_data["fraction_total_p2"]
+        err_est = f_data["fraction_total_p2"] / np.sqrt(f_data["total_counts_plate_2"]/24)
+        
         axs[0].plot(x, y, "o", ms=5, label = experiment);
         axs[0].plot(x, err_est, c="darkgreen");
         axs[0].set_ylabel('Stdev(barcode fraction per sample)', size=20);
