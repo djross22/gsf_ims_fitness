@@ -145,7 +145,30 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle()
             
-    #def flag_possible_chimeras(self):
+    def flag_possible_chimeras(self, use_faster_search=True, faster_search_ratio=10):
+        
+        barcode_frame = self.barcode_frame
+        barcode_frame["possibleChimera"] = False
+        barcode_frame["forward_parent"] = np.nan
+        barcode_frame["reverse_parent"] = np.nan
+        
+        for index, row in barcode_frame[1:].iterrows():
+            if use_faster_search:
+                data_counts = row["total_counts"]
+                comp_data = barcode_frame[barcode_frame["total_counts"]>faster_search_ratio*data_counts]
+            else:
+                comp_data = barcode_frame.loc[:index-1]
+            for_matches = comp_data[comp_data["forward_BC"]==row["forward_BC"]]
+            for_matches = for_matches[for_matches["possibleChimera"]==False]
+            rev_matches = comp_data[comp_data["reverse_BC"]==row["reverse_BC"]]
+            rev_matches = rev_matches[rev_matches["possibleChimera"]==False]
+            if ( ( len(for_matches)>0 ) & ( len(rev_matches)>0 ) ):
+                barcode_frame.at[index, "possibleChimera"] = True
+                barcode_frame.at[index, "forward_parent"] = for_matches.index[0]
+                barcode_frame.at[index, "reverse_parent"] = rev_matches.index[0]
+        
+        chimera_frame = barcode_frame[barcode_frame["possibleChimera"]]
+        print(f"Number of potential chimera barcodes identified: {len(chimera_frame)}")
         
             
     def fit_barcode_fitness(self,
