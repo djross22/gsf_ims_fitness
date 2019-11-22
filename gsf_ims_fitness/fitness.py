@@ -42,7 +42,7 @@ def get_fitness_frame_from_OD(notebook_dir,
     os.chdir(notebook_dir)
     
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
+        experiment = get_exp_id(notebook_dir)
     
     print(f"Analyzing plate reader data and calculating fitness for experiment: {experiment}")
     
@@ -278,7 +278,7 @@ def plot_cell_density_from_OD(fitness_frame,
         pdf = PdfPages(pdf_file)
        
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
+        experiment = get_exp_id(notebook_dir)
     
     #plot cell density for different inducer concentrations
     inducer_concentrations = np.unique(fitness_frame['inducerConcentration'].values)
@@ -330,7 +330,7 @@ def plot_fitness_curves_from_OD(fitness_frame,
         pdf = PdfPages(pdf_file)
     
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
+        experiment = get_exp_id(notebook_dir)
         
     #plot fitness curves
     Tet_concentrations = np.unique(fitness_frame['tet_concentration'].values)
@@ -389,9 +389,7 @@ def bar_seq_threshold_plot(notebook_dir,
     #os.chdir(notebook_dir)
     
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.find("Sequencing_data_downloads"):]
-        experiment = experiment[experiment.find("\\")+1:]
-        experiment = experiment[:experiment.find("\\")]
+        experiment = get_exp_id(notebook_dir)
     
     print(f"Importing BarSeq count data and plotting histogram for thresholding for experiment: {experiment}")
 
@@ -482,9 +480,7 @@ def bar_seq_quality_plots(barcode_frame,
     os.chdir(data_directory)
     
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.find("Sequencing_data_downloads"):]
-        experiment = experiment[experiment.find("\\")+1:]
-        experiment = experiment[:experiment.find("\\")]
+        experiment = get_exp_id(notebook_dir)
 
     if cutoff is None:
         hist_bin_max = barcode_frame[int(len(barcode_frame)/50):int(len(barcode_frame)/50)+1]["total_counts"].values[0]
@@ -502,19 +498,7 @@ def bar_seq_quality_plots(barcode_frame,
         print(f"Exporting trimmed barcode counts data to: {trimmed_export_file}")
         barcode_frame.to_csv(trimmed_export_file)
 
-    rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-    columns = [i for i in range(1,13)]
-    wells = []
-    for r in rows:
-        for c in columns:
-            wells.append(r + str(c))
-        
-    wells_by_column = []
-    for c in columns:
-        for r in rows:
-            wells_by_column.append(r + str(c))
-
-    for w in wells:
+    for w in wells():
         label = 'fraction_' + w
         barcode_frame[label] = barcode_frame[w]/barcode_frame[w].sum()
     
@@ -529,14 +513,14 @@ def bar_seq_quality_plots(barcode_frame,
 
     BC_totals = []
     index_list = []
-    for i, w in enumerate(wells):
+    for i, w in enumerate(wells()):
         BC_totals.append(barcode_frame[w].sum())
         index_list.append(i+1)
     
     BC_total_arr = []
-    for r in rows:
+    for r in rows():
         subarr = []
-        for c in columns:
+        for c in columns():
             subarr.append(barcode_frame[r + str(c)].sum())
         BC_total_arr.append(subarr)
 
@@ -561,7 +545,7 @@ def bar_seq_quality_plots(barcode_frame,
     axs[1].grid(b=False);
     axs[1].set_xticklabels([i+1 for i in range(12)], size=16);
     axs[1].set_xticks([i for i in range(12)]);
-    axs[1].set_yticklabels([ r + " " for r in rows[::-1] ], size=16);
+    axs[1].set_yticklabels([ r + " " for r in rows()[::-1] ], size=16);
     axs[1].set_yticks([i for i in range(8)]);
     axs[1].set_ylim(-0.5, 7.5);
     axs[1].tick_params(length=0);
@@ -589,9 +573,9 @@ def bar_seq_quality_plots(barcode_frame,
         print(f"reference sequence reads: {total_RS_reads}")
 
     total = []
-    for index, row in barcode_frame[wells_by_column[:24]].iterrows():
+    for index, row in barcode_frame[wells_by_column()[:24]].iterrows():
         counts = 0
-        for t in wells_by_column[:24]:
+        for t in wells_by_column()[:24]:
             counts += row[t]
         total.append(counts)
     barcode_frame['total_counts_plate_2'] = total
@@ -610,7 +594,7 @@ def bar_seq_quality_plots(barcode_frame,
         ax.plot([0,.125], [0,.125], color='k')
     for ax in axs.flatten()[2:4]:
         ax.plot([0,.125], [0,0], color='k')
-    for i, w in enumerate(wells_by_column[:24]):
+    for i, w in enumerate(wells_by_column()[:24]):
         c = [(plot_colors*8)[i]]*len(f_data)
         for ax in axs.flatten()[:2]:
             ax.scatter(f_x, f_data['fraction_' + w], c=c)
@@ -640,6 +624,8 @@ def bar_seq_quality_plots(barcode_frame,
     if not show_plots:
         plt.close(fig)
 
+    if experiment is None:
+        experiment = get_exp_id(notebook_dir)
     #Plot read fraction across all samples for first several barcodes
     plt.rcParams["figure.figsize"] = [16,6*num_to_plot]
     fig, axs = plt.subplots(num_to_plot, 1)
@@ -650,7 +636,7 @@ def bar_seq_quality_plots(barcode_frame,
         y = []
         x = []
         y_for_scale = []
-        for i, t in enumerate(wells_by_column):
+        for i, t in enumerate(wells_by_column()):
             y.append(row["fraction_" + t])
             x.append(i+1)
             if (row["fraction_" + t])>0:
@@ -673,6 +659,8 @@ def bar_seq_quality_plots(barcode_frame,
     if not show_plots:
         plt.close(fig)
 
+    if experiment is None:
+        experiment = get_exp_id(notebook_dir)
 
     #Plot standard deviation of barcode read fractions (across wells in time point 1) vs mean read fraction 
     # data from 2019-10-02:
@@ -750,7 +738,7 @@ def fit_barcode_fitness(barcode_frame,
         barcode_frame = barcode_frame.iloc[:max_fits]
         
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
+        experiment = get_exp_id(notebook_dir)
         
     print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {experiment}")
         
@@ -770,16 +758,12 @@ def fit_barcode_fitness(barcode_frame,
     
     with_tet = []
     plate_list = []
-    rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-    columns = [i for i in range(1,13)]
-    wells = []
-    for r in rows:
-        for c in columns:
+    for r in rows():
+        for c in columns():
             plate_list.append( int(2+(c-1)/3) )
-            with_tet.append(r in rows[1::2])
-            wells.append(r + str(c))
+            with_tet.append(r in rows()[1::2])
 
-    sample_plate_map = pd.DataFrame({"well": wells})
+    sample_plate_map = pd.DataFrame({"well": wells()})
     sample_plate_map['with_tet'] = with_tet
     sample_plate_map['IPTG'] = inducer_conc_list_in_plate
     sample_plate_map['growth_plate'] = plate_list
@@ -926,7 +910,7 @@ def plot_barcode_fitness(barcode_frame,
         barcode_frame = barcode_frame.iloc[plot_range[0]:plot_range[1]]
         
     if experiment is None:
-        experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
+        experiment = get_exp_id(notebook_dir)
     
     if inducer_conc_list is None:
         inducer_conc_list = [0, 2]
@@ -996,4 +980,32 @@ def line_funct(x, m, b):
 
 def bi_linear_funct(z, m2, b, m1, alpha):
     return b + m2*z + ( m1 - m2 + (m2-m1)*np.exp(-z*alpha) )/alpha
+
+def get_exp_id(notebook_dir):
+    experiment = notebook_dir[notebook_dir.find("Sequencing_data_downloads"):]
+    experiment = experiment[experiment.find("\\")+1:]
+    experiment = experiment[:experiment.find("\\")]
+    return experiment
+
+def wells():
+    w = []
+    for r in rows():
+        for c in columns():
+            w.append(r + str(c))
+    return w
+
+def wells_by_column():        
+    w = []
+    for c in columns():
+        for r in rows():
+            w.append(r + str(c))
+    return w
+
+def rows():
+    return ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+def columns():
+    return [i for i in range(1,13)]
+
+        
         
