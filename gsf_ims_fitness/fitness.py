@@ -432,10 +432,6 @@ def bar_seq_threshold_plot(notebook_dir,
         except:
             print("hist_max needs to be a number")
         
-    #im = interact_manual(plot_histogram, manunal_name="(re)plot histogram");
-    #im.widget.children[0].description = 'click to (re)plot histogram'
-    #display(im);
-        
     if save_plots:
         pdf.savefig()
             
@@ -923,11 +919,11 @@ def plot_barcode_fitness(barcode_frame,
                          show_plots=True,
                          save_plots=False,
                          inducer_conc_list=None,
-                         max_fits=None,
+                         plot_range=None,
                          inducer="IPTG"):
     
-    if max_fits is not None:
-        barcode_frame = barcode_frame.iloc[:max_fits]
+    if plot_range is not None:
+        barcode_frame = barcode_frame.iloc[plot_range[0]:plot_range[1]]
         
     if experiment is None:
         experiment = notebook_dir[notebook_dir.rfind('\\')+1:]
