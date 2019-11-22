@@ -85,7 +85,7 @@ class BarSeqFitnessFrame:
         barcode_frame['fraction_total_p2'] = barcode_frame['total_counts_plate_2']/barcode_frame['total_counts_plate_2'].sum()  
         
         fraction_list = ["fraction_" + w for w in fitness.wells_by_column()[:24] ]
-        barcode_frame.barcode_frame["fraction_p2_std"] = barcode_frame.barcode_frame[fraction_list].std(axis=1)
+        barcode_frame["fraction_p2_std"] = barcode_frame[fraction_list].std(axis=1)
         
         self.barcode_frame = barcode_frame
         
