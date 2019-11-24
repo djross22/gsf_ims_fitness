@@ -524,7 +524,7 @@ class BarSeqFitnessFrame:
         fig, axs = plt.subplots(2, 2)
         
         f_data = self.barcode_frame[self.barcode_frame["total_counts"]>count_cutoff]
-        if not includeChimeras:
+        if (not includeChimeras) and ("isChimera" in f_data.columns):
             f_data = f_data[f_data["isChimera"] == False]
             
         f_x = f_data['fraction_total_p2']
@@ -640,7 +640,7 @@ class BarSeqFitnessFrame:
         else:
             barcode_frame = self.barcode_frame.iloc[plot_range[0]:plot_range[1]]
             
-        if not includeChimeras:
+        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
             
         if include_ref_seqs:
