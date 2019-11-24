@@ -194,9 +194,6 @@ class BarSeqFitnessFrame:
             
         os.chdir(self.data_directory)
     
-        ref_index_b = barcode_frame[barcode_frame["RS_name"]=="AO-B"].index[0]
-        ref_index_e = barcode_frame[barcode_frame["RS_name"]=="AO-E"].index[0]
-    
         if inducer_conc_list is None:
             inducer_conc_list = [0, 2]
             for i in range(10):
@@ -243,8 +240,17 @@ class BarSeqFitnessFrame:
         spike_in_fitness_0 = {"AO-B": np.array([0.9637]*12), "AO-E": np.array([0.9666]*12)}
         spike_in_fitness_tet = {"AO-B": np.array([0.8972]*12), "AO-E": np.array([0.8757]*12)}
     
-        spike_in_row = {"AO-B": barcode_frame[ref_index_b:ref_index_b+1], "AO-E": barcode_frame[ref_index_e:ref_index_e+1]}
+        #ref_index_b = barcode_frame[barcode_frame["RS_name"]=="AO-B"].index[0]
+        #ref_index_e = barcode_frame[barcode_frame["RS_name"]=="AO-E"].index[0]
     
+        #spike_in_row = {"AO-B": barcode_frame[ref_index_b:ref_index_b+1], "AO-E": barcode_frame[ref_index_e:ref_index_e+1]}
+        spike_in_row = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"],
+                        "AO-E": barcode_frame[barcode_frame["RS_name"]=="AO-E"]}
+        
+        sp_b = spike_in_row["AO-B"][["RS_name", "read_count_0_2"]]
+        sp_e = spike_in_row["AO-E"][["RS_name", "read_count_0_2"]]
+        print(f"AO-B: {sp_b}")
+        print(f"AO-E: {sp_e}")
         #Fit to barcode log(ratios) over time to get slopes = fitness
         #Run for both AO-B and AO-E
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
@@ -451,7 +457,7 @@ class BarSeqFitnessFrame:
     
         f_data = self.barcode_frame[:num_to_plot]
     
-        for index, row in f_data.iterrows():
+        for (index, row), ax in zip(f_data.iterrows(), axs):
             y = []
             x = []
             y_for_scale = []
@@ -461,17 +467,17 @@ class BarSeqFitnessFrame:
                 if (row["fraction_" + t])>0:
                     y_for_scale.append(row["fraction_" + t])
     
-            axs[index].scatter(x, y, c=plot_colors12(), s=70);
-            axs[index].set_ylim(0.5*min(y_for_scale), 2*max(y));
-            axs[index].set_yscale("log")
+            ax.scatter(x, y, c=plot_colors12(), s=70);
+            ax.set_ylim(0.5*min(y_for_scale), 2*max(y));
+            ax.set_yscale("log")
             barcode_str = str(index) + ', '
             if row['RS_name'] != "": barcode_str += row['RS_name'] + ", "
             barcode_str += row['forward_BC'] + ', ' + row['reverse_BC']
-            axs[index].text(x=0.05, y=0.95, s=barcode_str, horizontalalignment='left', verticalalignment='top',
-                            transform=axs[index].transAxes, fontsize=14)
+            ax.text(x=0.05, y=0.95, s=barcode_str, horizontalalignment='left', verticalalignment='top',
+                     transform=ax.transAxes, fontsize=14)
         
             for i in range(13):
-                axs[index].plot([i*8+0.5, i*8+0.5],[0.6*min(y_for_scale), 1.2*max(y)], color='gray');
+                ax.plot([i*8+0.5, i*8+0.5],[0.6*min(y_for_scale), 1.2*max(y)], color='gray');
         axs[0].set_title("Read Fraction Per Barcode", fontsize=32);
         if save_plots:
             pdf.savefig()
