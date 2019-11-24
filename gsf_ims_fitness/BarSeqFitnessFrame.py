@@ -505,7 +505,8 @@ class BarSeqFitnessFrame:
     def plot_stdev(self,
                    save_plots=False,
                    count_cutoff=500,
-                   experiment=None):
+                   experiment=None,
+                   includeChimeras=False):
         
         if experiment is None:
             experiment = self.experiment
@@ -523,6 +524,8 @@ class BarSeqFitnessFrame:
         fig, axs = plt.subplots(2, 2)
         
         f_data = self.barcode_frame[self.barcode_frame["total_counts"]>count_cutoff]
+        if not includeChimeras:
+            f_data = f_data[f_data["isChimera"] == False]
             
         f_x = f_data['fraction_total_p2']
         for ax in axs.flatten()[:2]:
