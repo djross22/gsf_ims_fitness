@@ -644,7 +644,7 @@ class BarSeqFitnessFrame:
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
             
         if include_ref_seqs:
-            RS_count_frame = barcode_frame[barcode_frame["RS_name"]!=""]
+            RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
             barcode_frame = pd.concat([barcode_frame, RS_count_frame[2:]])
         
         if inducer_conc_list is None:
