@@ -181,6 +181,7 @@ class BarSeqFitnessFrame:
         chimera_frame = barcode_frame[barcode_frame["possibleChimera"]]
         print(f"Number of potential chimera barcodes identified: {len(chimera_frame)}")
         
+        self.barcode_frame = barcode_frame
             
     def fit_barcode_fitness(self,
                             inducer_conc_list=None,
