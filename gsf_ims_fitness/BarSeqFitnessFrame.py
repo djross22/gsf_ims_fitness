@@ -614,9 +614,9 @@ class BarSeqFitnessFrame:
             ax.tick_params(labelsize=16);
             ax.set_xscale("log");
             ax.set_yscale("log");
-        leg = axs[0].legend(loc='upper left', bbox_to_anchor= (0.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+        leg = axs[0].legend(loc='lower right', bbox_to_anchor= (0.99, 0.01), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
         leg.get_frame().set_edgecolor('k');
-        leg = axs[1].legend(loc='lower left', bbox_to_anchor= (0.03, 0.03), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+        leg = axs[1].legend(loc='lower left', bbox_to_anchor= (0.01, 0.01), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
         leg.get_frame().set_edgecolor('k');
         if save_plots:
             pdf.savefig()
