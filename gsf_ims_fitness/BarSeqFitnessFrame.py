@@ -55,7 +55,7 @@ class BarSeqFitnessFrame:
         barcode_frame = pd.read_csv(barcode_file, skipinitialspace=True)
     
         barcode_frame.sort_values('total_counts', ascending=False, inplace=True)
-        barcode_frame.reset_index(drop=True, inplace=True)
+        #barcode_frame.reset_index(drop=True, inplace=True)
         
         self.barcode_frame = barcode_frame
             
@@ -65,7 +65,7 @@ class BarSeqFitnessFrame:
         
         if cutoff is not None:
             barcode_frame = barcode_frame[barcode_frame["total_counts"]>cutoff].copy()
-            barcode_frame.reset_index(drop=True, inplace=True)
+            #barcode_frame.reset_index(drop=True, inplace=True)
             
         print(f"Calculating read fraction for each barcode in each sample")
         for w in fitness.wells():
