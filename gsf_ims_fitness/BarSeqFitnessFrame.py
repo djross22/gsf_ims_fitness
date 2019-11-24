@@ -182,6 +182,21 @@ class BarSeqFitnessFrame:
         print(f"Number of potential chimera barcodes identified: {len(chimera_frame)}")
         
         self.barcode_frame = barcode_frame
+        
+    def mark_actual_chimeras(self, chimera_cut_line):
+        
+        barcode_frame = self.barcode_frame
+        
+        barcode_frame["isChimera"] = False
+        
+        for index, row in barcode_frame[barcode_frame["possibleChimera"]].iterrows():
+            geo_mean = row["parent_geo_mean"]
+            count = row["total_count"]/96
+            if count<chimera_cut_line(geo_mean):
+                barcode_frame.at[index, "isChimera"] = True
+        
+        self.barcode_frame = barcode_frame
+        
             
     def fit_barcode_fitness(self,
                             inducer_conc_list=None,
