@@ -700,11 +700,12 @@ class BarSeqFitnessFrame:
         y = barcode_frame["total_counts"]/96
         axs.plot(x, y, 'o', ms=7, label="Total Counts ÷ 96");
         
-        x = barcode_frame["parent_geo_mean_p2"]/24
-        y = barcode_frame["total_counts_plate_2"]/24
-        axs.plot(x, y, 'o', ms=5, label="Total from Time Point 1 ÷ 24");
-        leg = axs.legend(loc='upper left', bbox_to_anchor= (0.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
-        leg.get_frame().set_edgecolor('k');
+        if "parent_geo_mean_p2" in barcode_frame.columns:
+            x = barcode_frame["parent_geo_mean_p2"]/24
+            y = barcode_frame["total_counts_plate_2"]/24
+            axs.plot(x, y, 'o', ms=5, label="Total from Time Point 1 ÷ 24");
+            leg = axs.legend(loc='upper left', bbox_to_anchor= (0.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+            leg.get_frame().set_edgecolor('k');
         
         axs.set_xscale("log");
         axs.set_yscale("log");
