@@ -629,7 +629,8 @@ class BarSeqFitnessFrame:
                             inducer_conc_list=None,
                             plot_range=None,
                             inducer="IPTG",
-                            include_ref_seqs=True):
+                            include_ref_seqs=True,
+                            includeChimeras=False):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -638,6 +639,9 @@ class BarSeqFitnessFrame:
             barcode_frame = self.barcode_frame
         else:
             barcode_frame = self.barcode_frame.iloc[plot_range[0]:plot_range[1]]
+            
+        if not includeChimeras:
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
             
         if include_ref_seqs:
             RS_count_frame = barcode_frame[barcode_frame["RS_name"]!=""]
