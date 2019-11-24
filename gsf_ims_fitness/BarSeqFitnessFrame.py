@@ -151,11 +151,12 @@ class BarSeqFitnessFrame:
     def flag_possible_chimeras(self, use_faster_search=True, faster_search_ratio=10):
         
         barcode_frame = self.barcode_frame
-        barcode_frame["possibleChimera"] = False
-        barcode_frame["forward_parent"] = np.nan
-        barcode_frame["reverse_parent"] = np.nan
-        barcode_frame["parent_geo_mean"] = np.nan
-        barcode_frame["parent_geo_mean_p2"] = np.nan
+        if "possibleChimera" not in barcode_frame.columns:
+            barcode_frame["possibleChimera"] = False
+        new_columns_list = ["forward_parent", "reverse_parent", "parent_geo_mean", "parent_geo_mean_p2"]
+        for col in new_columns_list:
+            if col not in barcode_frame.columns:
+                barcode_frame[col] = np.nan
         
         for index, row in barcode_frame[1:].iterrows():
             if use_faster_search:
