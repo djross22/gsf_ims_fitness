@@ -529,24 +529,27 @@ class BarSeqFitnessFrame:
             f_data = f_data[f_data["isChimera"] == False]
             
         f_x = f_data['fraction_total_p2']
-        for ax in axs.flatten()[:2]:
-            ax.plot([0,.125], [0,.125], color='k')
-        for ax in axs.flatten()[2:4]:
-            ax.plot([0,.125], [0,0], color='k')
         for i, w in enumerate(fitness.wells_by_column()[:24]):
             c = [(plot_colors()*8)[i]]*len(f_data)
             for ax in axs.flatten()[:2]:
                 ax.scatter(f_x, f_data['fraction_' + w], c=c)
             for ax in axs.flatten()[2:4]:
                 ax.scatter(f_x, (f_data['fraction_' + w] - f_x)*100, c=c)
+                
+        for ax in axs.flatten()[:2]:
+            x_lim_0 = ax.get_xlim()
+            ax.plot([0, x_lim_0[1]], [0, x_lim_0[1]], color='k')
+        for ax in axs.flatten()[2:4]:
+            x_lim_0 = ax.get_xlim()
+            ax.plot([0, x_lim_0[1]], [0,0], color='k')
             
         axs.flatten()[1].set_xscale("log");
         axs.flatten()[1].set_yscale("log");
-        axs.flatten()[1].set_xlim(0.01, 0.125);
-        axs.flatten()[1].set_ylim(0.01, 0.125);
+        #axs.flatten()[1].set_xlim(0.01, 0.125);
+        #axs.flatten()[1].set_ylim(0.01, 0.125);
     
         axs.flatten()[3].set_xscale("log");
-        axs.flatten()[3].set_xlim(0.01, 0.125);
+        #axs.flatten()[3].set_xlim(0.01, 0.125);
         fig.suptitle('Fraction from Each Dual Barcode (Plate 2)', fontsize=24, position=(0.5, 0.905))
     
         for ax in axs.flatten()[:2]:
