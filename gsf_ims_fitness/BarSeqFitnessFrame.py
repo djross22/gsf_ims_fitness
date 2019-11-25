@@ -356,6 +356,7 @@ class BarSeqFitnessFrame:
 
         self.barcode_frame = barcode_frame
         
+        os.chdir(self.notebook_dir)
         pickle_file = self.experiment + '_inducer_conc_list.pkl'
         with open(pickle_file, 'wb') as f:
             pickle.dump(inducer_conc_list, f)
