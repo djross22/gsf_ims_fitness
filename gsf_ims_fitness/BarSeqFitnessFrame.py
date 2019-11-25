@@ -148,6 +148,31 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle()
             
+    def mark_chimera_parents(self):
+        
+        barcode_frame = self.barcode_frame
+        
+        new_columns_list = ["forward_parent", "reverse_parent", "parent_geo_mean_p2"]
+        for col in new_columns_list:
+            if col not in barcode_frame.columns:
+                barcode_frame[col] = np.nan
+        
+        for index, row in barcode_frame[barcode_frame["possibleChimera"]].iterrows():
+            comp_data = barcode_frame.loc[:index-1]
+                
+            for_matches = comp_data[comp_data["forward_BC"]==row["forward_BC"]]
+            for_matches = for_matches[for_matches["possibleChimera"]==False]
+            rev_matches = comp_data[comp_data["reverse_BC"]==row["reverse_BC"]]
+            rev_matches = rev_matches[rev_matches["possibleChimera"]==False]
+            if ( ( len(for_matches)>0 ) & ( len(rev_matches)>0 ) ):
+                #barcode_frame.at[index, "possibleChimera"] = True
+                barcode_frame.at[index, "forward_parent"] = for_matches.index[0]
+                barcode_frame.at[index, "reverse_parent"] = rev_matches.index[0]
+                geo_mean_p2 = np.sqrt(rev_matches["total_counts_plate_2"].values[0]*for_matches["total_counts_plate_2"].values[0])
+                barcode_frame.at[index, "parent_geo_mean_p2"] = geo_mean_p2
+        
+        self.barcode_frame = barcode_frame
+            
     def flag_possible_chimeras(self, use_faster_search=True, faster_search_ratio=10):
         
         barcode_frame = self.barcode_frame
