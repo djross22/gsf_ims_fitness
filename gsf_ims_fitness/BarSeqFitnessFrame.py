@@ -692,6 +692,8 @@ class BarSeqFitnessFrame:
         #plot fitness curves
         plt.rcParams["figure.figsize"] = [12,8*(len(barcode_frame))]
         fig, axs = plt.subplots(len(barcode_frame), 1)
+        if len(barcode_frame)==1:
+            axs = [ axs ]
         x = inducer_conc_list
         linthreshx = min([i for i in inducer_conc_list if i>0])
         
