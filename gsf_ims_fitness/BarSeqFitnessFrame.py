@@ -649,7 +649,7 @@ class BarSeqFitnessFrame:
             
         if include_ref_seqs:
             RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
-            barcode_frame = pd.concat([barcode_frame, RS_count_frame[2:]])
+            barcode_frame = pd.concat([barcode_frame, RS_count_frame])
         
         if inducer_conc_list is None:
             inducer_conc_list = [0, 2]
