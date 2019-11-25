@@ -545,11 +545,11 @@ class BarSeqFitnessFrame:
             
         axs.flatten()[1].set_xscale("log");
         axs.flatten()[1].set_yscale("log");
-        #axs.flatten()[1].set_xlim(0.01, 0.125);
-        #axs.flatten()[1].set_ylim(0.01, 0.125);
+        axs.flatten()[1].set_xlim(x_lim_0[1]/1000, x_lim_0[1]);
+        axs.flatten()[1].set_ylim(x_lim_0[1]/1000, x_lim_0[1]);
     
         axs.flatten()[3].set_xscale("log");
-        #axs.flatten()[3].set_xlim(0.01, 0.125);
+        axs.flatten()[3].set_xlim(x_lim_0[1]/1000, x_lim_0[1]);
         fig.suptitle('Fraction from Each Dual Barcode (Plate 2)', fontsize=24, position=(0.5, 0.905))
     
         for ax in axs.flatten()[:2]:
