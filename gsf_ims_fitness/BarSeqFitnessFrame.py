@@ -32,7 +32,7 @@ from . import fitness
 
 class BarSeqFitnessFrame:
         
-    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None):
+    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None, inducer="IPTG"):
         
         self.notebook_dir = notebook_dir
         
@@ -64,6 +64,8 @@ class BarSeqFitnessFrame:
             for i in range(10):
                 inducer_conc_list.append(2*inducer_conc_list[-1])
         self.inducer_conc_list = inducer_conc_list
+        
+        self.inducer = inducer
             
     def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True):
         
@@ -231,7 +233,7 @@ class BarSeqFitnessFrame:
             
     def fit_barcode_fitness(self,
                             inducer_conc_list=None,
-                            inducer="IPTG",
+                            inducer=None,
                             auto_save=True,
                             ignore_samples=[]):
         
@@ -245,6 +247,9 @@ class BarSeqFitnessFrame:
     
         if inducer_conc_list is None:
             inducer_conc_list = self.inducer_conc_list
+            
+        if inducer is None:
+            inducer = self.inducer
     
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
@@ -670,7 +675,7 @@ class BarSeqFitnessFrame:
                             save_plots=False,
                             inducer_conc_list=None,
                             plot_range=None,
-                            inducer="IPTG",
+                            inducer=None,
                             include_ref_seqs=True,
                             includeChimeras=False):
         
@@ -691,6 +696,9 @@ class BarSeqFitnessFrame:
         
         if inducer_conc_list is None:
             inducer_conc_list = self.inducer_conc_list
+            
+        if inducer is None:
+            inducer = self.inducer
             
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
@@ -741,7 +749,7 @@ class BarSeqFitnessFrame:
             pdf.close()
     
     def plot_count_ratios_vs_time(self, plot_range,
-                                  inducer="IPTG",
+                                  inducer=None,
                                   inducer_conc_list=None,
                                   with_tet=None,
                                   mark_samples=[]):
@@ -762,6 +770,9 @@ class BarSeqFitnessFrame:
     
         if inducer_conc_list is None:
             inducer_conc_list = self.inducer_conc_list
+            
+        if inducer is None:
+            inducer = self.inducer
     
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
