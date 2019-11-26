@@ -226,7 +226,8 @@ class BarSeqFitnessFrame:
     def fit_barcode_fitness(self,
                             inducer_conc_list=None,
                             inducer="IPTG",
-                            auto_save=True):
+                            auto_save=True,
+                            ignore_samples=[]):
         
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
@@ -321,7 +322,11 @@ class BarSeqFitnessFrame:
                         if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
                             x.append(x0[i])
                             y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0[i][j]))
-                            s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))
+                            sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j])
+                            if ("no-tet", x0[i], inducer_conc_list[j]) in ignore_samples:
+                                sigma = np.inf
+                            s.append(sigma)
+                                
                     if len(x)>1:
                         popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
                         slopes.append(popt[0])
@@ -353,7 +358,11 @@ class BarSeqFitnessFrame:
                         if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
                             x.append(x0[i])
                             y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet[i][j]))
-                            s.append(np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))
+                            sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j])
+                            if ("tet", x0[i], inducer_conc_list[j]) in ignore_samples:
+                                sigma = np.inf
+                            s.append(sigma)
+                            
                     if len(x)>1:
                         def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=np.log(5))
                         #bounds = ([-np.log(10), -50], [slope_0, 50])
