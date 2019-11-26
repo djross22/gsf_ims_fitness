@@ -572,6 +572,7 @@ class BarSeqFitnessFrame:
             f_data = f_data[f_data["isChimera"] == False]
             
         f_x = f_data['fraction_total_p2']
+        f_x_min = f_data[f_data['fraction_total_p2']>0]['fraction_total_p2'].min()
         for i, w in enumerate(fitness.wells_by_column()[:24]):
             c = [(plot_colors()*8)[i]]*len(f_data)
             for ax in axs.flatten()[:2]:
@@ -588,11 +589,11 @@ class BarSeqFitnessFrame:
             
         axs.flatten()[1].set_xscale("log");
         axs.flatten()[1].set_yscale("log");
-        axs.flatten()[1].set_xlim(x_lim_0[1]/1000, x_lim_0[1]);
-        axs.flatten()[1].set_ylim(x_lim_0[1]/1000, x_lim_0[1]);
+        axs.flatten()[1].set_xlim(f_x_min/1.3, x_lim_0[1]*1.3);
+        axs.flatten()[1].set_ylim(f_x_min/1.3, x_lim_0[1]*1.3);
     
         axs.flatten()[3].set_xscale("log");
-        axs.flatten()[3].set_xlim(x_lim_0[1]/1000, x_lim_0[1]);
+        axs.flatten()[3].set_xlim(f_x_min/1.3, x_lim_0[1]*1.3);
         fig.suptitle('Fraction from Each Dual Barcode (Plate 2)', fontsize=24, position=(0.5, 0.905))
     
         for ax in axs.flatten()[:2]:
