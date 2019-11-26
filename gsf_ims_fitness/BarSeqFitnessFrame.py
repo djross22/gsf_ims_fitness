@@ -741,8 +741,15 @@ class BarSeqFitnessFrame:
     def plot_count_ratios_vs_time(self, plot_range,
                                   inducer="IPTG",
                                   inducer_conc_list=None,
+                                  with_tet=None,
                                   mark_samples=[]):
-        
+        if with_tet is None:
+            plot_tet = True
+            plot_no_tet = True
+        else:
+            plot_tet = with_tet
+            plot_no_tet = not with_tet
+            
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -808,44 +815,48 @@ class BarSeqFitnessFrame:
                 x_mark = []
                 y_mark = []
                 
-                n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                if plot_no_tet:
+                    n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                    for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                        x = []
+                        y = []
+                        s = []
+                        for i in range(len(n_reads)): # iteration over time points 0-3
+                            if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
+                                x.append(x0[i])
+                                y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                                s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))/np.log(10) )
+                                
+                                if ("no-tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                    x_mark.append(x0[i])
+                                    y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                                
+                        label = inducer_conc_list[j] if initial=="b" else None
+                        fillstyle = "full" if initial=="b" else "none"
+                        ax.errorbar(x, y, s, c=plot_colors()[j], marker='o', ms=8, fillstyle=fillstyle, label=label)
             
-                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-                    x = []
-                    y = []
-                    s = []
-                    for i in range(len(n_reads)): # iteration over time points 0-3
-                        if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
-                            x.append(x0[i])
-                            y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
-                            s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))/np.log(10) )
-                            
-                            if ("no-tet", x0[i], inducer_conc_list[j]) in mark_samples:
-                                x_mark.append(x0[i])
-                                y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
-                            
-                    label = inducer_conc_list[j] if initial=="b" else None
-                    fillstyle = "full" if initial=="b" else "none"
-                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='o', ms=8, fillstyle=fillstyle, label=label)
-            
-                n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
-            
-                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-                    x = []
-                    y = []
-                    s = []
-                    for i in range(len(n_reads)): # iteration over time points 0-3
-                        if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
-                            x.append(x0[i])
-                            y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
-                            s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))/np.log(10) )
-                            
-                            if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
-                                x_mark.append(x0[i])
-                                y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
-                    
-                    fillstyle = "full" if initial=="b" else "none"
-                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle)
+                if plot_tet:
+                    n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                    for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                        x = []
+                        y = []
+                        s = []
+                        for i in range(len(n_reads)): # iteration over time points 0-3
+                            if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
+                                x.append(x0[i])
+                                y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
+                                s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))/np.log(10) )
+                                
+                                if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                    x_mark.append(x0[i])
+                                    y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
+                        
+                        if plot_no_tet:
+                            label = None
+                        else:
+                            label = inducer_conc_list[j] if initial=="b" else None
+                        fillstyle = "full" if initial=="b" else "none"
+                        ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle, label=label)
                     
                 barcode_str = str(index) + ', '
                 barcode_str += row['RS_name'] + ": "
