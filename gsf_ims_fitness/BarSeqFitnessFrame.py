@@ -66,6 +66,9 @@ class BarSeqFitnessFrame:
         self.inducer_conc_list = inducer_conc_list
         
         self.inducer = inducer
+        
+        self.fit_fitness_difference_params = None
+        self.fit_fitness_difference_funct = None
             
     def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True):
         
@@ -404,6 +407,79 @@ class BarSeqFitnessFrame:
         #with open(pickle_file, 'wb') as f:
         #    pickle.dump(inducer_conc_list, f)
             
+        if auto_save:
+            self.save_as_pickle()
+        
+            
+    def fit_fitness_difference_curves(self,
+                                      includeChimeras=False,
+                                      fit_fitness_difference_funct=None,
+                                      fit_fitness_difference_params=None,
+                                      auto_save=True):
+            
+        print(f"Fitting to fitness curves to find sensor parameters for {self.experiment}")
+        
+        if fit_fitness_difference_params is None:
+            fit_fitness_difference_params = np.array([-7.26868507e-01,  7.75800873e+02,  2.77770318e+00])
+        
+        self.fit_fitness_difference_params = fit_fitness_difference_params
+            
+        def default_funct(x, g_min, g_max, x_50, nx):
+            return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0, fit_fitness_difference_params[1], fit_fitness_difference_params[2])
+        
+        if fit_fitness_difference_funct is None:
+            if self.fit_fitness_difference_funct is None:
+                fit_fitness_difference_funct = default_funct
+            else:
+                fit_fitness_difference_funct = self.fit_fitness_difference_funct
+        
+        barcode_frame = self.barcode_frame
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        if "sensor_params" not in barcode_frame.columns:
+            barcode_frame["sensor_params"] = [ np.full((3), np.nan) ] * len(barcode_frame)
+        
+        if "sensor_params_err" not in barcode_frame.columns:
+            barcode_frame["sensor_params_cov"] = [ np.full((3, 3), np.nan) ] * len(barcode_frame)
+            
+        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
+            
+        inducer_conc_list = self.inducer_conc_list
+        
+        x = inducer_conc_list
+        
+        popt_list = []
+        pcov_list = []
+        
+        for (index, row) in barcode_frame.iterrows(): # iterate over barcodes
+            initial = "b"
+            y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
+            s_low = row[f"fitness_{low_tet}_err_{initial}"]
+            y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
+            s_high = row[f"fitness_{high_tet}_err_{initial}"]
+            
+            y = y_high - y_low
+            s = np.sqrt( s_high**2 + s_low**2 )
+            
+            p0 = [100, 1500, 200, 1.5]
+            bounds = [[0, 0, 1, 0.1], [2000, 5000, max(x), 5]]
+            try:
+                popt, pcov = curve_fit(fit_fitness_difference_funct, x, y, sigma=s, p0=p0, maxfev=len(x)*10000, bounds=bounds)
+            except RuntimeError as err:
+                popt = np.full((3), np.nan)
+                pcov = np.full((3, 3), np.nan)
+                print(f"Error fitting curve for index {index}: {err}")
+            
+            popt_list.append(popt)
+            pcov_list.append(pcov)
+                
+        barcode_frame["sensor_params"] = popt_list
+        barcode_frame["sensor_params_cov"] = pcov_list
+        
+        self.barcode_frame = barcode_frame
+        
         if auto_save:
             self.save_as_pickle()
             
@@ -749,6 +825,96 @@ class BarSeqFitnessFrame:
         if save_plots:
             pdf.close()
     
+    def plot_fitness_difference_curves(self,
+                                       save_plots=False,
+                                       inducer_conc_list=None,
+                                       plot_range=None,
+                                       inducer=None,
+                                       include_ref_seqs=True,
+                                       includeChimeras=False,
+                                       show_fits=True):
+        
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        if plot_range is None:
+            barcode_frame = self.barcode_frame
+        else:
+            barcode_frame = self.barcode_frame.iloc[plot_range[0]:plot_range[1]]
+            
+        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
+            
+        if include_ref_seqs:
+            RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
+            barcode_frame = pd.concat([barcode_frame, RS_count_frame])
+        
+        if inducer_conc_list is None:
+            inducer_conc_list = self.inducer_conc_list
+            
+        if inducer is None:
+            inducer = self.inducer
+        
+        #if "sensor_params" not in barcode_frame.columns:
+        #    show_fits = False
+            
+        # Turn interactive plotting on or off depending on show_plots
+        plt.ion()
+        
+        os.chdir(self.data_directory)
+        if save_plots:
+            pdf_file = 'barcode fitness difference plots.pdf'
+            pdf = PdfPages(pdf_file)
+        
+        #plot fitness curves
+        plt.rcParams["figure.figsize"] = [12,8*(len(barcode_frame))]
+        fig, axs = plt.subplots(len(barcode_frame), 1)
+        if len(barcode_frame)==1:
+            axs = [ axs ]
+        x = inducer_conc_list
+        linthreshx = min([i for i in inducer_conc_list if i>0])
+        
+        fit_plot_colors = sns.color_palette()
+        
+        for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
+            for initial in ["b", "e"]:
+                y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
+                s_low = row[f"fitness_{low_tet}_err_{initial}"]
+                y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
+                s_high = row[f"fitness_{high_tet}_err_{initial}"]
+                
+                y = y_high - y_low
+                s = np.sqrt( s_high**2 + s_low**2 )
+                fill_style = "full" if initial=="b" else "none"
+                ax.errorbar(x, y, s, marker='o', ms=10, color=fit_plot_colors[0], fillstyle=fill_style)
+            
+                if initial == "b":
+                    barcode_str = str(index) + ', '
+                    barcode_str += str(row['total_counts']) + ", "
+                    barcode_str += row['RS_name'] + ": "
+                    barcode_str += row['forward_BC'] + ", "
+                    barcode_str += row['reverse_BC']
+                    ax.text(x=0.0, y=1.03, s=barcode_str, horizontalalignment='left', verticalalignment='top',
+                            transform=ax.transAxes, fontsize=12)
+                    ax.set_xscale('symlog', linthreshx=linthreshx)
+                    ax.set_xlim(-linthreshx/10, 2*max(x));
+                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=20)
+                    ax.set_ylabel('Fitness with Tet - Fitness without Tet', size=20)
+                    ax.tick_params(labelsize=16);
+                    
+            if show_fits:
+                x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
+                x_fit = np.insert(x_fit, 0, 0)
+                params = row["sensor_params"]
+                y_fit = temp_funct(x_fit, *params)
+                ax.plot(x_fit, y_fit, color='k', zorder=1000);
+            
+        if save_plots:
+            pdf.savefig()
+    
+        if save_plots:
+            pdf.close()
+    
     def plot_count_ratios_vs_time(self, plot_range,
                                   inducer=None,
                                   inducer_conc_list=None,
@@ -966,4 +1132,28 @@ def plot_colors12():
             p_c12.append(c)
     return p_c12
                 
+def hill_funct(x, low, high, mid, n):
+    return low + (high-low)*( x**n )/( mid**n + x**n )
 
+# Hill function of Hill function to describe fitness_difference(gene_expression([inducer]))
+def double_hill_funct(x, g_min, g_max, x_50, nx, f_min, f_max, g_50, ng):
+    # g_min, g_max, x_50, and nx are characteristics of individual sensor variants
+        # g_min is the minimum gene epxression level, at zero inducer
+        # g_max is the maximum gene expresion level, at full induction
+        # x_50 is the inducer concentration of 1/2 max gene expression
+        # nx is the exponent that describes the steepness of the sensor response curve
+    # f_min, f_max, g_50, and ng are characteristics of the selection system
+    # they are estimated from the fits above
+        # f_min is the minimum fitness level, at zero gene expression
+        # f_max is the maximum fitness level, at infinite gene expression (= 0)
+        # g_50 is the gene expression of 1/2 max fitness
+        # ng is the exponent that describes the steepness of the fitness vs. gene expression curve
+    return hill_funct( hill_funct(x, g_min, g_max, x_50, nx), f_min, f_max, g_50, ng )
+    
+def temp_funct(x, g_min, g_max, x_50, nx):
+    params = np.array([-7.26868507e-01,  7.75800873e+02,  2.77770318e+00])
+    #return double_hill_funct(x, g_min, g_max, x_50, nx, params[0], 0, params[1], params[2])
+    return hill_funct(hill_funct(x, g_min, g_max, x_50, nx), params[0], 0, params[1], params[2])
+
+
+    
