@@ -842,7 +842,7 @@ class BarSeqFitnessFrame:
                             
                             if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
                                 x_mark.append(x0[i])
-                                y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                                y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
                     
                     fillstyle = "full" if initial=="b" else "none"
                     ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle)
