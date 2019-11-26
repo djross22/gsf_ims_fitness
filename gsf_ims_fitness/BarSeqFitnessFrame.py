@@ -728,6 +728,130 @@ class BarSeqFitnessFrame:
     
         if save_plots:
             pdf.close()
+    
+    def plot_count_ratios_vs_time(self, plot_range,
+                                  inducer="IPTG",
+                                  inducer_conc_list=None,
+                                  mark_samples=[]):
+        
+        barcode_frame = self.barcode_frame
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        plot_count_frame = barcode_frame.iloc[plot_range[0]:plot_range[1]]
+        plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
+        fig, axs = plt.subplots(len(plot_count_frame), 1)
+    
+        if inducer_conc_list is None:
+            inducer_conc_list = [0, 2]
+            for i in range(10):
+                inducer_conc_list.append(2*inducer_conc_list[-1])
+    
+        inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
+        inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
+        
+        with_tet = []
+        plate_list = []
+        for r in fitness.rows():
+            for c in fitness.columns():
+                plate_list.append( int(2+(c-1)/3) )
+                with_tet.append(r in fitness.rows()[1::2])
+    
+        sample_plate_map = pd.DataFrame({"well": fitness.wells()})
+        sample_plate_map['with_tet'] = with_tet
+        sample_plate_map[inducer] = inducer_conc_list_in_plate
+        sample_plate_map['growth_plate'] = plate_list
+        sample_plate_map.set_index('well', inplace=True, drop=False)
+    
+        wells_with_high_tet = []
+        wells_with_low_tet = []
+    
+        for i in range(2,6):
+            df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
+            df = df.sort_values([inducer])
+            wells_with_high_tet.append(df["well"].values)
+            df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
+            df = df.sort_values([inducer])
+            wells_with_low_tet.append(df["well"].values)
+    
+        for i in range(2,6):
+            counts_0 = []
+            counts_tet = []
+            for index, row in barcode_frame.iterrows():
+                row_0 = row[wells_with_low_tet[i-2]]
+                counts_0.append(row_0.values)
+                row_tet = row[wells_with_high_tet[i-2]]
+                counts_tet.append(row_tet.values)
+            barcode_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
+            barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
+
+        spike_in_row = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"],
+                        "AO-E": barcode_frame[barcode_frame["RS_name"]=="AO-E"]}
+        
+        #Run for both AO-B and AO-E
+        for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
+            spike_in_reads_0 = [ spike_in_row[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
+            spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
+        
+            x0 = [2, 3, 4, 5]
+        
+            for (index, row), ax in zip(plot_count_frame.iterrows(), axs): # iterate over barcodes
+                x_mark = []
+                y_mark = []
+                
+                n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+            
+                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                    x = []
+                    y = []
+                    s = []
+                    for i in range(len(n_reads)): # iteration over time points 0-3
+                        if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
+                            x.append(x0[i])
+                            y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                            s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))/np.log(10) )
+                            
+                            if ("no-tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                x_mark.append(x0[i])
+                                y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                            
+                    label = inducer_conc_list[j] if initial=="b" else None
+                    fillstyle = "full" if initial=="b" else "none"
+                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='o', ms=8, fillstyle=fillstyle, label=label)
+            
+                n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
+            
+                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                    x = []
+                    y = []
+                    s = []
+                    for i in range(len(n_reads)): # iteration over time points 0-3
+                        if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
+                            x.append(x0[i])
+                            y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
+                            s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))/np.log(10) )
+                            
+                            if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                x_mark.append(x0[i])
+                                y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                    
+                    fillstyle = "full" if initial=="b" else "none"
+                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle)
+                    
+                barcode_str = str(index) + ', '
+                barcode_str += row['RS_name'] + ": "
+                barcode_str += row['forward_BC'] + ", "
+                barcode_str += row['reverse_BC']
+                ax.text(x=0.0, y=1.05, s=barcode_str, horizontalalignment='left', verticalalignment='top',
+                        transform=ax.transAxes, fontsize=10, fontfamily="Courier New")
+                ax.set_xlabel('Plate Number', size=16)
+                ax.set_ylabel('Log10(count ÷ spike-in count)', size=16)
+                ax.set_xticks([2, 3, 4, 5])
+                leg = ax.legend(loc='lower left', bbox_to_anchor= (1.03, 0.07), ncol=3, borderaxespad=0, frameon=True, fontsize=10)
+                leg.get_frame().set_edgecolor('k');
+                
+                ax.plot(x_mark, y_mark, c='k', marker='o', ms=18, fillstyle="none", markeredgewidth=3, zorder=1000, linestyle="none")
+        
             
     def plot_chimera_plot(self,
                           save_plots=False,
