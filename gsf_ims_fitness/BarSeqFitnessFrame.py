@@ -32,7 +32,7 @@ from . import fitness
 
 class BarSeqFitnessFrame:
         
-    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20):
+    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None):
         
         self.notebook_dir = notebook_dir
         
@@ -58,6 +58,12 @@ class BarSeqFitnessFrame:
         #barcode_frame.reset_index(drop=True, inplace=True)
         
         self.barcode_frame = barcode_frame
+        
+        if inducer_conc_list is None:
+            inducer_conc_list = [0, 2]
+            for i in range(10):
+                inducer_conc_list.append(2*inducer_conc_list[-1])
+        self.inducer_conc_list = inducer_conc_list
             
     def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True):
         
@@ -238,9 +244,7 @@ class BarSeqFitnessFrame:
         os.chdir(self.data_directory)
     
         if inducer_conc_list is None:
-            inducer_conc_list = [0, 2]
-            for i in range(10):
-                inducer_conc_list.append(2*inducer_conc_list[-1])
+            inducer_conc_list = self.inducer_conc_list
     
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
@@ -390,10 +394,10 @@ class BarSeqFitnessFrame:
 
         self.barcode_frame = barcode_frame
         
-        os.chdir(self.notebook_dir)
-        pickle_file = self.experiment + '_inducer_conc_list.pkl'
-        with open(pickle_file, 'wb') as f:
-            pickle.dump(inducer_conc_list, f)
+        #os.chdir(self.notebook_dir)
+        #pickle_file = self.experiment + '_inducer_conc_list.pkl'
+        #with open(pickle_file, 'wb') as f:
+        #    pickle.dump(inducer_conc_list, f)
             
         if auto_save:
             self.save_as_pickle()
@@ -686,9 +690,7 @@ class BarSeqFitnessFrame:
             barcode_frame = pd.concat([barcode_frame, RS_count_frame])
         
         if inducer_conc_list is None:
-            inducer_conc_list = [0, 2]
-            for i in range(10):
-                inducer_conc_list.append(2*inducer_conc_list[-1])
+            inducer_conc_list = self.inducer_conc_list
             
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
@@ -759,9 +761,7 @@ class BarSeqFitnessFrame:
         fig, axs = plt.subplots(len(plot_count_frame), 1)
     
         if inducer_conc_list is None:
-            inducer_conc_list = [0, 2]
-            for i in range(10):
-                inducer_conc_list.append(2*inducer_conc_list[-1])
+            inducer_conc_list = self.inducer_conc_list
     
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
