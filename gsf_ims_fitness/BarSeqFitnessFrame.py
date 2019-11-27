@@ -463,11 +463,13 @@ class BarSeqFitnessFrame:
             y = y_high - y_low
             s = np.sqrt( s_high**2 + s_low**2 )
             
+            valid = ~(np.isnan(y) | np.isnan(s))
+            
             p0 = [100, 1500, 200, 1.5]
             bounds = [[0, 0, 1, 0.1], [2000, 5000, max(x), 5]]
             try:
-                popt, pcov = curve_fit(fit_fitness_difference_funct, x, y, sigma=s, p0=p0, maxfev=len(x)*10000, bounds=bounds)
-            except RuntimeError as err:
+                popt, pcov = curve_fit(fit_fitness_difference_funct, x[valid], y[valid], sigma=s[valid], p0=p0, maxfev=len(x)*10000, bounds=bounds)
+            except (RuntimeError, ValueError) as err:
                 popt = np.full((3), np.nan)
                 pcov = np.full((3, 3), np.nan)
                 print(f"Error fitting curve for index {index}: {err}")
