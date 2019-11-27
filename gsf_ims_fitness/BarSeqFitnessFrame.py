@@ -420,7 +420,7 @@ class BarSeqFitnessFrame:
         print(f"Fitting to fitness curves to find sensor parameters for {self.experiment}")
         
         if fit_fitness_difference_params is None:
-            fit_fitness_difference_params = np.array([-7.26868507e-01,  7.75800873e+02,  2.77770318e+00])
+            fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
         self.fit_fitness_difference_params = fit_fitness_difference_params
             
@@ -460,8 +460,8 @@ class BarSeqFitnessFrame:
             y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
             s_high = row[f"fitness_{high_tet}_err_{initial}"]
             
-            y = y_high - y_low
-            s = np.sqrt( s_high**2 + s_low**2 )
+            y = (y_high - y_low)/y_low.mean()
+            s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
             
             valid = ~(np.isnan(y) | np.isnan(s))
             
@@ -892,8 +892,8 @@ class BarSeqFitnessFrame:
                 y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
                 s_high = row[f"fitness_{high_tet}_err_{initial}"]
                 
-                y = y_high - y_low
-                s = np.sqrt( s_high**2 + s_low**2 )
+                y = (y_high - y_low)/y_low.mean()
+                s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
                 fill_style = "full" if initial=="b" else "none"
                 ax.errorbar(x, y, s, marker='o', ms=10, color=fit_plot_colors[0], fillstyle=fill_style)
             
