@@ -809,7 +809,7 @@ class BarSeqFitnessFrame:
             
                 if initial == "b":
                     barcode_str = str(index) + ', '
-                    barcode_str += str(row['total_counts']) + ", "
+                    barcode_str += str(row[f'total_counts:,']) + ", "
                     barcode_str += row['RS_name'] + ": "
                     barcode_str += row['forward_BC'] + ", "
                     barcode_str += row['reverse_BC']
@@ -899,7 +899,7 @@ class BarSeqFitnessFrame:
             
                 if initial == "b":
                     barcode_str = str(index) + ', '
-                    barcode_str += str(row['total_counts']) + ", "
+                    barcode_str += str(row[f'total_counts:,']) + ", "
                     barcode_str += row['RS_name'] + ": "
                     barcode_str += row['forward_BC'] + ", "
                     barcode_str += row['reverse_BC']
