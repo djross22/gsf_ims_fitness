@@ -448,7 +448,7 @@ class BarSeqFitnessFrame:
             
         inducer_conc_list = self.inducer_conc_list
         
-        x = inducer_conc_list
+        x = np.array(inducer_conc_list)
         
         popt_list = []
         pcov_list = []
