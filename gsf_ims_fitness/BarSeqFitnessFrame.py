@@ -857,8 +857,15 @@ class BarSeqFitnessFrame:
         if inducer is None:
             inducer = self.inducer
         
-        #if "sensor_params" not in barcode_frame.columns:
-        #    show_fits = False
+        if "sensor_params" not in barcode_frame.columns:
+            show_fits = False
+            
+        if show_fits:
+            fit_fitness_difference_params = self.fit_fitness_difference_params
+            
+            def fit_funct(x, g_min, g_max, x_50, nx):
+                return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
+                                         fit_fitness_difference_params[1], fit_fitness_difference_params[2])
             
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
@@ -908,7 +915,7 @@ class BarSeqFitnessFrame:
                 x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
                 x_fit = np.insert(x_fit, 0, 0)
                 params = row["sensor_params"]
-                y_fit = temp_funct(x_fit, *params)
+                y_fit = fit_funct(x_fit, *params)
                 ax.plot(x_fit, y_fit, color='k', zorder=1000);
             
         if save_plots:
@@ -1152,10 +1159,7 @@ def double_hill_funct(x, g_min, g_max, x_50, nx, f_min, f_max, g_50, ng):
         # ng is the exponent that describes the steepness of the fitness vs. gene expression curve
     return hill_funct( hill_funct(x, g_min, g_max, x_50, nx), f_min, f_max, g_50, ng )
     
-def temp_funct(x, g_min, g_max, x_50, nx):
-    params = np.array([-7.26868507e-01,  7.75800873e+02,  2.77770318e+00])
-    #return double_hill_funct(x, g_min, g_max, x_50, nx, params[0], 0, params[1], params[2])
-    return hill_funct(hill_funct(x, g_min, g_max, x_50, nx), params[0], 0, params[1], params[2])
+
 
 
     
