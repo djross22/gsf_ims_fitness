@@ -808,8 +808,8 @@ class BarSeqFitnessFrame:
                 ax.errorbar(x, y, s, marker='^', ms=10, color=fit_plot_colors[1], fillstyle=fill_style)
             
                 if initial == "b":
-                    barcode_str = str(index) + ', '
-                    barcode_str += str(row[f'total_counts:,']) + ", "
+                    barcode_str = str(index) + ': '
+                    barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name'] + ": "
                     barcode_str += row['forward_BC'] + ", "
                     barcode_str += row['reverse_BC']
@@ -898,8 +898,8 @@ class BarSeqFitnessFrame:
                 ax.errorbar(x, y, s, marker='o', ms=10, color=fit_plot_colors[0], fillstyle=fill_style)
             
                 if initial == "b":
-                    barcode_str = str(index) + ', '
-                    barcode_str += str(row[f'total_counts:,']) + ", "
+                    barcode_str = str(index) + ': '
+                    barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name'] + ": "
                     barcode_str += row['forward_BC'] + ", "
                     barcode_str += row['reverse_BC']
