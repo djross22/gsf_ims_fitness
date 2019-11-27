@@ -764,7 +764,7 @@ class BarSeqFitnessFrame:
         if plot_range is None:
             barcode_frame = self.barcode_frame
         else:
-            barcode_frame = self.barcode_frame.iloc[plot_range[0]:plot_range[1]]
+            barcode_frame = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
@@ -842,7 +842,7 @@ class BarSeqFitnessFrame:
         if plot_range is None:
             barcode_frame = self.barcode_frame
         else:
-            barcode_frame = self.barcode_frame.iloc[plot_range[0]:plot_range[1]]
+            barcode_frame = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
