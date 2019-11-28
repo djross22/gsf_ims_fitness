@@ -449,6 +449,7 @@ class BarSeqFitnessFrame:
         inducer_conc_list = self.inducer_conc_list
         
         x = np.array(inducer_conc_list)
+        x_min = min([i for i in inducer_conc_list if i>0])
         
         popt_list = []
         pcov_list = []
@@ -466,7 +467,7 @@ class BarSeqFitnessFrame:
             valid = ~(np.isnan(y) | np.isnan(s))
             
             p0 = [100, 1500, 200, 1.5]
-            bounds = [[0.1, 0.1, 0.1, 0.1], [2000, 5000, max(x), 5]]
+            bounds = [[0.1, 0.1, x_min, 0.1], [5000, 5000, max(x), 5]]
             try:
                 popt, pcov = curve_fit(fit_fitness_difference_funct, x[valid], y[valid], sigma=s[valid], p0=p0, maxfev=len(x)*10000, bounds=bounds)
             except (RuntimeError, ValueError) as err:
