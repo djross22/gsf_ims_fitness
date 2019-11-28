@@ -438,10 +438,10 @@ class BarSeqFitnessFrame:
         high_tet = self.high_tet
         
         if "sensor_params" not in barcode_frame.columns:
-            barcode_frame["sensor_params"] = [ np.full((3), np.nan) ] * len(barcode_frame)
+            barcode_frame["sensor_params"] = [ np.full((4), np.nan) ] * len(barcode_frame)
         
         if "sensor_params_err" not in barcode_frame.columns:
-            barcode_frame["sensor_params_cov"] = [ np.full((3, 3), np.nan) ] * len(barcode_frame)
+            barcode_frame["sensor_params_cov"] = [ np.full((4, 4), np.nan) ] * len(barcode_frame)
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
@@ -470,8 +470,8 @@ class BarSeqFitnessFrame:
             try:
                 popt, pcov = curve_fit(fit_fitness_difference_funct, x[valid], y[valid], sigma=s[valid], p0=p0, maxfev=len(x)*10000, bounds=bounds)
             except (RuntimeError, ValueError) as err:
-                popt = np.full((3), np.nan)
-                pcov = np.full((3, 3), np.nan)
+                popt = np.full((4), np.nan)
+                pcov = np.full((4, 4), np.nan)
                 print(f"Error fitting curve for index {index}: {err}")
             
             popt_list.append(popt)
