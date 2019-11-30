@@ -757,7 +757,8 @@ class BarSeqFitnessFrame:
                             plot_range=None,
                             inducer=None,
                             include_ref_seqs=True,
-                            includeChimeras=False):
+                            includeChimeras=False,
+                            ylim = None):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -807,6 +808,8 @@ class BarSeqFitnessFrame:
                 y = row[f"fitness_{high_tet}_estimate_{initial}"]
                 s = row[f"fitness_{high_tet}_err_{initial}"]
                 ax.errorbar(x, y, s, marker='^', ms=10, color=fit_plot_colors[1], fillstyle=fill_style)
+                if ylim is not None:
+                    ax.set_ylim(ylim);
             
                 if initial == "b":
                     barcode_str = str(index) + ': '
