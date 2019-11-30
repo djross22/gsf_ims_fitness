@@ -453,6 +453,7 @@ class BarSeqFitnessFrame:
         
         popt_list = []
         pcov_list = []
+        residuals_list = []
         
         for (index, row) in barcode_frame.iterrows(): # iterate over barcodes
             initial = "b"
@@ -470,16 +471,20 @@ class BarSeqFitnessFrame:
             bounds = [[0.1, 0.1, x_min/4, 0.1], [5000, 5000, 4*max(x), 5]]
             try:
                 popt, pcov = curve_fit(fit_fitness_difference_funct, x[valid], y[valid], sigma=s[valid], p0=p0, maxfev=len(x)*10000, bounds=bounds)
+                resid = np.sqrt(np.sum((y[valid] - fit_fitness_difference_funct(x[valid], *popt))**2)/len(x[valid]))
             except (RuntimeError, ValueError) as err:
                 popt = np.full((4), np.nan)
                 pcov = np.full((4, 4), np.nan)
+                resid = np.nan
                 print(f"Error fitting curve for index {index}: {err}")
             
             popt_list.append(popt)
             pcov_list.append(pcov)
+            residuals_list.append(resid)
                 
         barcode_frame["sensor_params"] = popt_list
         barcode_frame["sensor_params_cov"] = pcov_list
+        barcode_frame["sensor_rms_residuals"] = residuals_list
         
         self.barcode_frame = barcode_frame
         
