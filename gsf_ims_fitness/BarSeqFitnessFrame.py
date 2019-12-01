@@ -462,8 +462,8 @@ class BarSeqFitnessFrame:
             y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
             s_high = row[f"fitness_{high_tet}_err_{initial}"]
             
-            y = (y_high - y_low)/y_low.mean()
-            s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
+            y = (y_high - y_low)/y_low
+            s = np.sqrt( s_high**2 + s_low**2 )/y_low
             
             valid = ~(np.isnan(y) | np.isnan(s))
             
