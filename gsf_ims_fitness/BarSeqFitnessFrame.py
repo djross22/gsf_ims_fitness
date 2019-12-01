@@ -169,7 +169,7 @@ class BarSeqFitnessFrame:
                 barcode_frame[col] = np.nan
         
         for index, row in barcode_frame[barcode_frame["possibleChimera"]].iterrows():
-            comp_data = barcode_frame.loc[:index-1]
+            comp_data = barcode_frame[barcode_frame.index<index]
                 
             for_matches = comp_data[comp_data["forward_BC"]==row["forward_BC"]]
             for_matches = for_matches[for_matches["possibleChimera"]==False]
