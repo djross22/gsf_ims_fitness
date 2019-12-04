@@ -17,6 +17,7 @@ Associated license.txt file contents:
 import pystan
 import pickle
 import numpy
+import os
 
 
 def check_div(fit):
@@ -158,6 +159,9 @@ def compile_model(filename, model_name=None, **kwargs):
 
     See http://pystan.readthedocs.io/en/latest/avoiding_recompilation.html"""
     from hashlib import md5
+    
+    return_directory = os.getcwd()
+    os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
 
     with open(filename) as f:
         model_code = f.read()
@@ -174,4 +178,7 @@ def compile_model(filename, model_name=None, **kwargs):
                 pickle.dump(sm, f)
         else:
             print("Using cached StanModel")
+            
+        os.chdir(return_directory)
+        
         return sm
