@@ -62,5 +62,7 @@ model {
 }
 
 generated quantities {
-
+  real log_sensor_n;
+  
+  log_sensor_n = log10(sensor_n);
 }
