@@ -7,6 +7,7 @@ Created on Fri Nov 22 09:29:34 2019
 
 import glob  # filenames and pathnames utility
 import os    # operating sytem utility
+import sys
 
 import matplotlib.pyplot as plt
 #from matplotlib import colors
@@ -29,6 +30,7 @@ from IPython.display import display
 from ipywidgets import interact#, interact_manual
 
 from . import fitness
+from . import stan_utility
 
 class BarSeqFitnessFrame:
         
@@ -490,6 +492,99 @@ class BarSeqFitnessFrame:
         
         if auto_save:
             self.save_as_pickle()
+        
+            
+    def stan_fitness_difference_curves(self,
+                                      includeChimeras=False,
+                                      stan_fitness_difference_model='Double Hill equation fit.stan',
+                                      fit_fitness_difference_params=None,
+                                      control=dict(adapt_delta=0.9),
+                                      iterations=1000,
+                                      chains=4,
+                                      auto_save=True):
+            
+        print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
+        
+        stan_model = stan_utility.compile_model(stan_fitness_difference_model)
+        
+        if fit_fitness_difference_params is None:
+            fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
+        
+        self.fit_fitness_difference_params = fit_fitness_difference_params
+        
+        barcode_frame = self.barcode_frame
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        if "sensor_params" not in barcode_frame.columns:
+            barcode_frame["sensor_params"] = [ np.full((4), np.nan) ] * len(barcode_frame)
+        
+        if "sensor_params_err" not in barcode_frame.columns:
+            barcode_frame["sensor_params_cov"] = [ np.full((4, 4), np.nan) ] * len(barcode_frame)
+            
+        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
+            
+        inducer_conc_list = self.inducer_conc_list
+        
+        x = np.array(inducer_conc_list)
+        x_min = min([i for i in inducer_conc_list if i>0])
+        
+        low_fitness = fit_fitness_difference_params[0]
+        mid_g = fit_fitness_difference_params[1]
+        fitness_n = fit_fitness_difference_params[2]
+        
+        params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
+        params_dim = len(params_list)
+        
+        popt_list = []
+        pcov_list = []
+        residuals_list = []
+        
+        for (index, row) in barcode_frame.iterrows(): # iterate over barcodes
+            initial = "b"
+            y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
+            s_low = row[f"fitness_{low_tet}_err_{initial}"]
+            y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
+            s_high = row[f"fitness_{high_tet}_err_{initial}"]
+            
+            y = (y_high - y_low)/y_low
+            s = np.sqrt( s_high**2 + s_low**2 )/y_low
+            
+            valid = ~(np.isnan(y) | np.isnan(s))
+            
+            
+            stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
+                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n)
+    
+            stan_init = [ init_stan_fit(fit_fitness_difference_params) for i in range(4) ]
+            
+            try:
+                stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
+                stan_samples = stan_fit.extract(permuted=True)
+        
+                stan_samples_arr = np.array([stan_samples[key] for key in params_list ])
+                stan_popt = np.array([np.median(s) for s in stan_samples_arr ])
+                stan_pcov = np.cov(stan_samples_arr, rowvar=True)
+                stan_resid = np.median(stan_samples["rms_resid"])
+            except:
+                stan_popt = np.full((params_dim), np.nan)
+                stan_pcov = np.full((params_dim, params_dim), np.nan)
+                stan_resid = np.nan
+                print(f"Error during Stan fitting for index {index}:", sys.exc_info()[0])
+            
+            popt_list.append(stan_popt)
+            pcov_list.append(stan_pcov)
+            residuals_list.append(stan_resid)
+                
+        barcode_frame["sensor_params"] = popt_list
+        barcode_frame["sensor_params_cov"] = pcov_list
+        barcode_frame["sensor_rms_residuals"] = residuals_list
+        
+        self.barcode_frame = barcode_frame
+        
+        if auto_save:
+            self.save_as_pickle()
             
     def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None):
         
@@ -872,9 +967,15 @@ class BarSeqFitnessFrame:
         if show_fits:
             fit_fitness_difference_params = self.fit_fitness_difference_params
             
-            def fit_funct(x, g_min, g_max, x_50, nx):
-                return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
-                                         fit_fitness_difference_params[1], fit_fitness_difference_params[2])
+            if len(barcode_frame["sensor_params"].iloc[0])==7:
+                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
+                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n):
+                    return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
+                                             low_fitness, 0, mid_g, fitness_n)
+            else:
+                def fit_funct(x, g_min, g_max, x_50, nx):
+                    return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
+                                             fit_fitness_difference_params[1], fit_fitness_difference_params[2])
             
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
@@ -1169,6 +1270,20 @@ def double_hill_funct(x, g_min, g_max, x_50, nx, f_min, f_max, g_50, ng):
     return hill_funct( hill_funct(x, g_min, g_max, x_50, nx), f_min, f_max, g_50, ng )
     
 
+def init_stan_fit(fit_fitness_difference_params):
+    
+    log_low_level = np.random.uniform(1.5, 4)
+    log_high_level = np.random.uniform(1.5, 4)
+    log_IC_50 = np.random.uniform(0, 3.5)
+    n = np.random.uniform(1.3, 1.7)
+    sig = np.random.uniform(1, 3)
+    
+    low_fitness = fit_fitness_difference_params[0]
+    mid_g = fit_fitness_difference_params[1]
+    fitness_n = fit_fitness_difference_params[2]
+    
+    return dict(log_low_level=log_low_level, log_high_level=log_high_level, log_IC_50=log_IC_50,
+                sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
 
 
     
