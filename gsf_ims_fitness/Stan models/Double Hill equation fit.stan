@@ -33,15 +33,21 @@ transformed parameters {
   real high_level; 
   real IC_50;
   
+  vector[N] mean_y;
+  vector[N] g;   // gene expression level at each concentration
+  
   IC_50 = 10^log_IC_50;
   low_level = 10^log_low_level;
   high_level = 10^log_high_level;
   
+  for (i in 1:N) {
+    g[i] = low_level + (high_level - low_level)*(x[i]^sensor_n)/(IC_50^sensor_n + x[i]^sensor_n);
+    mean_y[i] = low_fitness - low_fitness*(g[i]^fitness_n)/(mid_g^fitness_n + g[i]^fitness_n);
+  }
+  
 }
 
 model {
-  vector[N] mean_y;
-  vector[N] g;   // gene expression level at each concentration
   
   low_fitness ~ normal(low_fitness_mu, 0.05);
   mid_g ~ normal(mid_g_mu, 10);
@@ -59,17 +65,16 @@ model {
   target += log1m(erf((1.9 - log_high_level)/0.3));
   target += log1m(erf((log_high_level - 3.6)/0.3));
   
-  for (i in 1:N) {
-    g[i] = low_level + (high_level - low_level)*(x[i]^sensor_n)/(IC_50^sensor_n + x[i]^sensor_n);
-    mean_y[i] = low_fitness - low_fitness*(g[i]^fitness_n)/(mid_g^fitness_n + g[i]^fitness_n);
-  }
-  
   y ~ normal(mean_y, sigma*y_err);
 
 }
 
 generated quantities {
   real log_sensor_n;
+  real rms_resid;
   
   log_sensor_n = log10(sensor_n);
+  
+  rms_resid = distance(y, mean_y)/N;
+  
 }
