@@ -50,7 +50,7 @@ model {
   log_IC_50 ~ normal(1.81, 1);
   
   log_low_level ~ normal(2, 1);
-  log_high_level ~ normal(3, 1);
+  log_high_level ~ normal(3.2, 0.5);
   
   for (i in 1:N) {
     g[i] = low_level + (high_level - low_level)*(x[i]^sensor_n)/(IC_50^sensor_n + x[i]^sensor_n);
