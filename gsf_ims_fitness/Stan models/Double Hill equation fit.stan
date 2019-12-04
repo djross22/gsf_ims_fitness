@@ -5,6 +5,7 @@ data {
   int<lower=1> N;        // number of data points
   vector[N] x;           // inducer concentration
   vector[N] y;           // fitness difference at each concentration
+  vector[N] y_err;       // estimated error of fitness difference at each concentration
   
   real low_fitness_mu;      // fitness diference at zero gene expression
   real mid_g_mu;            // gene expression evel at 1/2 max fitness difference
@@ -20,7 +21,7 @@ parameters {
   real<lower=1.5, upper=4>  log_high_level;             // log10 of gene expression level at infinite induction
   real<lower=-1, upper=4.6> log_IC_50;        // input level (x) that gives output 1/2 way between low_level and high_level
   real<lower=0> sensor_n;                    // cooperativity exponent of sensor gene expression vs. x curve
-  real<lower=0> sigma;                     // standard deviation of noise in y
+  real<lower=0> sigma;                     // scale factor for standard deviation of noise in y
   
   real low_fitness;      // fitness diference at zero gene expression
   real mid_g;            // gene expression evel at 1/2 max fitness difference
@@ -57,7 +58,7 @@ model {
     mean_y[i] = low_fitness - low_fitness*(g[i]^fitness_n)/(mid_g^fitness_n + g[i]^fitness_n);
   }
   
-  y ~ normal(mean_y, sigma);
+  y ~ normal(mean_y, sigma*y_err);
 
 }
 
