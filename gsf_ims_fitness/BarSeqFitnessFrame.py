@@ -537,16 +537,14 @@ class BarSeqFitnessFrame:
         params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
         params_dim = len(params_list)
         
-        popt_list = []
-        pcov_list = []
-        residuals_list = []
         
-        for (index, row) in barcode_frame.iterrows(): # iterate over barcodes
+
+        def stan_fit_row(st_row, st_index):
             initial = "b"
-            y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
-            s_low = row[f"fitness_{low_tet}_err_{initial}"]
-            y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
-            s_high = row[f"fitness_{high_tet}_err_{initial}"]
+            y_low = st_row[f"fitness_{low_tet}_estimate_{initial}"]
+            s_low = st_row[f"fitness_{low_tet}_err_{initial}"]
+            y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
+            s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
             
             y = (y_high - y_low)/y_low
             s = np.sqrt( s_high**2 + s_low**2 )/y_low
@@ -556,7 +554,7 @@ class BarSeqFitnessFrame:
             
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n)
-    
+        
             stan_init = [ init_stan_fit(fit_fitness_difference_params) for i in range(4) ]
             
             try:
@@ -571,7 +569,16 @@ class BarSeqFitnessFrame:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 stan_resid = np.nan
-                print(f"Error during Stan fitting for index {index}:", sys.exc_info()[0])
+                print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
+                
+            return (stan_popt, stan_pcov, stan_resid)
+        
+        popt_list = []
+        pcov_list = []
+        residuals_list = []
+        
+        for (index, row) in barcode_frame.iterrows(): # iterate over barcodes
+            stan_popt, stan_pcov, stan_resid = stan_fit_row(row, index)
             
             popt_list.append(stan_popt)
             pcov_list.append(stan_pcov)
@@ -1284,6 +1291,4 @@ def init_stan_fit(fit_fitness_difference_params):
     
     return dict(log_low_level=log_low_level, log_high_level=log_high_level, log_IC_50=log_IC_50,
                 sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
-
-
     
