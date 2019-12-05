@@ -27,7 +27,7 @@ sns.set()
 
 from IPython.display import display
 #import ipywidgets as widgets
-from ipywidgets import interact#, interact_manual
+#from ipywidgets import interact#, interact_manual
 
 from . import fitness
 from . import stan_utility

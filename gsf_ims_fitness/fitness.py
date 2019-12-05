@@ -24,10 +24,10 @@ import pickle
 import seaborn as sns
 sns.set()
 
-from IPython.display import display
+#from IPython.display import display
 
 #import ipywidgets as widgets
-from ipywidgets import interact#, interact_manual
+#from ipywidgets import interact#, interact_manual
 
 def bar_seq_threshold_plot(notebook_dir,
                            experiment=None,
