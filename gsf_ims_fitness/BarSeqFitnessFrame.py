@@ -573,12 +573,14 @@ class BarSeqFitnessFrame:
                 
             return (stan_popt, stan_pcov, stan_resid)
         
+        fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
+        
         popt_list = []
         pcov_list = []
         residuals_list = []
         
-        for (index, row) in barcode_frame.iterrows(): # iterate over barcodes
-            stan_popt, stan_pcov, stan_resid = stan_fit_row(row, index)
+        for item in fit_list: # iterate over barcodes
+            stan_popt, stan_pcov, stan_resid = item
             
             popt_list.append(stan_popt)
             pcov_list.append(stan_pcov)
