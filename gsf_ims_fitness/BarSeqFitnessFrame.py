@@ -555,7 +555,7 @@ class BarSeqFitnessFrame:
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n)
         
-            stan_init = [ init_stan_fit(fit_fitness_difference_params) for i in range(4) ]
+            stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
             
             try:
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
@@ -1277,12 +1277,16 @@ def double_hill_funct(x, g_min, g_max, x_50, nx, f_min, f_max, g_50, ng):
     return hill_funct( hill_funct(x, g_min, g_max, x_50, nx), f_min, f_max, g_50, ng )
     
 
-def init_stan_fit(fit_fitness_difference_params):
+def init_stan_fit(x_data, y_data, fit_fitness_difference_params):
+    log_low_level = log_level(np.mean(y_data[:2]))
+    log_high_level = log_level(np.mean(y_data[-2:]))
     
-    log_low_level = np.random.uniform(1.5, 4)
-    log_high_level = np.random.uniform(1.5, 4)
-    log_IC_50 = np.random.uniform(0, 3.5)
+    min_ic = np.log10(min([i for i in x_data if i>0]))
+    max_ic = np.log10(max(x_data))
+    log_IC_50 = np.random.uniform(min_ic, max_ic)
+    
     n = np.random.uniform(1.3, 1.7)
+    
     sig = np.random.uniform(1, 3)
     
     low_fitness = fit_fitness_difference_params[0]
@@ -1291,4 +1295,13 @@ def init_stan_fit(fit_fitness_difference_params):
     
     return dict(log_low_level=log_low_level, log_high_level=log_high_level, log_IC_50=log_IC_50,
                 sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
+    
+def log_level(fitness_difference):
+    log_g = 1.439*fitness_difference + 3.32
+    log_g = log_g*np.random.uniform(0.9,1.1)
+    if log_g<1.5:
+        log_g = 1.5
+    if log_g>4:
+        log_g = 4
+    return log_g
     
