@@ -53,7 +53,7 @@ model {
   mid_g ~ normal(mid_g_mu, 10);
   fitness_n ~ normal(fitness_n_mu, 0.03);
   
-  sensor_n ~ gamma(4, 10/3);
+  sensor_n ~ gamma(4.0, 10.0/3.0);
   //log_IC_50 ~ normal(1.81, 1);
   target += log1m(erf((-0.3 - log_IC_50)/0.5));
   target += log1m(erf((log_IC_50 - 3.8)/0.3));
