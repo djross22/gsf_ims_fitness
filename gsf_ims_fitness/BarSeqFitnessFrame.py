@@ -557,9 +557,9 @@ class BarSeqFitnessFrame:
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n)
         
-            stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
-            
             try:
+                stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
+                
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 stan_samples = stan_fit.extract(permuted=True)
         
