@@ -540,6 +540,8 @@ class BarSeqFitnessFrame:
         
 
         def stan_fit_row(st_row, st_index):
+            print()
+            print(f"fitting row index: {st_index}")
             initial = "b"
             y_low = st_row[f"fitness_{low_tet}_estimate_{initial}"]
             s_low = st_row[f"fitness_{low_tet}_err_{initial}"]
