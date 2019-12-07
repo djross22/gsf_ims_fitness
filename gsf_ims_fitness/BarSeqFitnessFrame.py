@@ -904,10 +904,13 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         #plot fitness curves
-        plt.rcParams["figure.figsize"] = [12,8*(len(barcode_frame))]
-        fig, axs = plt.subplots(len(barcode_frame), 1)
-        if len(barcode_frame)==1:
-            axs = [ axs ]
+        num_plot_rows = int(np.round(len(barcode_frame)/2 + 0.1))
+        plt.rcParams["figure.figsize"] = [16,6*num_plot_rows]
+        fig, axs_grid = plt.subplots(num_plot_rows, 2)
+        plt.subplots_adjust(hspace = .35)
+        axs = axs_grid.flatten()
+        #if len(barcode_frame)==1:
+        #    axs = [ axs ]
         x = inducer_conc_list
         linthreshx = min([i for i in inducer_conc_list if i>0])
         
@@ -918,10 +921,10 @@ class BarSeqFitnessFrame:
                 y = row[f"fitness_{low_tet}_estimate_{initial}"]
                 s = row[f"fitness_{low_tet}_err_{initial}"]
                 fill_style = "full" if initial=="b" else "none"
-                ax.errorbar(x, y, s, marker='o', ms=10, color=fit_plot_colors[0], fillstyle=fill_style)
+                ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 y = row[f"fitness_{high_tet}_estimate_{initial}"]
                 s = row[f"fitness_{high_tet}_err_{initial}"]
-                ax.errorbar(x, y, s, marker='^', ms=10, color=fit_plot_colors[1], fillstyle=fill_style)
+                ax.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
                 if ylim is not None:
                     ax.set_ylim(ylim);
             
@@ -929,15 +932,15 @@ class BarSeqFitnessFrame:
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name'] + ": "
-                    barcode_str += row['forward_BC'] + ", "
-                    barcode_str += row['reverse_BC']
-                    ax.text(x=0.0, y=1.03, s=barcode_str, horizontalalignment='left', verticalalignment='top',
-                            transform=ax.transAxes, fontsize=12)
+                    barcode_str += row['forward_BC'] + ",\n"
+                    barcode_str += row['reverse_BC'] + " "
+                    ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
+                            transform=ax.transAxes, fontsize=13, fontfamily="Courier New")
                     ax.set_xscale('symlog', linthreshx=linthreshx)
                     ax.set_xlim(-linthreshx/10, 2*max(x));
-                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=20)
-                    ax.set_ylabel('Fitness (log(10)/plate)', size=20)
-                    ax.tick_params(labelsize=16);
+                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+                    ax.set_ylabel('Fitness (log(10)/plate)', size=14)
+                    ax.tick_params(labelsize=12);
             
         if save_plots:
             pdf.savefig()
@@ -1000,10 +1003,13 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         #plot fitness curves
-        plt.rcParams["figure.figsize"] = [12,8*(len(barcode_frame))]
-        fig, axs = plt.subplots(len(barcode_frame), 1)
-        if len(barcode_frame)==1:
-            axs = [ axs ]
+        num_plot_rows = int(np.round(len(barcode_frame)/2 + 0.1))
+        plt.rcParams["figure.figsize"] = [16,6*num_plot_rows]
+        fig, axs_grid = plt.subplots(num_plot_rows, 2)
+        plt.subplots_adjust(hspace = .35)
+        axs = axs_grid.flatten()
+        #if len(barcode_frame)==1:
+        #    axs = [ axs ]
         x = inducer_conc_list
         linthreshx = min([i for i in inducer_conc_list if i>0])
         
@@ -1019,21 +1025,21 @@ class BarSeqFitnessFrame:
                 y = (y_high - y_low)/y_low.mean()
                 s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
                 fill_style = "full" if initial=="b" else "none"
-                ax.errorbar(x, y, s, marker='o', ms=10, color=fit_plot_colors[0], fillstyle=fill_style)
+                ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
             
                 if initial == "b":
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name'] + ": "
-                    barcode_str += row['forward_BC'] + ", "
-                    barcode_str += row['reverse_BC']
-                    ax.text(x=0.0, y=1.03, s=barcode_str, horizontalalignment='left', verticalalignment='top',
-                            transform=ax.transAxes, fontsize=12)
+                    barcode_str += row['forward_BC'] + ",\n"
+                    barcode_str += row['reverse_BC'] + " "
+                    ax.text(x=1., y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
+                            transform=ax.transAxes, fontsize=13, fontfamily="Courier New")
                     ax.set_xscale('symlog', linthreshx=linthreshx)
                     ax.set_xlim(-linthreshx/10, 2*max(x));
-                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=20)
-                    ax.set_ylabel('Fitness with Tet - Fitness without Tet', size=20)
-                    ax.tick_params(labelsize=16);
+                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+                    ax.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
+                    ax.tick_params(labelsize=12);
                     
             if show_fits:
                 x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
