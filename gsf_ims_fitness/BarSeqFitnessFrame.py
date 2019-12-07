@@ -221,7 +221,7 @@ class BarSeqFitnessFrame:
         
         self.barcode_frame = barcode_frame
         
-    def mark_actual_chimeras(self, chimera_cut_line):
+    def mark_actual_chimeras(self, chimera_cut_line, auto_save=True):
         
         barcode_frame = self.barcode_frame
         
@@ -234,6 +234,9 @@ class BarSeqFitnessFrame:
                 barcode_frame.at[index, "isChimera"] = True
         
         self.barcode_frame = barcode_frame
+        
+        if auto_save:
+            self.save_as_pickle()
         
             
     def fit_barcode_fitness(self,
