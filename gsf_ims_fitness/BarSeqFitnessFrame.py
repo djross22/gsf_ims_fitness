@@ -1054,6 +1054,130 @@ class BarSeqFitnessFrame:
         if save_plots:
             pdf.close()
     
+    def plot_fitness_and_difference_curves(self,
+                            save_plots=False,
+                            inducer_conc_list=None,
+                            plot_range=None,
+                            inducer=None,
+                            include_ref_seqs=True,
+                            includeChimeras=False,
+                            ylim = None,
+                            show_fits=True):
+        
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        if plot_range is None:
+            barcode_frame = self.barcode_frame
+        else:
+            barcode_frame = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
+        
+        if "sensor_params" not in barcode_frame.columns:
+            show_fits = False
+            
+        if show_fits:
+            fit_fitness_difference_params = self.fit_fitness_difference_params
+            
+            if len(barcode_frame["sensor_params"].iloc[0])==7:
+                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
+                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n):
+                    return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
+                                             low_fitness, 0, mid_g, fitness_n)
+            else:
+                def fit_funct(x, g_min, g_max, x_50, nx):
+                    return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
+                                             fit_fitness_difference_params[1], fit_fitness_difference_params[2])
+            
+        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
+            
+        if include_ref_seqs:
+            RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
+            barcode_frame = pd.concat([barcode_frame, RS_count_frame])
+        
+        if inducer_conc_list is None:
+            inducer_conc_list = self.inducer_conc_list
+            
+        if inducer is None:
+            inducer = self.inducer
+            
+        # Turn interactive plotting on or off depending on show_plots
+        plt.ion()
+        
+        os.chdir(self.data_directory)
+        if save_plots:
+            pdf_file = 'barcode fitness plots.pdf'
+            pdf = PdfPages(pdf_file)
+        
+        #plot fitness curves
+        plt.rcParams["figure.figsize"] = [16,6*len(barcode_frame)]
+        fig, axs_grid = plt.subplots(len(barcode_frame), 2)
+        plt.subplots_adjust(hspace = .35)
+        axsl = axs_grid.transpose()[0]
+        axsr = axs_grid.transpose()[1]
+        #if len(barcode_frame)==1:
+        #    axs = [ axs ]
+        x = inducer_conc_list
+        linthreshx = min([i for i in inducer_conc_list if i>0])
+        
+        fit_plot_colors = sns.color_palette()
+        
+        for (index, row), axl, axr in zip(barcode_frame.iterrows(), axsl, axsr): # iterate over barcodes
+            for initial in ["b", "e"]:
+                y = row[f"fitness_{low_tet}_estimate_{initial}"]
+                s = row[f"fitness_{low_tet}_err_{initial}"]
+                fill_style = "full" if initial=="b" else "none"
+                axl.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
+                y = row[f"fitness_{high_tet}_estimate_{initial}"]
+                s = row[f"fitness_{high_tet}_err_{initial}"]
+                axl.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
+                
+                y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
+                s_low = row[f"fitness_{low_tet}_err_{initial}"]
+                y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
+                s_high = row[f"fitness_{high_tet}_err_{initial}"]
+                
+                y = (y_high - y_low)/y_low.mean()
+                s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
+                fill_style = "full" if initial=="b" else "none"
+                axr.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
+            
+                
+                if ylim is not None:
+                    axl.set_ylim(ylim);
+            
+                if initial == "b":
+                    barcode_str = str(index) + ': '
+                    barcode_str += format(row[f'total_counts'], ",") + "; "
+                    barcode_str += row['RS_name'] + ": "
+                    barcode_str += row['forward_BC'] + ", "
+                    barcode_str += row['reverse_BC'] + " "
+                    axl.text(x=1, y=1.05, s=barcode_str, horizontalalignment='center', verticalalignment='top',
+                            transform=axl.transAxes, fontsize=13, fontfamily="Courier New")
+                    axl.set_xscale('symlog', linthreshx=linthreshx)
+                    axl.set_xlim(-linthreshx/10, 2*max(x));
+                    axl.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+                    axl.set_ylabel('Fitness (log(10)/plate)', size=14)
+                    axl.tick_params(labelsize=12);
+                    axr.set_xscale('symlog', linthreshx=linthreshx)
+                    axr.set_xlim(-linthreshx/10, 2*max(x));
+                    axr.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+                    axr.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
+                    axr.tick_params(labelsize=12);
+                    
+            if show_fits:
+                x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
+                x_fit = np.insert(x_fit, 0, 0)
+                params = row["sensor_params"]
+                y_fit = fit_funct(x_fit, *params)
+                axr.plot(x_fit, y_fit, color='k', zorder=1000);
+            
+        if save_plots:
+            pdf.savefig()
+    
+        if save_plots:
+            pdf.close()
+    
     def plot_count_ratios_vs_time(self, plot_range,
                                   inducer=None,
                                   inducer_conc_list=None,
