@@ -14,12 +14,31 @@ data {
 }
 
 transformed data {
+  real x_min;
+  real x_max;
+  real log_x_min;
+  real log_x_max;
+  
+  x_max = max(x);
+  x_min = x_max;
+  for (i in 1:N) {
+    if (x[i]>0) {
+      if (x[i]<x_min) {
+	    x_min = x[i];
+	  }
+	}
+  }
+  
+  log_x_max = log10(x_max) + 1.289;
+  log_x_min = log10(x_min) - 1.3;
+  
 }
 
 parameters {
   real<lower=1., upper=4> log_low_level;               // log10 of gene expression level at zero induction
   real<lower=1., upper=4>  log_high_level;             // log10 of gene expression level at infinite induction
-  real<lower=-1, upper=4.6> log_IC_50;        // input level (x) that gives output 1/2 way between low_level and high_level
+  //real<lower=-1, upper=4.6> log_IC_50;        // input level (x) that gives output 1/2 way between low_level and high_level
+  real<lower=log_x_min, upper=log_x_max> log_IC_50;        // input level (x) that gives output 1/2 way between low_level and high_level
   real<lower=0> sensor_n;                    // cooperativity exponent of sensor gene expression vs. x curve
   real<lower=0> sigma;                     // scale factor for standard deviation of noise in y
   
@@ -55,8 +74,8 @@ model {
   
   sensor_n ~ gamma(4.0, 10.0/3.0);
   //log_IC_50 ~ normal(1.81, 1);
-  target += log1m(erf((-0.3 - log_IC_50)/0.5));
-  target += log1m(erf((log_IC_50 - 3.8)/0.3));
+  target += log1m(erf((log_x_min + 0.7 - log_IC_50)/0.5));
+  target += log1m(erf((log_IC_50 - log_x_max + 0.8)/0.3));
   
   //log_low_level ~ normal(2, 1);
   target += log1m(erf((1.9 - log_low_level)/0.3));
