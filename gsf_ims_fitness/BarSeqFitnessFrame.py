@@ -1111,7 +1111,7 @@ class BarSeqFitnessFrame:
         
         #plot fitness curves
         plt.rcParams["figure.figsize"] = [16,6*len(barcode_frame)]
-        fig, axs_grid = plt.subplots(len(barcode_frame), 2)
+        fig, axs_grid = plt.subplots(len(barcode_frame), 2, squeeze=False)
         plt.subplots_adjust(hspace = .35)
         axsl = axs_grid.transpose()[0]
         axsr = axs_grid.transpose()[1]
