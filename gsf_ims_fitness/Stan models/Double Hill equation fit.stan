@@ -68,7 +68,8 @@ transformed parameters {
 
 model {
   
-  low_fitness ~ normal(low_fitness_mu, 0.05);
+  //low_fitness ~ normal(low_fitness_mu, 0.05);
+  low_fitness ~ student_t(8, low_fitness_mu, 0.1);
   mid_g ~ normal(mid_g_mu, 10);
   fitness_n ~ normal(fitness_n_mu, 0.03);
   
