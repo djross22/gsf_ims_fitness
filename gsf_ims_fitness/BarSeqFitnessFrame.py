@@ -600,6 +600,36 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle()
             
+        
+            
+    def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True):
+        # merge small barcode into big barcode (add read counts)
+        # remove small barcode from dataframe
+        
+        barcode_frame = self.barcode_frame
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        columns_to_sum = fitness.wells()
+        columns_to_sum += [ 'total_counts', 'fraction_total', 'total_counts_plate_2', 'fraction_total_p2' ]
+        columns_to_sum += [ f'fraction_{w}' for w in fitness.wells() ]
+        columns_to_sum += [ f'read_count_{low_tet}_{plate_num}' for plate_num in range(2,6) ]
+        columns_to_sum += [ f'read_count_{high_tet}_{plate_num}' for plate_num in range(2,6) ]
+        
+        for col in columns_to_sum:
+            if col in barcode_frame.columns:
+                barcode_frame.loc[big_bc_index, "total_counts"] += barcode_frame.loc[small_bc_index, "total_counts"]
+        
+        self.barcode_frame = barcode_frame
+        
+        if auto_save:
+            self.save_as_pickle()
+            
+        #if auto_refit:
+            
+        
+        
+            
     def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None):
         
         barcode_frame = self.barcode_frame
