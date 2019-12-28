@@ -564,36 +564,41 @@ class BarSeqFitnessFrame:
                 stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
-                stan_samples = stan_fit.extract(permuted=True)
+                stan_samples = stan_fit.extract(permuted=False, pars=params_list)
         
-                stan_samples_arr = np.array([stan_samples[key] for key in params_list ])
+                stan_samples_arr = np.array([stan_samples[key].flatten() for key in params_list ])
                 stan_popt = np.array([np.median(s) for s in stan_samples_arr ])
                 stan_pcov = np.cov(stan_samples_arr, rowvar=True)
-                stan_resid = np.median(stan_samples["rms_resid"])
+                stan_resid = np.median(stan_fit["rms_resid"])
+                stan_samples_out = np.array([stan_samples[key][::71,:].flatten() for key in params_list ])
             except:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 stan_resid = np.nan
+                stan_samples_out = np.full((params_dim, 32), np.nan)
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 
-            return (stan_popt, stan_pcov, stan_resid)
+            return (stan_popt, stan_pcov, stan_resid, stan_samples_out)
         
         fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
         
         popt_list = []
         pcov_list = []
         residuals_list = []
+        samples_out_list = []
         
         for item in fit_list: # iterate over barcodes
-            stan_popt, stan_pcov, stan_resid = item
+            stan_popt, stan_pcov, stan_resid, stan_samples_out = item
             
             popt_list.append(stan_popt)
             pcov_list.append(stan_pcov)
             residuals_list.append(stan_resid)
+            samples_out_list.append(stan_samples_out)
                 
         barcode_frame["sensor_params"] = popt_list
         barcode_frame["sensor_params_cov"] = pcov_list
         barcode_frame["sensor_rms_residuals"] = residuals_list
+        barcode_frame["sensor_stan_samples"] = samples_out_list
         
         self.barcode_frame = barcode_frame
         
