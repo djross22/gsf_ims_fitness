@@ -243,60 +243,62 @@ class BarSeqFitnessFrame:
                             inducer_conc_list=None,
                             inducer=None,
                             auto_save=True,
-                            ignore_samples=[]):
+                            ignore_samples=[],
+                            refit_index=None):
         
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
         high_tet = self.high_tet
             
-        print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
-            
-        os.chdir(self.data_directory)
+        #os.chdir(self.data_directory)
     
         if inducer_conc_list is None:
             inducer_conc_list = self.inducer_conc_list
             
         if inducer is None:
             inducer = self.inducer
-    
-        inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
-        inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
         
-        with_tet = []
-        plate_list = []
-        for r in fitness.rows():
-            for c in fitness.columns():
-                plate_list.append( int(2+(c-1)/3) )
-                with_tet.append(r in fitness.rows()[1::2])
-    
-        sample_plate_map = pd.DataFrame({"well": fitness.wells()})
-        sample_plate_map['with_tet'] = with_tet
-        sample_plate_map[inducer] = inducer_conc_list_in_plate
-        sample_plate_map['growth_plate'] = plate_list
-        sample_plate_map.set_index('well', inplace=True, drop=False)
-    
-        wells_with_high_tet = []
-        wells_with_low_tet = []
-    
-        for i in range(2,6):
-            df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
-            df = df.sort_values([inducer])
-            wells_with_high_tet.append(df["well"].values)
-            df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
-            df = df.sort_values([inducer])
-            wells_with_low_tet.append(df["well"].values)
-    
-        for i in range(2,6):
-            counts_0 = []
-            counts_tet = []
-            for index, row in barcode_frame.iterrows():
-                row_0 = row[wells_with_low_tet[i-2]]
-                counts_0.append(row_0.values)
-                row_tet = row[wells_with_high_tet[i-2]]
-                counts_tet.append(row_tet.values)
-            barcode_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
-            barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
-    
+        if refit_index is None:
+            print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
+        
+            inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
+            inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
+            
+            with_tet = []
+            plate_list = []
+            for r in fitness.rows():
+                for c in fitness.columns():
+                    plate_list.append( int(2+(c-1)/3) )
+                    with_tet.append(r in fitness.rows()[1::2])
+        
+            sample_plate_map = pd.DataFrame({"well": fitness.wells()})
+            sample_plate_map['with_tet'] = with_tet
+            sample_plate_map[inducer] = inducer_conc_list_in_plate
+            sample_plate_map['growth_plate'] = plate_list
+            sample_plate_map.set_index('well', inplace=True, drop=False)
+        
+            wells_with_high_tet = []
+            wells_with_low_tet = []
+        
+            for i in range(2,6):
+                df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
+                df = df.sort_values([inducer])
+                wells_with_high_tet.append(df["well"].values)
+                df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
+                df = df.sort_values([inducer])
+                wells_with_low_tet.append(df["well"].values)
+        
+            for i in range(2,6):
+                counts_0 = []
+                counts_tet = []
+                for index, row in barcode_frame.iterrows():
+                    row_0 = row[wells_with_low_tet[i-2]]
+                    counts_0.append(row_0.values)
+                    row_tet = row[wells_with_high_tet[i-2]]
+                    counts_tet.append(row_tet.values)
+                barcode_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
+                barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
+        
         spike_in_fitness_0 = {"AO-B": np.array([0.9637]*12), "AO-E": np.array([0.9666]*12)}
         spike_in_fitness_tet = {"AO-B": np.array([0.8972]*12), "AO-E": np.array([0.8757]*12)}
     
@@ -311,6 +313,7 @@ class BarSeqFitnessFrame:
         sp_e = spike_in_row["AO-E"][["RS_name", "read_count_0_2"]]
         print(f"AO-B: {sp_b}")
         print(f"AO-E: {sp_e}")
+        
         #Fit to barcode log(ratios) over time to get slopes = fitness
         #Run for both AO-B and AO-E
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
@@ -323,8 +326,11 @@ class BarSeqFitnessFrame:
             spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
         
             x0 = [2, 3, 4, 5]
-        
-            fit_frame = barcode_frame
+            
+            if refit_index is None:
+                fit_frame = barcode_frame
+            else:
+                fit_frame = barcode_frame.loc[refit_index:refit_index]
         
             for index, row in fit_frame.iterrows(): # iterate over barcodes
                 slopes = []
@@ -400,10 +406,17 @@ class BarSeqFitnessFrame:
                 f_tet_err_list.append(f_tet_err)
                 f_0_err_list.append(f_0_err)
             
-            barcode_frame[f'fitness_{low_tet}_estimate_{initial}'] = f_0_est_list
-            barcode_frame[f'fitness_{low_tet}_err_{initial}'] = f_0_err_list
-            barcode_frame[f'fitness_{high_tet}_estimate_{initial}'] = f_tet_est_list
-            barcode_frame[f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list
+            if refit_index is None:
+                barcode_frame[f'fitness_{low_tet}_estimate_{initial}'] = f_0_est_list
+                barcode_frame[f'fitness_{low_tet}_err_{initial}'] = f_0_err_list
+                barcode_frame[f'fitness_{high_tet}_estimate_{initial}'] = f_tet_est_list
+                barcode_frame[f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list
+            else:
+                barcode_frame.loc[refit_index, f'fitness_{low_tet}_estimate_{initial}'] = f_0_est_list[0]
+                barcode_frame.loc[refit_index, f'fitness_{low_tet}_err_{initial}'] = f_0_err_list[0]
+                barcode_frame.loc[refit_index, f'fitness_{high_tet}_estimate_{initial}'] = f_tet_est_list[0]
+                barcode_frame.loc[refit_index, f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list[0]
+            
 
         self.barcode_frame = barcode_frame
         
@@ -504,7 +517,8 @@ class BarSeqFitnessFrame:
                                       control=dict(adapt_delta=0.9),
                                       iterations=1000,
                                       chains=4,
-                                      auto_save=True):
+                                      auto_save=True,
+                                      refit_index=None):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         
@@ -580,25 +594,33 @@ class BarSeqFitnessFrame:
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out)
         
-        fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
-        
-        popt_list = []
-        pcov_list = []
-        residuals_list = []
-        samples_out_list = []
-        
-        for item in fit_list: # iterate over barcodes
-            stan_popt, stan_pcov, stan_resid, stan_samples_out = item
+        if refit_index is None:
+            fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
             
-            popt_list.append(stan_popt)
-            pcov_list.append(stan_pcov)
-            residuals_list.append(stan_resid)
-            samples_out_list.append(stan_samples_out)
+            popt_list = []
+            pcov_list = []
+            residuals_list = []
+            samples_out_list = []
+            
+            for item in fit_list: # iterate over barcodes
+                stan_popt, stan_pcov, stan_resid, stan_samples_out = item
                 
-        barcode_frame["sensor_params"] = popt_list
-        barcode_frame["sensor_params_cov"] = pcov_list
-        barcode_frame["sensor_rms_residuals"] = residuals_list
-        barcode_frame["sensor_stan_samples"] = samples_out_list
+                popt_list.append(stan_popt)
+                pcov_list.append(stan_pcov)
+                residuals_list.append(stan_resid)
+                samples_out_list.append(stan_samples_out)
+                    
+            barcode_frame["sensor_params"] = popt_list
+            barcode_frame["sensor_params_cov"] = pcov_list
+            barcode_frame["sensor_rms_residuals"] = residuals_list
+            barcode_frame["sensor_stan_samples"] = samples_out_list
+        else:
+            row_to_fit = barcode_frame.loc[refit_index]
+            stan_popt, stan_pcov, stan_resid, stan_samples_out = stan_fit_row(row_to_fit, refit_index)
+            barcode_frame.loc[refit_index, "sensor_params"] = stan_popt
+            barcode_frame.loc[refit_index, "sensor_params_cov"] = stan_pcov
+            barcode_frame.loc[refit_index, "sensor_rms_residuals"] = stan_resid
+            barcode_frame.loc[refit_index, "sensor_stan_samples"] = stan_samples_out
         
         self.barcode_frame = barcode_frame
         
@@ -607,7 +629,7 @@ class BarSeqFitnessFrame:
             
         
             
-    def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True):
+    def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True, ignore_samples=[]):
         # merge small barcode into big barcode (add read counts)
         # remove small barcode from dataframe
         
@@ -630,8 +652,9 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle()
             
-        #if auto_refit:
-            
+        if auto_refit:
+            self.fit_barcode_fitness(auto_save=auto_save, ignore_samples=ignore_samples, refit_index=big_bc_index)
+            self.stan_fitness_difference_curves(auto_save=auto_save, refit_index=big_bc_index)
         
         
             
