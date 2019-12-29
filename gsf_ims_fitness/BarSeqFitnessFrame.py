@@ -412,10 +412,14 @@ class BarSeqFitnessFrame:
                 barcode_frame[f'fitness_{high_tet}_estimate_{initial}'] = f_tet_est_list
                 barcode_frame[f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list
             else:
-                barcode_frame.loc[refit_index, f'fitness_{low_tet}_estimate_{initial}'] = f_0_est_list[0]
-                barcode_frame.loc[refit_index, f'fitness_{low_tet}_err_{initial}'] = f_0_err_list[0]
-                barcode_frame.loc[refit_index, f'fitness_{high_tet}_estimate_{initial}'] = f_tet_est_list[0]
-                barcode_frame.loc[refit_index, f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list[0]
+                fit_arr_1 = barcode_frame.loc[refit_index, f'fitness_{low_tet}_estimate_{initial}']
+                fit_arr_1 = f_0_est_list[0]
+                fit_arr_2 = barcode_frame.loc[refit_index, f'fitness_{low_tet}_err_{initial}']
+                fit_arr_2 = f_0_err_list[0]
+                fit_arr_3 = barcode_frame.loc[refit_index, f'fitness_{high_tet}_estimate_{initial}']
+                fit_arr_3 = f_tet_est_list[0]
+                fit_arr_4 = barcode_frame.loc[refit_index, f'fitness_{high_tet}_err_{initial}']
+                fit_arr_4 = f_tet_err_list[0]
             
 
         self.barcode_frame = barcode_frame
@@ -617,10 +621,17 @@ class BarSeqFitnessFrame:
         else:
             row_to_fit = barcode_frame.loc[refit_index]
             stan_popt, stan_pcov, stan_resid, stan_samples_out = stan_fit_row(row_to_fit, refit_index)
-            barcode_frame.loc[refit_index, "sensor_params"] = stan_popt
-            barcode_frame.loc[refit_index, "sensor_params_cov"] = stan_pcov
-            barcode_frame.loc[refit_index, "sensor_rms_residuals"] = stan_resid
-            barcode_frame.loc[refit_index, "sensor_stan_samples"] = stan_samples_out
+            arr_1 = barcode_frame.loc[refit_index, "sensor_params"]
+            print(f"old: {arr_1}")
+            arr_1 = stan_popt
+            new_test = barcode_frame.loc[refit_index, "sensor_params"]
+            print(f"new: {new_test}")
+            arr_2 = barcode_frame.loc[refit_index, "sensor_params_cov"]
+            arr_2 = stan_pcov
+            arr_3 = barcode_frame.loc[refit_index, "sensor_rms_residuals"]
+            arr_3 = stan_resid
+            arr_4 = barcode_frame.loc[refit_index, "sensor_stan_samples"]
+            arr_4 = stan_samples_out
         
         self.barcode_frame = barcode_frame
         
@@ -643,11 +654,20 @@ class BarSeqFitnessFrame:
         columns_to_sum += [ f'read_count_{low_tet}_{plate_num}' for plate_num in range(2,6) ]
         columns_to_sum += [ f'read_count_{high_tet}_{plate_num}' for plate_num in range(2,6) ]
         
+        
+        print(f"merging {small_bc_index} into {big_bc_index}")
+        
         for col in columns_to_sum:
             if col in barcode_frame.columns:
-                barcode_frame.loc[big_bc_index, col] += barcode_frame.loc[small_bc_index, col]
+                if type(barcode_frame.loc[big_bc_index, col]) != type(np.array([1])):
+                    barcode_frame.loc[big_bc_index, col] += barcode_frame.loc[small_bc_index, col]
+                else:
+                    big_bc_arr = barcode_frame.loc[big_bc_index, col]
+                    small_bc_arr = barcode_frame.loc[small_bc_index, col]
+                    big_bc_arr += small_bc_arr
                 
-        barcode_frame.drop(small_bc_index, inplace=True)
+        #barcode_frame.drop(small_bc_index, inplace=True)
+        #print(f"dropping {small_bc_index}")
         
         self.barcode_frame = barcode_frame
         
