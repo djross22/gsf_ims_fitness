@@ -645,7 +645,9 @@ class BarSeqFitnessFrame:
         
         for col in columns_to_sum:
             if col in barcode_frame.columns:
-                barcode_frame.loc[big_bc_index, "total_counts"] += barcode_frame.loc[small_bc_index, "total_counts"]
+                barcode_frame.loc[big_bc_index, col] += barcode_frame.loc[small_bc_index, col]
+                
+        barcode_frame.drop(small_bc_index, inplace=True)
         
         self.barcode_frame = barcode_frame
         
