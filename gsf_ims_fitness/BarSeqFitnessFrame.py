@@ -413,13 +413,17 @@ class BarSeqFitnessFrame:
                 barcode_frame[f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list
             else:
                 fit_arr_1 = barcode_frame.loc[refit_index, f'fitness_{low_tet}_estimate_{initial}']
-                fit_arr_1 = f_0_est_list[0]
+                fit_arr_1 *= 0
+                fit_arr_1 += f_0_est_list[0]
                 fit_arr_2 = barcode_frame.loc[refit_index, f'fitness_{low_tet}_err_{initial}']
-                fit_arr_2 = f_0_err_list[0]
+                fit_arr_2 *= 0
+                fit_arr_2 += f_0_err_list[0]
                 fit_arr_3 = barcode_frame.loc[refit_index, f'fitness_{high_tet}_estimate_{initial}']
-                fit_arr_3 = f_tet_est_list[0]
+                fit_arr_3 *= 0
+                fit_arr_3 += f_tet_est_list[0]
                 fit_arr_4 = barcode_frame.loc[refit_index, f'fitness_{high_tet}_err_{initial}']
-                fit_arr_4 = f_tet_err_list[0]
+                fit_arr_4 *= 0
+                fit_arr_4 += f_tet_err_list[0]
             
 
         self.barcode_frame = barcode_frame
@@ -536,12 +540,6 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
         high_tet = self.high_tet
-        
-        if "sensor_params" not in barcode_frame.columns:
-            barcode_frame["sensor_params"] = [ np.full((4), np.nan) ] * len(barcode_frame)
-        
-        if "sensor_params_err" not in barcode_frame.columns:
-            barcode_frame["sensor_params_cov"] = [ np.full((4, 4), np.nan) ] * len(barcode_frame)
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
@@ -557,6 +555,12 @@ class BarSeqFitnessFrame:
         
         params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
         params_dim = len(params_list)
+        
+        if "sensor_params" not in barcode_frame.columns:
+            barcode_frame["sensor_params"] = [ np.full((params_dim), np.nan) ] * len(barcode_frame)
+        
+        if "sensor_params_cov" not in barcode_frame.columns:
+            barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) ] * len(barcode_frame)
         
         
 
@@ -623,15 +627,19 @@ class BarSeqFitnessFrame:
             stan_popt, stan_pcov, stan_resid, stan_samples_out = stan_fit_row(row_to_fit, refit_index)
             arr_1 = barcode_frame.loc[refit_index, "sensor_params"]
             print(f"old: {arr_1}")
-            arr_1 = stan_popt
+            arr_1 *= 0
+            arr_1 += stan_popt
             new_test = barcode_frame.loc[refit_index, "sensor_params"]
             print(f"new: {new_test}")
             arr_2 = barcode_frame.loc[refit_index, "sensor_params_cov"]
-            arr_2 = stan_pcov
+            arr_2 *= 0
+            arr_2 += stan_pcov
             arr_3 = barcode_frame.loc[refit_index, "sensor_rms_residuals"]
-            arr_3 = stan_resid
+            arr_3 *= 0
+            arr_3 += stan_resid
             arr_4 = barcode_frame.loc[refit_index, "sensor_stan_samples"]
-            arr_4 = stan_samples_out
+            arr_4 *= 0
+            arr_4 += stan_samples_out
         
         self.barcode_frame = barcode_frame
         
@@ -666,8 +674,8 @@ class BarSeqFitnessFrame:
                     small_bc_arr = barcode_frame.loc[small_bc_index, col]
                     big_bc_arr += small_bc_arr
                 
-        #barcode_frame.drop(small_bc_index, inplace=True)
-        #print(f"dropping {small_bc_index}")
+        barcode_frame.drop(small_bc_index, inplace=True)
+        print(f"dropping {small_bc_index}")
         
         self.barcode_frame = barcode_frame
         
