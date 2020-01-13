@@ -464,10 +464,10 @@ class BarSeqFitnessFrame:
         high_tet = self.high_tet
         
         if "sensor_params" not in barcode_frame.columns:
-            barcode_frame["sensor_params"] = [ np.full((4), np.nan) ] * len(barcode_frame)
+            barcode_frame["sensor_params"] = [ np.full((4), np.nan) for i in range(len(barcode_frame))]
         
         if "sensor_params_err" not in barcode_frame.columns:
-            barcode_frame["sensor_params_cov"] = [ np.full((4, 4), np.nan) ] * len(barcode_frame)
+            barcode_frame["sensor_params_cov"] = [ np.full((4, 4), np.nan) for i in range(len(barcode_frame))]
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
@@ -557,10 +557,10 @@ class BarSeqFitnessFrame:
         params_dim = len(params_list)
         
         if "sensor_params" not in barcode_frame.columns:
-            barcode_frame["sensor_params"] = [ np.full((params_dim), np.nan) ] * len(barcode_frame)
+            barcode_frame["sensor_params"] = [ np.full((params_dim), np.nan) for i in range(len(barcode_frame))]
         
         if "sensor_params_cov" not in barcode_frame.columns:
-            barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) ] * len(barcode_frame)
+            barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
         
         
 
