@@ -4,9 +4,9 @@ data {
   vector[N] y;           // fitness difference at each concentration
   vector[N] y_err;       // estimated error of fitness difference at each concentration
   
-  real low_fitness_mu;      // fitness diference at zero gene expression
-  real mid_g_mu;            // gene expression evel at 1/2 max fitness difference
-  real fitness_n_mu;        // cooperativity coeficient of fitness difference curve
+  real low_fitness_mu;      // fitness difference at zero gene expression
+  real mid_g_mu;            // gene expression level at 1/2 max fitness difference
+  real fitness_n_mu;        // cooperativity coefficient of fitness difference curve
 }
 
 transformed data {
@@ -26,9 +26,9 @@ parameters {
 
   // vector[N] g;   // gene expression level at each concentration (GP + hill)
   
-  real low_fitness;      // fitness diference at zero gene expression
-  real mid_g;            // gene expression evel at 1/2 max fitness difference
-  real fitness_n;        // cooperativity coeficient of fitness difference curve
+  real low_fitness;      // fitness difference at zero gene expression
+  real mid_g;            // gene expression level at 1/2 max fitness difference
+  real fitness_n;        // cooperativity coefficient of fitness difference curve
 
   // gp params
   real<lower=0> rho;
