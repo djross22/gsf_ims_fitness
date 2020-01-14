@@ -12,7 +12,7 @@ data {
 transformed data {
   real x_gp[N];
   for (i in 1:N){
-    x_gp[i] = log10(x[i] + 1);
+    x_gp[i] = log10(x[i] + 0.25);
   }
 }
 
