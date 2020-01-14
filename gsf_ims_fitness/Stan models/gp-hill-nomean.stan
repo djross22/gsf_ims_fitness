@@ -45,7 +45,7 @@ transformed parameters {
 
     g = 2.5 + L_K * eta;
     for (i in 1:N){
-      g[i] = pow(g[i], 10);
+      g[i] = 10^g[i];
     }
   }
   
