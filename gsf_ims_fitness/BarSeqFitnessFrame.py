@@ -723,8 +723,8 @@ class BarSeqFitnessFrame:
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 stan_samples = stan_fit.extract(permuted=True)
                 
-                g_arr = stan_samples['constr_log_g'].transpose()
-                f_arr = stan_samples['mean_y'].transpose()
+                g_arr = stan_samples['constr_log_g']
+                f_arr = stan_samples['mean_y']
                 params_arr = np.array([stan_samples[x] for x in params_list])
         
                 stan_popt = np.array([np.median(s) for s in params_arr ])
