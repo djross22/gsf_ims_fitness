@@ -1,3 +1,6 @@
+//
+//
+
 data {
   int<lower=1> N;        // number of data points
   vector[N] x;           // inducer concentration
@@ -7,6 +10,7 @@ data {
   real low_fitness_mu;      // fitness difference at zero gene expression
   real mid_g_mu;            // gene expression level at 1/2 max fitness difference
   real fitness_n_mu;        // cooperativity coefficient of fitness difference curve
+  
 }
 
 transformed data {
@@ -79,7 +83,14 @@ model {
 
 generated quantities {
   real rms_resid;
+  real log_rho;
+  real log_alpha;
+  real log_sigma;
   
   rms_resid = distance(y, mean_y)/N;
+  
+  log_rho = log10(rho);
+  log_alpha = log10(alpha);
+  log_sigma = log10(sigma);
   
 }
