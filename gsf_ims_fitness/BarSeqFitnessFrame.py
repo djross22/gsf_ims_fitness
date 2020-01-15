@@ -1360,8 +1360,14 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         #plot fitness curves
-        plt.rcParams["figure.figsize"] = [16,6*len(barcode_frame)]
-        fig, axs_grid = plt.subplots(len(barcode_frame), 2, squeeze=False)
+        if show_GP:
+            plt.rcParams["figure.figsize"] = [24,6*len(barcode_frame)]
+            fig, axs_grid = plt.subplots(len(barcode_frame), 3, squeeze=False)
+            axsg = axs_grid.transpose()[2]
+        else:
+            plt.rcParams["figure.figsize"] = [16,6*len(barcode_frame)]
+            fig, axs_grid = plt.subplots(len(barcode_frame), 2, squeeze=False)
+            axsg = axs_grid.transpose()[0]
         plt.subplots_adjust(hspace = .35)
         axsl = axs_grid.transpose()[0]
         axsr = axs_grid.transpose()[1]
@@ -1372,7 +1378,7 @@ class BarSeqFitnessFrame:
         
         fit_plot_colors = sns.color_palette()
         
-        for (index, row), axl, axr in zip(barcode_frame.iterrows(), axsl, axsr): # iterate over barcodes
+        for (index, row), axl, axr, axg in zip(barcode_frame.iterrows(), axsl, axsr, axsg): # iterate over barcodes
             for initial in ["b", "e"]:
                 y = row[f"fitness_{low_tet}_estimate_{initial}"]
                 s = row[f"fitness_{low_tet}_err_{initial}"]
@@ -1423,9 +1429,18 @@ class BarSeqFitnessFrame:
                 axr.plot(x_fit, y_fit, color='k', zorder=1000);
                 
             if show_GP:
-                gp_med = row["sensor_GP_params"][:len(x)]
-                gp_min = row["sensor_GP_min"][:len(x)]
-                gp_max = row["sensor_GP_max"][:len(x)]
+                stan_g = 10**row["sensor_GP_g_quantiles"]
+                stan_f = row["sensor_GP_Df_quantiles"]
+                axr.plot(x, stan_f[2], color=fit_plot_colors[2])
+                axg.plot(x, stan_g[2], color=fit_plot_colors[2])
+                axg.set_xscale('symlog', linthreshx=linthreshx)
+                axg.set_xlim(-linthreshx/10, 2*max(x));
+                axg.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+                axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
+                axg.tick_params(labelsize=12);
+                for i in range(1,3):
+                    axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=fit_plot_colors[2]);
+                    axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=fit_plot_colors[2]);
             
         if save_plots:
             pdf.savefig()
