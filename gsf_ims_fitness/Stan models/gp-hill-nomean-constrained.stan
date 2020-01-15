@@ -33,6 +33,7 @@ parameters {
   real<lower=0> rho;
   real<lower=0> alpha;
   vector[N] eta;
+
 }
 
 transformed parameters {
@@ -42,7 +43,7 @@ transformed parameters {
   vector[N] constr_log_g; // log10 gene expression, constrained to be between 1 and 4
 
   {
-	matrix[N, N] L_K;
+    matrix[N, N] L_K;
     matrix[N, N] K = cov_exp_quad(x_gp, alpha, rho);
 
     // diagonal elements
@@ -56,6 +57,7 @@ transformed parameters {
       constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
 	  g[i] = 10^constr_log_g[i];
     }
+
   }
   
   for (i in 1:N) {
@@ -86,11 +88,54 @@ generated quantities {
   real log_rho;
   real log_alpha;
   real log_sigma;
+  vector[N] dlog_g; // derivative of the gp
   
   rms_resid = distance(y, mean_y)/N;
   
   log_rho = log10(rho);
   log_alpha = log10(alpha);
   log_sigma = log10(sigma);
-  
+
+  // derivative calculation
+  {
+    matrix[N, N] dK;
+    matrix[N, N] ddK;
+    vector[N] df_pred_mu;
+    vector[N] K_div_f;
+    matrix[N, N] cov_df_pred;
+    matrix[N, N] nug_pred;
+    matrix[N, N] v_pred;
+    real lsInv = 1./rho/rho;
+    real diff;
+    matrix[N, N] L_K;
+    matrix[N, N] K = cov_exp_quad(x_gp, alpha, rho);
+
+    nug_pred = diag_matrix(rep_vector(1e-8, N));
+    // diagonal elements
+    for (n in 1:N)
+      K[n, n] = K[n, n] + 1e-9;
+
+    L_K = cholesky_decompose(K);
+
+    dK = cov_exp_quad(x_gp, alpha, rho);
+    ddK = cov_exp_quad(x_gp, alpha, rho);
+    for (i in 1:N){
+      for (j in 1:N){
+        diff = x_gp[i] - x_gp[j];
+        dK[i,j] = dK[i,j] * (-lsInv * diff);
+        ddK[i,j] = ddK[i,j] * (1.-lsInv*diff*diff) * lsInv;
+      }
+    }
+
+    K_div_f = mdivide_left_tri_low(L_K, constr_log_g);
+    K_div_f = mdivide_right_tri_low(K_div_f', L_K)';
+
+    df_pred_mu = (dK * K_div_f);
+
+    v_pred = mdivide_left_tri_low(L_K, dK');
+    cov_df_pred = ddK - v_pred' * v_pred;
+
+    dlog_g = multi_normal_rng(df_pred_mu, cov_df_pred + nug_pred);
+
+  }
 }
