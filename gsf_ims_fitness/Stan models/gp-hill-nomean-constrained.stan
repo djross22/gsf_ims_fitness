@@ -74,7 +74,7 @@ model {
   fitness_n ~ normal(fitness_n_mu, 0.03);
 
   // GP
-  rho ~ inv_gamma(5, 5);
+  rho ~ inv_gamma(10, 15);
   alpha ~ normal(.5, .5);
   eta ~ std_normal();
 
