@@ -1,3 +1,6 @@
+//
+//
+
 data {
   int<lower=1> N;        // number of data points
   vector[N] x;           // inducer concentration
@@ -7,10 +10,13 @@ data {
   real low_fitness_mu;      // fitness difference at zero gene expression
   real mid_g_mu;            // gene expression level at 1/2 max fitness difference
   real fitness_n_mu;        // cooperativity coefficient of fitness difference curve
+  
 }
 
 transformed data {
   real x_gp[N];
+  real sqrt_pi = sqrt(pi());
+  
   for (i in 1:N){
     x_gp[i] = log10(x[i] + 0.25);
   }
@@ -32,9 +38,11 @@ parameters {
 transformed parameters {
   vector[N] mean_y;
   vector[N] g; // GP approx to gene expression
+  vector[N] log_g;
+  vector[N] constr_log_g; // log10 gene expression, constrained to be between 1 and 4
 
   {
-    matrix[N, N] L_K;
+	matrix[N, N] L_K;
     matrix[N, N] K = cov_exp_quad(x_gp, alpha, rho);
 
     // diagonal elements
@@ -43,9 +51,10 @@ transformed parameters {
 
     L_K = cholesky_decompose(K);
 
-    g = 2.5 + L_K * eta;
+    log_g = 2.5 + L_K * eta;
     for (i in 1:N){
-      g[i] = 10^g[i];
+      constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
+	  g[i] = 10^constr_log_g[i];
     }
   }
   
@@ -64,7 +73,7 @@ model {
 
   // GP
   rho ~ inv_gamma(5, 5);
-  alpha ~ normal(.25, .25);
+  alpha ~ normal(.5, .5);
   eta ~ std_normal();
 
   // observations
@@ -74,7 +83,14 @@ model {
 
 generated quantities {
   real rms_resid;
+  real log_rho;
+  real log_alpha;
+  real log_sigma;
   
   rms_resid = distance(y, mean_y)/N;
+  
+  log_rho = log10(rho);
+  log_alpha = log10(alpha);
+  log_sigma = log10(sigma);
   
 }
