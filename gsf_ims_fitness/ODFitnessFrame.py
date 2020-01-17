@@ -26,6 +26,9 @@ sns.set()
 
 from . import fitness
 
+sns.set_style("white")
+sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.direction':'in', 'ytick.right':True})
+
 class ODFitnessFrame:
         
     def __init__(self, notebook_dir, experiment=None, wavelength='600', auto_save=True):
@@ -276,7 +279,8 @@ class ODFitnessFrame:
                           show_plots=True,
                           save_plots=False,
                           y_min=-0.05,
-                          y_max=0.7):
+                          y_max=0.7,
+                          log_yscale=False):
         # Turn interactive plotting on or off depending on show_plots
         if show_plots:
             plt.ion()
@@ -298,6 +302,8 @@ class ODFitnessFrame:
         fig.suptitle(self.experiment, fontsize=20, position=(0.5, 0.92))
         axes_array = axs.flatten()
         
+        plasmids = np.unique(fitness_frame['plasmid'].values)
+        
         x = [ i for i in range(2,len(fitness_frame["density_list"].iloc[0]) + 2) ]
         for conc, ax in zip(inducer_concentrations, axes_array):
             plot_frame = fitness_frame[fitness_frame['inducerConcentration']==conc]
@@ -305,11 +311,18 @@ class ODFitnessFrame:
                 y = row["density_list"]
                 y_err = row["density_err_list"]
                 tet_conc = row["tet_concentration"]
+                label = row["plasmid"]
+                color_ind = np.where(plasmids==label)[0][0]
+                color=sns.color_palette()[color_ind]
                 fmt = '-o' if tet_conc ==0 else '-^'
-                ax.errorbar(x, y, yerr=y_err, fmt=fmt)
+                ax.errorbar(np.array(x)-1, y, yerr=y_err, fmt=fmt, color=color)
+            if log_yscale:
+                ax.set_yscale("log")
             ax.set_ylim(y_min,y_max);
-            ax.text(0.95, 0.95, f'{conc*1000} umol/L', horizontalalignment='right', verticalalignment='top', transform=ax.transAxes, size=14);
-        axes_array[9].set_xlabel('Plate Number', size=20)
+            ax.tick_params(labelsize=16);
+            ax.text(0.95, 0.95, f'{conc*1000} µmol/L', horizontalalignment='right', verticalalignment='top', transform=ax.transAxes, size=14);
+            
+        axes_array[9].set_xlabel('Growth Plate Number', size=20)
         axes_array[9].xaxis.set_label_coords(1.05, -0.15)
         axes_array[4].set_ylabel('Cell Density (OD600)', size=20, labelpad=10);
         if save_plots:
@@ -320,12 +333,15 @@ class ODFitnessFrame:
         if save_plots:
             pdf.close()
             
+        return fig
+            
     def plot_fitness_curves(self,
                             show_plots=True,
                             save_plots=False,
                             y_min=None,
                             y_max=None,
-                            inducer="IPTG"):
+                            inducer="IPTG",
+                            si_plot=False):
         # Turn interactive plotting on or off depending on show_plots
         if show_plots:
             plt.ion()
@@ -344,7 +360,7 @@ class ODFitnessFrame:
         Tet_concentrations = np.unique(fitness_frame['tet_concentration'].values)
         plasmids = np.unique(fitness_frame['plasmid'].values)
         
-        plt.rcParams["figure.figsize"] = [12, 9]
+        plt.rcParams["figure.figsize"] = [8,6]
         fig, axs = plt.subplots(1, 1)
         
         current_palette = sns.color_palette()
@@ -357,7 +373,10 @@ class ODFitnessFrame:
                 y = frame['fitness']
                 y_err = frame['fitness_err']
                 size = 10 #if conc==0 else 6
-                marker = "-o" if conc==0 else "-^"
+                if si_plot:
+                    marker = "o" if conc==0 else "^"
+                else:
+                    marker = "-o" if conc==0 else "-^"
                 label=plas + f', {conc}' if conc==0 else ""
                 axs.errorbar(x, y, yerr=y_err, fmt=marker, label=label, markersize=size, color=c)
         linthreshx = min([i for i in x if i>0])
@@ -365,11 +384,13 @@ class ODFitnessFrame:
         if (y_min is not None) and (y_max is not None):
             axs.set_ylim(y_min, y_max);
         axs.set_xlim(-linthreshx/10, 2*max(x));
-        leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.1), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
-        leg.get_frame().set_edgecolor('k');
+        if si_plot==False:
+            leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.1), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+            leg.get_frame().set_edgecolor('k');
+            axs.text(0.5, 1.025, self.experiment, horizontalalignment='center', verticalalignment='center', transform=axs.transAxes, size=20);
         axs.set_xlabel(f'[{inducer}] (umol/L)', size=20)
         axs.set_ylabel('Fitness (log(10)/plate)', size=20)
-        axs.text(0.5, 1.025, self.experiment, horizontalalignment='center', verticalalignment='center', transform=axs.transAxes, size=20);
+        
         axs.tick_params(labelsize=16);
         if save_plots:
             pdf.savefig()
@@ -378,4 +399,6 @@ class ODFitnessFrame:
             
         if save_plots:
             pdf.close()
+            
+        return fig
         
