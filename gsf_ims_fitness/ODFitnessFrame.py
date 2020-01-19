@@ -280,7 +280,8 @@ class ODFitnessFrame:
                           save_plots=False,
                           y_min=-0.05,
                           y_max=0.7,
-                          log_yscale=False):
+                          log_yscale=False,
+                          clone_name=None):
         # Turn interactive plotting on or off depending on show_plots
         if show_plots:
             plt.ion()
@@ -302,7 +303,10 @@ class ODFitnessFrame:
         fig.suptitle(self.experiment, fontsize=20, position=(0.5, 0.92))
         axes_array = axs.flatten()
         
-        plasmids = np.unique(fitness_frame['plasmid'].values)
+        if clone_name is None:
+            plasmids = np.unique(fitness_frame['plasmid'].values)
+        else:
+            plasmids = np.array([clone_name])
         
         x = [ i for i in range(2,len(fitness_frame["density_list"].iloc[0]) + 2) ]
         for conc, ax in zip(inducer_concentrations, axes_array):
@@ -312,10 +316,14 @@ class ODFitnessFrame:
                 y_err = row["density_err_list"]
                 tet_conc = row["tet_concentration"]
                 label = row["plasmid"]
-                color_ind = np.where(plasmids==label)[0][0]
-                color=sns.color_palette()[color_ind]
-                fmt = '-o' if tet_conc ==0 else '-^'
-                ax.errorbar(np.array(x)-1, y, yerr=y_err, fmt=fmt, color=color)
+                if label in plasmids:
+                    if len(plasmids)>1:
+                        color_ind = np.where(plasmids==label)[0][0]
+                    else:
+                        color_ind = 0 if tet_conc ==0 else 1
+                    color = sns.color_palette()[color_ind]
+                    fmt = '-o' if tet_conc ==0 else '-^'
+                    ax.errorbar(np.array(x)-1, y, yerr=y_err, fmt=fmt, color=color, markersize=10)
             if log_yscale:
                 ax.set_yscale("log")
             ax.set_ylim(y_min,y_max);
@@ -341,7 +349,8 @@ class ODFitnessFrame:
                             y_min=None,
                             y_max=None,
                             inducer="IPTG",
-                            si_plot=False):
+                            si_plot=False,
+                            clone_name=None):
         # Turn interactive plotting on or off depending on show_plots
         if show_plots:
             plt.ion()
@@ -358,10 +367,16 @@ class ODFitnessFrame:
         
         #plot fitness curves
         Tet_concentrations = np.unique(fitness_frame['tet_concentration'].values)
-        plasmids = np.unique(fitness_frame['plasmid'].values)
+        
+        if clone_name is None:
+            plasmids = np.unique(fitness_frame['plasmid'].values)
+        else:
+            plasmids = [clone_name]
         
         plt.rcParams["figure.figsize"] = [8,6]
         fig, axs = plt.subplots(1, 1)
+        
+        fitness_scale = fitness.fitness_scale()
         
         current_palette = sns.color_palette()
         plot_colors = current_palette
@@ -372,24 +387,35 @@ class ODFitnessFrame:
                 x = list(1000*frame['inducerConcentration'])
                 y = frame['fitness']
                 y_err = frame['fitness_err']
+                if si_plot:
+                    y = y * fitness_scale
+                    y_err = y_err * fitness_scale
                 size = 10 #if conc==0 else 6
                 if si_plot:
                     marker = "o" if conc==0 else "^"
+                    c = plot_colors[0] if conc==0 else plot_colors[1]
                 else:
                     marker = "-o" if conc==0 else "-^"
+                    print(f"{plas}: {np.mean(y)} +- {np.std(y)}")
                 label=plas + f', {conc}' if conc==0 else ""
                 axs.errorbar(x, y, yerr=y_err, fmt=marker, label=label, markersize=size, color=c)
         linthreshx = min([i for i in x if i>0])
         axs.set_xscale('symlog', linthreshx=linthreshx)
         if (y_min is not None) and (y_max is not None):
             axs.set_ylim(y_min, y_max);
-        axs.set_xlim(-linthreshx/10, 2*max(x));
+        #axs.set_xlim(-linthreshx/10, 2*max(x));
         if si_plot==False:
             leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.1), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
             leg.get_frame().set_edgecolor('k');
             axs.text(0.5, 1.025, self.experiment, horizontalalignment='center', verticalalignment='center', transform=axs.transAxes, size=20);
         axs.set_xlabel(f'[{inducer}] (umol/L)', size=20)
-        axs.set_ylabel('Fitness (log(10)/plate)', size=20)
+        
+        if si_plot:
+            axs.plot(x, [0.9637 * fitness_scale]*len(x), c='k', linestyle="--")
+            axs.plot(x, [0.8972 * fitness_scale]*len(x), c='k', linestyle="--")
+            axs.set_ylabel('Fitness (1/hour)', size=20)
+        else:
+            axs.set_ylabel('Fitness (log(10)/plate)', size=20)
         
         axs.tick_params(labelsize=16);
         if save_plots:
