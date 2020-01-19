@@ -775,4 +775,7 @@ def hamming_distance(SEQ1, SEQ2, MAX = float("inf"), IGNORE_N = False ):
 	else:
 		return mismatches
     
+def fitness_scale():
+    return np.log(10)/165*60
+    
         
