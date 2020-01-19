@@ -32,6 +32,9 @@ from IPython.display import display
 from . import fitness
 from . import stan_utility
 
+sns.set_style("white")
+sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.direction':'in', 'ytick.right':True})
+
 class BarSeqFitnessFrame:
         
     def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None, inducer="IPTG"):
@@ -724,6 +727,7 @@ class BarSeqFitnessFrame:
                 stan_samples = stan_fit.extract(permuted=True)
                 
                 g_arr = stan_samples['constr_log_g']
+                dg_arr = stan_samples['dlog_g']
                 f_arr = stan_samples['mean_y']
                 params_arr = np.array([stan_samples[x] for x in params_list])
         
@@ -731,6 +735,7 @@ class BarSeqFitnessFrame:
                 stan_pcov = np.cov(params_arr, rowvar=True)
                 
                 stan_g = np.array([ np.quantile(g_arr, q, axis=0) for q in quantile_list ])
+                stan_dg = np.array([ np.quantile(dg_arr, q, axis=0) for q in quantile_list ])
                 stan_f = np.array([ np.quantile(f_arr, q, axis=0) for q in quantile_list ])
                 
                 stan_resid = np.median(stan_fit["rms_resid"])
@@ -739,12 +744,13 @@ class BarSeqFitnessFrame:
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 
                 stan_g = np.full((quantile_dim, len(x)), np.nan)
+                stan_dg = np.full((quantile_dim, len(x)), np.nan)
                 stan_f = np.full((quantile_dim, len(x)), np.nan)
                 
                 stan_resid = np.nan
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_f)
+            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f)
         
         if refit_index is None:
             fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
@@ -753,17 +759,19 @@ class BarSeqFitnessFrame:
             pcov_list = []
             
             stan_g_list = []
+            stan_dg_list = []
             stan_f_list = []
             
             residuals_list = []
             
             for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_g, stan_f = item
+                stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f = item
                 
                 popt_list.append(stan_popt)
                 pcov_list.append(stan_pcov)
                 
                 stan_g_list.append(stan_g)
+                stan_dg_list.append(stan_dg)
                 stan_f_list.append(stan_f)
                 
                 residuals_list.append(stan_resid)
@@ -772,12 +780,13 @@ class BarSeqFitnessFrame:
             barcode_frame["sensor_GP_cov"] = pcov_list
             
             barcode_frame["sensor_GP_g_quantiles"] = stan_g_list
+            barcode_frame["sensor_GP_Dg_quantiles"] = stan_dg_list
             barcode_frame["sensor_GP_Df_quantiles"] = stan_f_list
             
             barcode_frame["sensor_GP_residuals"] = residuals_list
         else:
             row_to_fit = barcode_frame.loc[refit_index]
-            stan_popt, stan_pcov, stan_resid, stan_g, stan_f = stan_fit_row(row_to_fit, refit_index)
+            stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f = stan_fit_row(row_to_fit, refit_index)
             
             arr_1 = barcode_frame.loc[refit_index, "sensor_GP_params"]
             print(f"old: {arr_1}")
@@ -801,6 +810,10 @@ class BarSeqFitnessFrame:
             arr_5 = barcode_frame.loc[refit_index, "sensor_GP_Df_quantiles"]
             arr_5 *= 0
             arr_5 += stan_f
+            
+            arr_6 = barcode_frame.loc[refit_index, "sensor_GP_Dg_quantiles"]
+            arr_6 *= 0
+            arr_6 += stan_dg
         
         self.barcode_frame = barcode_frame
         
@@ -1360,25 +1373,34 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         #plot fitness curves
-        if show_GP:
-            plt.rcParams["figure.figsize"] = [24,6*len(barcode_frame)]
-            fig, axs_grid = plt.subplots(len(barcode_frame), 3, squeeze=False)
-            axsg = axs_grid.transpose()[2]
-        else:
-            plt.rcParams["figure.figsize"] = [16,6*len(barcode_frame)]
-            fig, axs_grid = plt.subplots(len(barcode_frame), 2, squeeze=False)
-            axsg = axs_grid.transpose()[0]
-        plt.subplots_adjust(hspace = .35)
-        axsl = axs_grid.transpose()[0]
-        axsr = axs_grid.transpose()[1]
-        #if len(barcode_frame)==1:
-        #    axs = [ axs ]
+        
         x = inducer_conc_list
         linthreshx = min([i for i in inducer_conc_list if i>0])
         
         fit_plot_colors = sns.color_palette()
         
-        for (index, row), axl, axr, axg in zip(barcode_frame.iterrows(), axsl, axsr, axsg): # iterate over barcodes
+        for index, row in barcode_frame.iterrows(): # iterate over barcodes
+            if show_GP:
+                plt.rcParams["figure.figsize"] = [16,12]
+                fig, axs_grid = plt.subplots(2, 2)
+                axl = axs_grid.flatten()[0]
+                axr = axs_grid.flatten()[2]
+                axg = axs_grid.flatten()[1]
+                axdg = axs_grid.flatten()[3]
+            else:
+                plt.rcParams["figure.figsize"] = [16,6]
+                fig, axs_grid = plt.subplots(1, 2)
+                axl = axs_grid.flatten()[0]
+                axr = axs_grid.flatten()[1]
+                axg = axs_grid.flatten()[0]
+                axdg = axs_grid.flatten()[0]
+            plt.subplots_adjust(hspace = .35)
+            
+            for ax in axs_grid.flatten():
+                ax.set_xscale('symlog', linthreshx=linthreshx)
+                ax.set_xlim(-linthreshx/7, 1.5*max(x));
+                ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+            
             for initial in ["b", "e"]:
                 y = row[f"fitness_{low_tet}_estimate_{initial}"]
                 s = row[f"fitness_{low_tet}_err_{initial}"]
@@ -1410,14 +1432,8 @@ class BarSeqFitnessFrame:
                     barcode_str += row['reverse_BC'] + " "
                     axl.text(x=1, y=1.05, s=barcode_str, horizontalalignment='center', verticalalignment='top',
                             transform=axl.transAxes, fontsize=13, fontfamily="Courier New")
-                    axl.set_xscale('symlog', linthreshx=linthreshx)
-                    axl.set_xlim(-linthreshx/10, 2*max(x));
-                    axl.set_xlabel(f'[{inducer}] (umol/L)', size=14)
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
                     axl.tick_params(labelsize=12);
-                    axr.set_xscale('symlog', linthreshx=linthreshx)
-                    axr.set_xlim(-linthreshx/10, 2*max(x));
-                    axr.set_xlabel(f'[{inducer}] (umol/L)', size=14)
                     axr.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
                     axr.tick_params(labelsize=12);
                     
@@ -1430,17 +1446,23 @@ class BarSeqFitnessFrame:
                 
             if show_GP:
                 stan_g = 10**row["sensor_GP_g_quantiles"]
+                stan_dg = row["sensor_GP_Dg_quantiles"]
                 stan_f = row["sensor_GP_Df_quantiles"]
+                
                 axr.plot(x, stan_f[2], color=fit_plot_colors[2])
+                
                 axg.plot(x, stan_g[2], color=fit_plot_colors[2])
-                axg.set_xscale('symlog', linthreshx=linthreshx)
-                axg.set_xlim(-linthreshx/10, 2*max(x));
-                axg.set_xlabel(f'[{inducer}] (umol/L)', size=14)
                 axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
                 axg.tick_params(labelsize=12);
+                
+                axdg.plot([x[0],x[-1]], [0,0], c='k');
+                axdg.plot(x, stan_dg[2], color=fit_plot_colors[3])
+                axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
+                axdg.tick_params(labelsize=12);
                 for i in range(1,3):
                     axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=fit_plot_colors[2]);
                     axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=fit_plot_colors[2]);
+                    axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=fit_plot_colors[3]);
             
         if save_plots:
             pdf.savefig()
