@@ -1463,6 +1463,12 @@ class BarSeqFitnessFrame:
                     axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=fit_plot_colors[2]);
                     axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=fit_plot_colors[2]);
                     axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=fit_plot_colors[3]);
+                    
+                # Also plot Hill fit result for g
+                x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
+                x_fit = np.insert(x_fit, 0, 0)
+                hill_params = 10**row["sensor_params"][:4]
+                axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
             
         if save_plots:
             pdf.savefig()
