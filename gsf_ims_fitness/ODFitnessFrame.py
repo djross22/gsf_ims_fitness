@@ -408,7 +408,7 @@ class ODFitnessFrame:
             leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.1), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
             leg.get_frame().set_edgecolor('k');
             axs.text(0.5, 1.025, self.experiment, horizontalalignment='center', verticalalignment='center', transform=axs.transAxes, size=20);
-        axs.set_xlabel(f'[{inducer}] (umol/L)', size=20)
+        axs.set_xlabel(f'[{inducer}] (µmol/L)', size=20)
         
         if si_plot:
             axs.plot(x, [0.9637 * fitness_scale]*len(x), c='k', linestyle="--")
