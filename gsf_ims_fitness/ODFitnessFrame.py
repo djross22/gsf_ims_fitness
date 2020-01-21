@@ -300,11 +300,12 @@ class ODFitnessFrame:
         
         plt.rcParams["figure.figsize"] = [16,12]
         fig, axs = plt.subplots(3, 4)
-        fig.suptitle(self.experiment, fontsize=20, position=(0.5, 0.92))
+        
         axes_array = axs.flatten()
         
         if clone_name is None:
             plasmids = np.unique(fitness_frame['plasmid'].values)
+            fig.suptitle(self.experiment, fontsize=20, position=(0.5, 0.92))
         else:
             plasmids = np.array([clone_name])
         
@@ -332,7 +333,7 @@ class ODFitnessFrame:
             
         axes_array[9].set_xlabel('Growth Plate Number', size=20)
         axes_array[9].xaxis.set_label_coords(1.05, -0.15)
-        axes_array[4].set_ylabel('Cell Density (OD600)', size=20, labelpad=10);
+        axes_array[4].set_ylabel('Cell Density (OD$\mathregular{_{600}}$)', size=20, labelpad=10);
         if save_plots:
             pdf.savefig()
         if not show_plots:
@@ -413,7 +414,7 @@ class ODFitnessFrame:
         if si_plot:
             axs.plot(x, [0.9637 * fitness_scale]*len(x), c='k', linestyle="--")
             axs.plot(x, [0.8972 * fitness_scale]*len(x), c='k', linestyle="--")
-            axs.set_ylabel('Fitness (1/hour)', size=20)
+            axs.set_ylabel('Fitness (hour$\mathregular{^{-1}}$)', size=20)
         else:
             axs.set_ylabel('Fitness (log(10)/plate)', size=20)
         
