@@ -738,6 +738,14 @@ class BarSeqFitnessFrame:
                 stan_dg = np.array([ np.quantile(dg_arr, q, axis=0) for q in quantile_list ])
                 stan_f = np.array([ np.quantile(f_arr, q, axis=0) for q in quantile_list ])
                 
+                stan_g_var = np.var(g_arr, axis=0)
+                stan_dg_var = np.var(dg_arr, axis=0)
+                
+                temp_arr = stan_fit.extract(permuted=False, pars=["constr_log_g"])["constr_log_g"][::71,:,:]
+                stan_g_samples = np.array([ a.flatten() for a in temp_arr.transpose() ])
+                temp_arr = stan_fit.extract(permuted=False, pars=["dlog_g"])["dlog_g"][::71,:,:]
+                stan_dg_samples = np.array([ a.flatten() for a in temp_arr.transpose() ])
+                
                 stan_resid = np.median(stan_fit["rms_resid"])
             except:
                 stan_popt = np.full((params_dim), np.nan)
@@ -747,10 +755,16 @@ class BarSeqFitnessFrame:
                 stan_dg = np.full((quantile_dim, len(x)), np.nan)
                 stan_f = np.full((quantile_dim, len(x)), np.nan)
                 
+                stan_g_var = np.full((params_dim), np.nan)
+                stan_dg_var = np.full((params_dim), np.nan)
+                
+                stan_g_samples = np.full((len(x), 32), np.nan)
+                stan_dg_samples = np.full((len(x), 32), np.nan)
+                
                 stan_resid = np.nan
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f)
+            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples)
         
         if refit_index is None:
             fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
@@ -763,9 +777,15 @@ class BarSeqFitnessFrame:
             stan_f_list = []
             
             residuals_list = []
+                
+            stan_g_var_list = []
+            stan_dg_var_list = []
+            
+            stan_g_samples_list = []
+            stan_dg_samples_list = []
             
             for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f = item
+                stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples = item
                 
                 popt_list.append(stan_popt)
                 pcov_list.append(stan_pcov)
@@ -775,6 +795,12 @@ class BarSeqFitnessFrame:
                 stan_f_list.append(stan_f)
                 
                 residuals_list.append(stan_resid)
+                
+                stan_g_var_list.append(stan_g_var)
+                stan_dg_var_list.append(stan_dg_var)
+                
+                stan_g_samples_list.append(stan_g_samples)
+                stan_dg_samples_list.append(stan_dg_samples)
                     
             barcode_frame["sensor_GP_params"] = popt_list
             barcode_frame["sensor_GP_cov"] = pcov_list
@@ -784,9 +810,15 @@ class BarSeqFitnessFrame:
             barcode_frame["sensor_GP_Df_quantiles"] = stan_f_list
             
             barcode_frame["sensor_GP_residuals"] = residuals_list
+            
+            barcode_frame["sensor_GP_g_var"] = stan_g_var_list
+            barcode_frame["sensor_GP_dg_var"] = stan_dg_var_list
+            
+            barcode_frame["sensor_GP_g_samples"] = stan_g_samples_list
+            barcode_frame["sensor_GP_dg_samples"] = stan_dg_samples_list
         else:
             row_to_fit = barcode_frame.loc[refit_index]
-            stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f = stan_fit_row(row_to_fit, refit_index)
+            stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples = stan_fit_row(row_to_fit, refit_index)
             
             arr_1 = barcode_frame.loc[refit_index, "sensor_GP_params"]
             print(f"old: {arr_1}")
@@ -814,6 +846,22 @@ class BarSeqFitnessFrame:
             arr_6 = barcode_frame.loc[refit_index, "sensor_GP_Dg_quantiles"]
             arr_6 *= 0
             arr_6 += stan_dg
+            
+            arr_7 = barcode_frame.loc[refit_index, "sensor_GP_g_var"]
+            arr_7 *= 0
+            arr_7 += stan_g_var
+            
+            arr_8 = barcode_frame.loc[refit_index, "sensor_GP_dg_var"]
+            arr_8 *= 0
+            arr_8 += stan_dg_var
+            
+            arr_9 = barcode_frame.loc[refit_index, "sensor_GP_g_samples"]
+            arr_9 *= 0
+            arr_9 += stan_g_samples
+            
+            arr_10 = barcode_frame.loc[refit_index, "sensor_GP_dg_samples"]
+            arr_10 *= 0
+            arr_10 += stan_dg_samples
         
         self.barcode_frame = barcode_frame
         
@@ -1325,7 +1373,8 @@ class BarSeqFitnessFrame:
                             includeChimeras=False,
                             ylim = None,
                             show_fits=True,
-                            show_GP=False):
+                            show_GP=False,
+                            log_g_scale=True):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -1454,6 +1503,7 @@ class BarSeqFitnessFrame:
                 axg.plot(x, stan_g[2], color=fit_plot_colors[2])
                 axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
                 axg.tick_params(labelsize=12);
+                axg.set_yscale("log")
                 
                 axdg.plot([x[0],x[-1]], [0,0], c='k');
                 axdg.plot(x, stan_dg[2], color=fit_plot_colors[3])
