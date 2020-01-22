@@ -90,7 +90,7 @@ generated quantities {
   real log_sigma;
   vector[N] dlog_g; // derivative of the gp
   
-  rms_resid = distance(y, mean_y)/N;
+  rms_resid = distance(y, mean_y)/sqrt(N);
   
   log_rho = log10(rho);
   log_alpha = log10(alpha);
