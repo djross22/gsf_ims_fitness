@@ -1503,7 +1503,7 @@ class BarSeqFitnessFrame:
                 axg.plot(x, stan_g[2], color=fit_plot_colors[2])
                 axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
                 axg.tick_params(labelsize=12);
-                axg.set_yscale("log")
+                if log_g_scale: axg.set_yscale("log")
                 
                 axdg.plot([x[0],x[-1]], [0,0], c='k');
                 axdg.plot(x, stan_dg[2], color=fit_plot_colors[3])
