@@ -70,8 +70,8 @@ model {
   
   //low_fitness ~ normal(low_fitness_mu, 0.05);
   low_fitness ~ student_t(8, low_fitness_mu, 0.1);
-  mid_g ~ normal(mid_g_mu, 10);
-  fitness_n ~ normal(fitness_n_mu, 0.03);
+  mid_g ~ normal(mid_g_mu, 27);
+  fitness_n ~ normal(fitness_n_mu, 0.22);
   
   sensor_n ~ gamma(4.0, 10.0/3.0);
   //log_IC_50 ~ normal(1.81, 1);

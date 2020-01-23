@@ -69,9 +69,9 @@ transformed parameters {
 
 model {
   // regular stuff
-  low_fitness ~ normal(low_fitness_mu, 0.05);
-  mid_g ~ normal(mid_g_mu, 10);
-  fitness_n ~ normal(fitness_n_mu, 0.03);
+  low_fitness ~ student_t(8, low_fitness_mu, 0.1);
+  mid_g ~ normal(mid_g_mu, 27);
+  fitness_n ~ normal(fitness_n_mu, 0.22);
 
   // GP
   rho ~ inv_gamma(10, 15);
