@@ -63,14 +63,14 @@ def check_energy(fit):
         if numer / denom < 0.2:
             print('Chain {}: E-BFMI = {}'.format(chain_num, numer / denom))
             no_warning = False
-    #if no_warning:
-        # print('E-BFMI indicated no pathological behavior')
-    #else:
-    #    print('  E-BFMI below 0.2 indicates you may need to reparameterize your model')
+    if no_warning:
+        print('E-BFMI indicated no pathological behavior')
+    else:
+        print('  E-BFMI below 0.2 indicates you may need to reparameterize your model')
     return no_warning
 
 
-def check_n_eff(fit):
+def check_n_eff(fit, ratio_threshold=0.001):
     """Checks the effective sample size per iteration"""
     fit_summary = fit.summary(probs=[0.5])
     n_effs = [x[4] for x in fit_summary['summary']]
@@ -80,9 +80,8 @@ def check_n_eff(fit):
     no_warning = True
     for n_eff, name in zip(n_effs, names):
         ratio = n_eff / n_iter
-        if (ratio < 0.001):
+        if (ratio < ratio_threshold):
             print('n_eff / iter for parameter {} is {}!'.format(name, ratio))
-            print('E-BFMI below 0.2 indicates you may need to reparameterize your model')
             no_warning = False
     if no_warning:
         print('n_eff / iter looks reasonable for all parameters')
@@ -90,7 +89,7 @@ def check_n_eff(fit):
         print('  n_eff / iter below 0.001 indicates that the effective sample size has likely been overestimated')
 
 
-def check_rhat(fit):
+def check_rhat(fit, rhat_threshold=1.1):
     """Checks the potential scale reduction factors"""
     from math import isnan
     from math import isinf
@@ -101,7 +100,7 @@ def check_rhat(fit):
 
     no_warning = True
     for rhat, name in zip(rhats, names):
-        if (rhat > 1.1 or isnan(rhat) or isinf(rhat)):
+        if (rhat > rhat_threshold or isnan(rhat) or isinf(rhat)):
             print('Rhat for parameter {} is {}!'.format(name, rhat))
             no_warning = False
     if no_warning:
