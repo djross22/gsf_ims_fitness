@@ -6,6 +6,8 @@ data {
   vector[N] x;           // inducer concentration
   vector[N] y;           // fitness difference at each concentration
   vector[N] y_err;       // estimated error of fitness difference at each concentration
+  real log_g_min;        // lower bound on log_low_level and log_high_level
+  real log_g_max;        // upper bound on log_low_level and log_high_level
   
   real low_fitness_mu;      // fitness difference at zero gene expression
   real mid_g_mu;            // gene expression level at 1/2 max fitness difference
