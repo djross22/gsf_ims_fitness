@@ -18,6 +18,13 @@ data {
 transformed data {
   real x_gp[N];
   real sqrt_pi = sqrt(pi());
+  real low_constr;
+  real high_constr;
+  real sig_constr;
+  
+  low_constr = log_g_min + 0.45;
+  high_constr = log_g_max - 0.45;
+  sig_constr = 0.6;
   
   for (i in 1:N){
     x_gp[i] = log10(x[i] + 0.25);
@@ -47,6 +54,9 @@ transformed parameters {
   {
     matrix[N, N] L_K;
     matrix[N, N] K = cov_exp_quad(x_gp, alpha, rho);
+    real term1;
+    real term2;
+    real term3;
 
     // diagonal elements
     for (n in 1:N)
@@ -56,8 +66,15 @@ transformed parameters {
 
     log_g = 2.5 + L_K * eta;
     for (i in 1:N){
-      constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
-	  g[i] = 10^constr_log_g[i];
+      //constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
+      
+      term1 = sig_constr/sqrt_pi*(exp(-((low_constr - log_g[i])^2/sig_constr^2)) - exp(-((high_constr - log_g[i])^2/sig_constr^2)));
+      term2 = (log_g[i] - high_constr)*erf((high_constr - log_g[i])/sig_constr);
+      term3 = (low_constr - log_g[i])*erf((low_constr - log_g[i])/sig_constr);
+      
+      constr_log_g[i] = (high_constr + low_constr + term1 + term2 + term3)/2;
+      
+      g[i] = 10^constr_log_g[i];
     }
 
   }
