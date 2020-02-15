@@ -530,7 +530,7 @@ class BarSeqFitnessFrame:
                                       chains=4,
                                       auto_save=True,
                                       refit_index=None,
-                                      plasmid="pTY1"):
+                                      plasmid="pVER"):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         os.chdir(self.notebook_dir)
