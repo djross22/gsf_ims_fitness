@@ -529,10 +529,11 @@ class BarSeqFitnessFrame:
                                       iterations=1000,
                                       chains=4,
                                       auto_save=True,
-                                      refit_index=None):
+                                      refit_index=None,
+                                      plasmid="pTY1"):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
-        
+        os.chdir(self.notebook_dir)
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
         if fit_fitness_difference_params is None:
@@ -581,9 +582,15 @@ class BarSeqFitnessFrame:
             
             valid = ~(np.isnan(y) | np.isnan(s))
             
-            
+            if plasmid == "pVER":
+                log_g_min = 1
+                log_g_max = 5.5
+            else:
+                log_g_min = 1
+                log_g_max = 4.5
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
-                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n)
+                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
+                             log_g_min=log_g_min, log_g_max=log_g_max)
         
             try:
                 stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
