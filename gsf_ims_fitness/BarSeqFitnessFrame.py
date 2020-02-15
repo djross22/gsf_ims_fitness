@@ -533,6 +533,7 @@ class BarSeqFitnessFrame:
                                       plasmid="pVER"):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
+        print(f"  Using fitness parameters for {plasmid}")
         os.chdir(self.notebook_dir)
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
@@ -563,6 +564,10 @@ class BarSeqFitnessFrame:
         params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'log_high_low_ratio',
                        'low_fitness', 'mid_g', 'fitness_n']
         params_dim = len(params_list)
+        
+        quantile_params_list = params_list[:-len(fit_fitness_difference_params)]
+        quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
+        quantile_dim = len(quantile_list)
         
         if "sensor_params" not in barcode_frame.columns:
             barcode_frame["sensor_params"] = [ np.full((params_dim), np.nan) for i in range(len(barcode_frame))]
@@ -607,14 +612,16 @@ class BarSeqFitnessFrame:
                 stan_pcov = np.cov(stan_samples_arr, rowvar=True)
                 stan_resid = np.median(stan_fit["rms_resid"])
                 stan_samples_out = np.array([stan_samples[key][::71,:].flatten() for key in params_list ])
+                stan_quantiles = np.array([np.quantile(stan_samples[key], quantile_list) for key in quantile_params_list ])
             except:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 stan_resid = np.nan
                 stan_samples_out = np.full((params_dim, 32), np.nan)
+                stan_quantiles = np.full((len(quantile_params_list), quantile_dim), np.nan)
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_samples_out)
+            return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles)
         
         if refit_index is None:
             fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
@@ -623,22 +630,25 @@ class BarSeqFitnessFrame:
             pcov_list = []
             residuals_list = []
             samples_out_list = []
+            quantiles_list = []
             
             for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_samples_out = item
+                stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles = item
                 
                 popt_list.append(stan_popt)
                 pcov_list.append(stan_pcov)
                 residuals_list.append(stan_resid)
                 samples_out_list.append(stan_samples_out)
+                quantiles_list.append(stan_quantiles)
                     
             barcode_frame["sensor_params"] = popt_list
             barcode_frame["sensor_params_cov"] = pcov_list
             barcode_frame["sensor_rms_residuals"] = residuals_list
             barcode_frame["sensor_stan_samples"] = samples_out_list
+            barcode_frame["sensor_params_quantiles"] = quantiles_list
         else:
             row_to_fit = barcode_frame.loc[refit_index]
-            stan_popt, stan_pcov, stan_resid, stan_samples_out = stan_fit_row(row_to_fit, refit_index)
+            stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles = stan_fit_row(row_to_fit, refit_index)
             arr_1 = barcode_frame.loc[refit_index, "sensor_params"]
             print(f"old: {arr_1}")
             arr_1 *= 0
@@ -654,6 +664,9 @@ class BarSeqFitnessFrame:
             arr_4 = barcode_frame.loc[refit_index, "sensor_stan_samples"]
             arr_4 *= 0
             arr_4 += stan_samples_out
+            arr_5 = barcode_frame.loc[refit_index, "sensor_params_quantiles"]
+            arr_5 *= 0
+            arr_5 += stan_quantiles
         
         self.barcode_frame = barcode_frame
         
