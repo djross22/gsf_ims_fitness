@@ -87,10 +87,15 @@ transformed parameters {
 }
 
 model {
-  // regular stuff
+  // fitness calibration params
   low_fitness ~ student_t(8, low_fitness_mu, 0.1);
-  mid_g ~ normal(mid_g_mu, 27);
-  fitness_n ~ normal(fitness_n_mu, 0.22);
+  //mid_g ~ normal(mid_g_mu, 27); // use with PTY1
+  //fitness_n ~ normal(fitness_n_mu, 0.22); // use with pTY1
+  mid_g ~ normal(mid_g_mu, 499); // use with pVER
+  fitness_n ~ normal(fitness_n_mu, 0.29); // use with pVER
+  
+  // noise scale, prior to keep it from getting too much < 1
+  sigma ~ inv_gamma(3, 6);
 
   // GP
   rho ~ inv_gamma(10, 15);
