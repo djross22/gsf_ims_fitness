@@ -560,7 +560,8 @@ class BarSeqFitnessFrame:
         mid_g = fit_fitness_difference_params[1]
         fitness_n = fit_fitness_difference_params[2]
         
-        params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
+        params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'log_high_low_ratio',
+                       'low_fitness', 'mid_g', 'fitness_n']
         params_dim = len(params_list)
         
         if "sensor_params" not in barcode_frame.columns:
