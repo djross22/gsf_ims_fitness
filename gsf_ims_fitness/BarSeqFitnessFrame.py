@@ -537,7 +537,10 @@ class BarSeqFitnessFrame:
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
         if fit_fitness_difference_params is None:
-            fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
+            if plasmid == "pVER":
+                fit_fitness_difference_params = np.array([-0.72246,  13328,  3.2374])
+            else:
+                fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
