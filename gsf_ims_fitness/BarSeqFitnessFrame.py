@@ -682,14 +682,19 @@ class BarSeqFitnessFrame:
                        iterations=1000,
                        chains=4,
                        auto_save=True,
-                       refit_index=None):
+                       refit_index=None,
+                       plasmid="pVER"):
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
+        print(f"  Using fitness parameters for {plasmid}")
         
         stan_model = stan_utility.compile_model(stan_GP_model)
         
         if fit_fitness_difference_params is None:
-            fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
+            if plasmid == "pVER":
+                fit_fitness_difference_params = np.array([-0.72246,  13328,  3.2374])
+            else:
+                fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
@@ -721,7 +726,12 @@ class BarSeqFitnessFrame:
         if "sensor_GP_cov" not in barcode_frame.columns:
             barcode_frame["sensor_GP_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
         
-        
+        if plasmid == "pVER":
+            log_g_min = 1
+            log_g_max = 5.5
+        else:
+            log_g_min = 1
+            log_g_max = 4.5
 
         def stan_fit_row(st_row, st_index):
             print()
@@ -740,9 +750,9 @@ class BarSeqFitnessFrame:
             y[invalid] = low_fitness/2
             s[invalid] = 10
             
-            
             stan_data = dict(x=x, y=y, N=len(y), y_err=s,
-                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n)
+                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
+                             log_g_min=log_g_min, log_g_max=log_g_max)
         
             try:
                 stan_init = [ init_stan_GP_fit(fit_fitness_difference_params) for i in range(chains) ]
