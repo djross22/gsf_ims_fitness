@@ -87,6 +87,6 @@ generated quantities {
   
   log_sensor_n = log10(sensor_n);
   
-  rms_resid = distance(y, mean_y)/N;
+  rms_resid = distance(y, mean_y)/sqrt(N);
   
 }
