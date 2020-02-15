@@ -9,9 +9,9 @@ data {
   real log_g_min;        // lower bound on log_low_level and log_high_level
   real log_g_max;        // upper bound on log_low_level and log_high_level
   
-  real low_fitness_mu;      // fitness diference at zero gene expression
-  real mid_g_mu;            // gene expression evel at 1/2 max fitness difference
-  real fitness_n_mu;        // cooperativity coeficient of fitness difference curve
+  real low_fitness_mu;      // fitness difference at zero gene expression
+  real mid_g_mu;            // gene expression level at 1/2 max fitness difference
+  real fitness_n_mu;        // cooperativity coefficient of fitness difference curve
   
 }
 
