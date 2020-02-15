@@ -72,8 +72,10 @@ model {
   
   //low_fitness ~ normal(low_fitness_mu, 0.05);
   low_fitness ~ student_t(8, low_fitness_mu, 0.1);
-  mid_g ~ normal(mid_g_mu, 27);
-  fitness_n ~ normal(fitness_n_mu, 0.22);
+  //mid_g ~ normal(mid_g_mu, 27); // use with PTY1
+  //fitness_n ~ normal(fitness_n_mu, 0.22); // use with pTY1
+  mid_g ~ normal(mid_g_mu, 499); // use with pVER
+  fitness_n ~ normal(fitness_n_mu, 0.29); // use with pVER
   
   // Prior on sensor_n
   sensor_n ~ gamma(4.0, 10.0/3.0);
