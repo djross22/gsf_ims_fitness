@@ -1408,7 +1408,7 @@ class BarSeqFitnessFrame:
                             ylim = None,
                             show_fits=True,
                             show_GP=False,
-                            log_g_scale=True):
+                            log_g_scale=False):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
