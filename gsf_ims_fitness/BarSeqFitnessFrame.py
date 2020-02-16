@@ -1424,9 +1424,17 @@ class BarSeqFitnessFrame:
         if show_fits:
             fit_fitness_difference_params = self.fit_fitness_difference_params
             
-            if len(barcode_frame["sensor_params"].iloc[0])>=7:
-                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
+            if len(barcode_frame["sensor_params"].iloc[0])==7:
+                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g',
+                #  'fitness_n']
                 def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n, *argv):
+                    return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
+                                             low_fitness, 0, mid_g, fitness_n)
+            elif len(barcode_frame["sensor_params"].iloc[0])>7:
+                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'log_high_low_ratio',
+                #  'low_fitness', 'mid_g', 'fitness_n']
+                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, log_high_low_ratio,
+                              low_fitness, mid_g, fitness_n, *argv):
                     return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
                                              low_fitness, 0, mid_g, fitness_n)
             else:
