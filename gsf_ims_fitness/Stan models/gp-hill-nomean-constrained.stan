@@ -21,10 +21,13 @@ transformed data {
   real low_constr;
   real high_constr;
   real sig_constr;
+  real center_log_g;
   
-  low_constr = log_g_min + 0.45;
-  high_constr = log_g_max - 0.45;
+  low_constr = log_g_min + 0.7;
+  high_constr = log_g_max - 0.7;
   sig_constr = 0.6;
+  
+  center_log_g = (log_g_min + log_g_max)/2;
   
   for (i in 1:N){
     x_gp[i] = log10(x[i] + 0.25);
@@ -64,7 +67,7 @@ transformed parameters {
 
     L_K = cholesky_decompose(K);
 
-    log_g = 2.5 + L_K * eta;
+    log_g = center_log_g + L_K * eta;
     for (i in 1:N){
       //constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
       
@@ -87,8 +90,16 @@ transformed parameters {
 }
 
 model {
+  real neg_low_fitness;
+  
+  neg_low_fitness = -1*low_fitness;
+  
   // fitness calibration params
-  low_fitness ~ student_t(8, low_fitness_mu, 0.1);
+  //low_fitness ~ student_t(8, low_fitness_mu, 0.1);
+  //neg_low_fitness ~ exp_mod_normal(-1*low_fitness_mu-0.04, 0.03, 14); // use with pTY1
+  neg_low_fitness ~ exp_mod_normal(-1*low_fitness_mu-0.02, 0.015, 14); // use with pVER
+  
+  
   //mid_g ~ normal(mid_g_mu, 27); // use with PTY1
   //fitness_n ~ normal(fitness_n_mu, 0.22); // use with pTY1
   mid_g ~ normal(mid_g_mu, 499); // use with pVER
@@ -98,8 +109,8 @@ model {
   sigma ~ inv_gamma(3, 6);
 
   // GP
-  rho ~ inv_gamma(10, 15);
-  alpha ~ normal(.5, .5);
+  rho ~ inv_gamma(5, 5);
+  alpha ~ normal(1, 1);
   eta ~ std_normal();
 
   // observations
