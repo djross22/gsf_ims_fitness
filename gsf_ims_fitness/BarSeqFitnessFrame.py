@@ -10,7 +10,7 @@ import os    # operating sytem utility
 import sys
 
 import matplotlib.pyplot as plt
-#from matplotlib import colors
+from matplotlib import colors
 from matplotlib.backends.backend_pdf import PdfPages
 
 import numpy as np
@@ -1760,7 +1760,71 @@ class BarSeqFitnessFrame:
     
         if save_plots:
             pdf.close()
-        
+            
+    # Method for plotting sub-frame on background of full library distribution
+    def plot_hill_params(self, input_frame, in_label="", in_color=fitness.gray_out("indigo"),
+                         in_alpha=0.7, error_bars=True):
+        plt.rcParams["figure.figsize"] = [16, 16]
+        fig, axs_grid = plt.subplots(2, 2)
+        axs = axs_grid.flatten()
+    
+        param_names = ["High Low Level Ratio", "n", "Low Level", "High Level"]
+    
+        x_label = f'IC50'
+        x_err_label = f'IC50 error'
+    
+        # This part plots the input input_frame
+        for ax, name in zip(axs, param_names):
+            y_label = f'{name}'
+            y_err_label = f'{name} error'
+    
+            params_x = input_frame[x_label]
+            params_y = input_frame[y_label]
+            err_x = input_frame[x_err_label]
+            err_y = input_frame[y_err_label]
+            
+            if error_bars:
+                ax.errorbar(params_x, params_y, yerr=err_y, xerr=err_x, fmt="o", ms=4, color=in_color,
+                            label=in_label, alpha=in_alpha);
+            else:
+                ax.plot(params_x, params_y, "o", ms=4, color=in_color,
+                        label=in_label, alpha=in_alpha);
+    
+        # This part plots all the rest
+        plot_frame = self.barcode_frame[3:]
+        plot_frame = plot_frame[plot_frame["total_counts"]>3000]
+        for ax, name in zip(axs, param_names):
+            y_label = f'{name}'
+    
+            params_x = plot_frame[x_label]
+            params_y = plot_frame[y_label]
+            color = fitness.gray_out("darkseagreen")
+            color = fitness.gray_out("xkcd:tea green", s_factor=0.7, v_factor=0.8)
+            ax.set_xscale("log");
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+            ax.plot(params_x, params_y, "o", ms=3, color=color, zorder=1, alpha=0.3, label="everything");
+            #ax.set_xlim(xlim);
+            #ax.set_ylim(ylim);
+            ax.set_xlabel(x_label, size=20)
+            ax.set_ylabel(y_label, size=20)
+            ax.tick_params(labelsize=16);
+            
+            if y_label!="n":
+                ax.set_yscale("log")
+    
+        leg = axs[0].legend(loc='lower center', bbox_to_anchor= (1.07, 1.02), ncol=6, borderaxespad=0, frameon=True, fontsize=12)
+        leg.get_frame().set_edgecolor('k');
+        y_max = axs[3].get_ylim()[1]
+        #axs[0].set_ylim(-500, 3000);
+        #axs[1].set_ylim(0.5, 2.75);
+        ylim2 = axs[2].get_ylim();
+        ylim3 = axs[3].get_ylim();
+        axs[2].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
+        axs[3].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
+        #for ax in axs:
+        #    ax.set_xlim(6,1000);
+    
     def save_as_pickle(self, notebook_dir=None, experiment=None, pickle_file=None):
         if notebook_dir is None:
             notebook_dir = self.notebook_dir
@@ -1842,4 +1906,6 @@ def log_level(fitness_difference):
     if log_g>4:
         log_g = 4
     return log_g
+
+
     

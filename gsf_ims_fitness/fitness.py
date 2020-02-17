@@ -9,7 +9,7 @@ import glob  # filenames and pathnames utility
 import os    # operating sytem utility
 
 import matplotlib.pyplot as plt
-#from matplotlib import colors
+from matplotlib import colors
 from matplotlib.backends.backend_pdf import PdfPages
 
 import numpy as np
@@ -777,5 +777,9 @@ def hamming_distance(SEQ1, SEQ2, MAX = float("inf"), IGNORE_N = False ):
     
 def fitness_scale():
     return np.log(10)/165*60
+            
+def gray_out(color, s_factor=0.5, v_factor=1):
+    hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
+    return colors.hsv_to_rgb(hsv_color)
     
         
