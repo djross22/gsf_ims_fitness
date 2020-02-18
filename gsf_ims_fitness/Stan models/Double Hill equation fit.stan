@@ -69,9 +69,15 @@ transformed parameters {
 }
 
 model {
+  real neg_low_fitness;
   
-  //low_fitness ~ normal(low_fitness_mu, 0.05);
-  low_fitness ~ student_t(8, low_fitness_mu, 0.1);
+  neg_low_fitness = -1*low_fitness;
+  
+  // fitness calibration params
+  //low_fitness ~ student_t(8, low_fitness_mu, 0.1);
+  //neg_low_fitness ~ exp_mod_normal(-1*low_fitness_mu-0.04, 0.03, 14); // use with pTY1
+  neg_low_fitness ~ exp_mod_normal(-1*low_fitness_mu-0.02, 0.015, 14); // use with pVER
+  
   //mid_g ~ normal(mid_g_mu, 27); // use with PTY1
   //fitness_n ~ normal(fitness_n_mu, 0.22); // use with pTY1
   mid_g ~ normal(mid_g_mu, 499); // use with pVER
