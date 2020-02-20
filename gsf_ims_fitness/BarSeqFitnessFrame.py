@@ -1763,7 +1763,7 @@ class BarSeqFitnessFrame:
             
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None,
-                         in_alpha=0.7, error_bars=True):
+                         in_alpha=0.7, error_bars=True, legend=True):
         
         if in_colors is None:
             in_colors = [ fitness.gray_out("indigo") ] * len(input_frames)
