@@ -1775,7 +1775,7 @@ class BarSeqFitnessFrame:
         fig, axs_grid = plt.subplots(2, 2)
         axs = axs_grid.flatten()
     
-        param_names = ["High Low Level Ratio", "n", "Low Level", "High Level"]
+        param_names = ["Low Level", "High Level", "High Low Level Ratio", "n"]
     
         x_label = f'IC50'
         x_err_label = f'IC50 error'
@@ -1793,10 +1793,10 @@ class BarSeqFitnessFrame:
                 
                 if error_bars:
                     ax.errorbar(params_x, params_y, yerr=err_y, xerr=err_x, fmt="o", ms=4, color=in_color,
-                                label=in_label, alpha=in_alpha);
+                                label=in_label, alpha=in_alpha, zorder=1);
                 else:
                     ax.plot(params_x, params_y, "o", ms=4, color=in_color,
-                            label=in_label, alpha=in_alpha);
+                            label=in_label, alpha=in_alpha, zorder=1);
     
         # This part plots all the rest
         plot_frame = self.barcode_frame[3:]
@@ -1813,7 +1813,7 @@ class BarSeqFitnessFrame:
             ax.set_xscale("log");
             xlim = ax.get_xlim()
             ylim = ax.get_ylim()
-            ax.plot(params_x, params_y, "o", ms=3, color=color, zorder=1, alpha=0.3, label="everything");
+            ax.plot(params_x, params_y, "o", ms=3, color=color, zorder=0, alpha=0.3, label="everything");
             #ax.set_xlim(xlim);
             #ax.set_ylim(ylim);
             ax.set_xlabel(x_label, size=20)
@@ -1822,18 +1822,20 @@ class BarSeqFitnessFrame:
             
             if y_label!="n":
                 ax.set_yscale("log")
-    
-        leg = axs[0].legend(loc='lower center', bbox_to_anchor= (1.07, 1.02), ncol=6, borderaxespad=0, frameon=True, fontsize=12)
-        leg.get_frame().set_edgecolor('k');
+        if legend:
+            leg = axs[0].legend(loc='lower center', bbox_to_anchor= (1.07, 1.02), ncol=6, borderaxespad=0, frameon=True, fontsize=12)
+            leg.get_frame().set_edgecolor('k');
         y_max = axs[3].get_ylim()[1]
         #axs[0].set_ylim(-500, 3000);
         #axs[1].set_ylim(0.5, 2.75);
-        ylim2 = axs[2].get_ylim();
-        ylim3 = axs[3].get_ylim();
-        axs[2].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
-        axs[3].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
+        ylim2 = axs[0].get_ylim();
+        ylim3 = axs[1].get_ylim();
+        axs[0].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
+        axs[1].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
         #for ax in axs:
         #    ax.set_xlim(6,1000);
+        
+        return axs
     
     def save_as_pickle(self, notebook_dir=None, experiment=None, pickle_file=None):
         if notebook_dir is None:
