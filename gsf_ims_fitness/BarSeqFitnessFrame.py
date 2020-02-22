@@ -1762,8 +1762,15 @@ class BarSeqFitnessFrame:
             pdf.close()
             
     # Method for plotting sub-frame on background of full library distribution
-    def plot_hill_params(self, input_frame, in_label="", in_color=fitness.gray_out("indigo"),
+    def plot_hill_params(self, input_frames, in_labels=None, in_colors=None,
                          in_alpha=0.7, error_bars=True):
+        
+        if in_labels is None:
+            in_labels = [""] * len (input_frames)
+        
+        if in_colors is None:
+            in_colors = [fitness.gray_out("indigo")] * len (input_frames)
+            
         plt.rcParams["figure.figsize"] = [16, 16]
         fig, axs_grid = plt.subplots(2, 2)
         axs = axs_grid.flatten()
@@ -1773,22 +1780,23 @@ class BarSeqFitnessFrame:
         x_label = f'IC50'
         x_err_label = f'IC50 error'
     
-        # This part plots the input input_frame
-        for ax, name in zip(axs, param_names):
-            y_label = f'{name}'
-            y_err_label = f'{name} error'
-    
-            params_x = input_frame[x_label]
-            params_y = input_frame[y_label]
-            err_x = input_frame[x_err_label]
-            err_y = input_frame[y_err_label]
-            
-            if error_bars:
-                ax.errorbar(params_x, params_y, yerr=err_y, xerr=err_x, fmt="o", ms=4, color=in_color,
-                            label=in_label, alpha=in_alpha);
-            else:
-                ax.plot(params_x, params_y, "o", ms=4, color=in_color,
-                        label=in_label, alpha=in_alpha);
+        # This part plots the input input_frames
+        for input_frame, c, lab in zip(input_frames, in_colors, in_labels):
+            for ax, name in zip(axs, param_names):
+                y_label = f'{name}'
+                y_err_label = f'{name} error'
+        
+                params_x = input_frame[x_label]
+                params_y = input_frame[y_label]
+                err_x = input_frame[x_err_label]
+                err_y = input_frame[y_err_label]
+                
+                if error_bars:
+                    ax.errorbar(params_x, params_y, yerr=err_y, xerr=err_x, fmt="o", ms=4, color=c,
+                                label=lab, alpha=in_alpha);
+                else:
+                    ax.plot(params_x, params_y, "o", ms=4, color=c,
+                            label=lab, alpha=in_alpha);
     
         # This part plots all the rest
         plot_frame = self.barcode_frame[3:]
