@@ -1458,8 +1458,8 @@ class BarSeqFitnessFrame:
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
         
-        os.chdir(self.data_directory)
         if save_plots:
+            os.chdir(self.data_directory)
             pdf_file = 'barcode fitness plots.pdf'
             pdf = PdfPages(pdf_file)
         
