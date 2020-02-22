@@ -592,8 +592,8 @@ class BarSeqFitnessFrame:
             valid = ~(np.isnan(y) | np.isnan(s))
             
             if plasmid == "pVER":
-                log_g_min = 1
-                log_g_max = 5.5
+                log_g_min = 1.9
+                log_g_max = 4.6
             else:
                 log_g_min = 1
                 log_g_max = 4.5
