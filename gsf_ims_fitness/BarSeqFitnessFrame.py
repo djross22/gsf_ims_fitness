@@ -1835,6 +1835,8 @@ class BarSeqFitnessFrame:
         axs[3].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
         #for ax in axs:
         #    ax.set_xlim(6,1000);
+        
+        return axs
     
     def save_as_pickle(self, notebook_dir=None, experiment=None, pickle_file=None):
         if notebook_dir is None:
