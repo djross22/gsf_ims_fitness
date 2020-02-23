@@ -592,14 +592,16 @@ class BarSeqFitnessFrame:
             valid = ~(np.isnan(y) | np.isnan(s))
             
             if plasmid == "pVER":
-                log_g_min = 1.9
-                log_g_max = 4.6
+                log_g_min = 1.2
+                log_g_max = 5.4
+                log_g_prior_scale = 0.15
             else:
                 log_g_min = 1
                 log_g_max = 4.5
+                log_g_prior_scale = 0.3
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
-                             log_g_min=log_g_min, log_g_max=log_g_max)
+                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
         
             try:
                 stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]

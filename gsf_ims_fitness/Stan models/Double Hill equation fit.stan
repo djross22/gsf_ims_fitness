@@ -8,6 +8,7 @@ data {
   vector[N] y_err;       // estimated error of fitness difference at each concentration
   real log_g_min;        // lower bound on log_low_level and log_high_level
   real log_g_max;        // upper bound on log_low_level and log_high_level
+  real log_g_prior_scale;
   
   real low_fitness_mu;      // fitness difference at zero gene expression
   real mid_g_mu;            // gene expression level at 1/2 max fitness difference
@@ -91,12 +92,12 @@ model {
   target += log1m(erf((log_IC_50 - log_x_max + 0.8)/0.3));
   
   // Prior on log_low_level
-  target += log1m(erf((log_g_min + 0.9 - log_low_level)/0.3));
-  target += log1m(erf((log_low_level - log_g_max + 0.9)/0.3));
+  target += log1m(erf((log_g_min + 0.9 - log_low_level)/log_g_prior_scale));
+  target += log1m(erf((log_low_level - log_g_max + 0.9)/log_g_prior_scale));
   
   // Prior on log_high_level
-  target += log1m(erf((log_g_min + 0.9 - log_high_level)/0.3));
-  target += log1m(erf((log_high_level - log_g_max + 0.9)/0.3));
+  target += log1m(erf((log_g_min + 0.9 - log_high_level)/log_g_prior_scale));
+  target += log1m(erf((log_high_level - log_g_max + 0.9)/log_g_prior_scale));
   
   y ~ normal(mean_y, sigma*y_err);
 
