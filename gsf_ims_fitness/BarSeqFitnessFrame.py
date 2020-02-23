@@ -1777,7 +1777,7 @@ class BarSeqFitnessFrame:
         fig, axs_grid = plt.subplots(2, 2)
         axs = axs_grid.flatten()
     
-        param_names = ["High Low Level Ratio", "n", "Low Level", "High Level"]
+        param_names = ["Low Level", "High Level", "High Low Level Ratio", "n"]
     
         x_label = f'IC50'
         x_err_label = f'IC50 error'
@@ -1814,7 +1814,7 @@ class BarSeqFitnessFrame:
             ax.set_xscale("log");
             xlim = ax.get_xlim()
             ylim = ax.get_ylim()
-            ax.plot(params_x, params_y, "o", ms=3, color=color, zorder=1, alpha=0.3, label="everything");
+            ax.plot(params_x, params_y, "o", ms=3, color=color, zorder=0, alpha=0.3, label="everything");
             #ax.set_xlim(xlim);
             #ax.set_ylim(ylim);
             ax.set_xlabel(x_label, size=20)
