@@ -1765,7 +1765,7 @@ class BarSeqFitnessFrame:
             
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None,
-                         in_alpha=0.7, error_bars=True, log_high_err_cutoff=0.71):
+                         in_alpha=0.7, error_bars=True, log_high_err_cutoff=0.71, legend=True):
         
         if in_labels is None:
             in_labels = [""] * len (input_frames)
@@ -1823,9 +1823,10 @@ class BarSeqFitnessFrame:
             
             if y_label!="n":
                 ax.set_yscale("log")
-    
-        leg = axs[0].legend(loc='lower center', bbox_to_anchor= (1.07, 1.02), ncol=6, borderaxespad=0, frameon=True, fontsize=12)
-        leg.get_frame().set_edgecolor('k');
+        
+        if legend:
+            leg = axs[0].legend(loc='lower center', bbox_to_anchor= (1.07, 1.02), ncol=6, borderaxespad=0, frameon=True, fontsize=12)
+            leg.get_frame().set_edgecolor('k');
         y_max = axs[3].get_ylim()[1]
         #axs[0].set_ylim(-500, 3000);
         #axs[1].set_ylim(0.5, 2.75);
