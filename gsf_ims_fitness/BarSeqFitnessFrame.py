@@ -1765,7 +1765,7 @@ class BarSeqFitnessFrame:
             
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None,
-                         in_alpha=0.7, error_bars=True):
+                         in_alpha=0.7, error_bars=True, log_high_err_cutoff=0.71):
         
         if in_labels is None:
             in_labels = [""] * len (input_frames)
@@ -1803,6 +1803,7 @@ class BarSeqFitnessFrame:
         # This part plots all the rest
         plot_frame = self.barcode_frame[3:]
         plot_frame = plot_frame[plot_frame["total_counts"]>3000]
+        plot_frame = plot_frame[plot_frame["log_high_level error"]<log_high_err_cutoff]
         for ax, name in zip(axs, param_names):
             y_label = f'{name}'
     
