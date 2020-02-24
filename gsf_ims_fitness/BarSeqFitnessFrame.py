@@ -1764,14 +1764,18 @@ class BarSeqFitnessFrame:
             pdf.close()
             
     # Method for plotting sub-frame on background of full library distribution
-    def plot_hill_params(self, input_frames, in_labels=None, in_colors=None,
-                         in_alpha=0.7, error_bars=True, log_high_err_cutoff=0.71, legend=True):
+    def plot_hill_params(self, input_frames, in_labels=None, in_colors=None, in_alpha=0.7,
+                         error_bars=True, log_high_err_cutoff=0.71, legend=True,
+                         everything_color=None):
         
         if in_labels is None:
             in_labels = [""] * len (input_frames)
         
         if in_colors is None:
             in_colors = [fitness.gray_out("indigo")] * len (input_frames)
+            
+        if everything_color is None:
+            everything_color = fitness.gray_out("xkcd:tea green", s_factor=0.7, v_factor=0.8)
             
         plt.rcParams["figure.figsize"] = [16, 16]
         fig, axs_grid = plt.subplots(2, 2)
@@ -1809,12 +1813,11 @@ class BarSeqFitnessFrame:
     
             params_x = plot_frame[x_label]
             params_y = plot_frame[y_label]
-            color = fitness.gray_out("darkseagreen")
-            color = fitness.gray_out("xkcd:tea green", s_factor=0.7, v_factor=0.8)
+            
             ax.set_xscale("log");
             xlim = ax.get_xlim()
             ylim = ax.get_ylim()
-            ax.plot(params_x, params_y, "o", ms=3, color=color, zorder=0, alpha=0.3, label="everything");
+            ax.plot(params_x, params_y, "o", ms=3, color=everything_color, zorder=0, alpha=0.3, label="everything");
             #ax.set_xlim(xlim);
             #ax.set_ylim(ylim);
             ax.set_xlabel(x_label, size=20)
@@ -1830,10 +1833,10 @@ class BarSeqFitnessFrame:
         y_max = axs[3].get_ylim()[1]
         #axs[0].set_ylim(-500, 3000);
         #axs[1].set_ylim(0.5, 2.75);
-        ylim2 = axs[2].get_ylim();
-        ylim3 = axs[3].get_ylim();
-        axs[2].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
-        axs[3].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
+        ylim2 = axs[0].get_ylim();
+        ylim3 = axs[1].get_ylim();
+        axs[0].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
+        axs[1].set_ylim(min(ylim2[0], ylim3[0]), max(ylim2[1], ylim3[1]));
         #for ax in axs:
         #    ax.set_xlim(6,1000);
         
