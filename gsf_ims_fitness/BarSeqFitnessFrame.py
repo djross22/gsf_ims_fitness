@@ -1855,6 +1855,13 @@ class BarSeqFitnessFrame:
         with open(pickle_file, 'wb') as f:
             pickle.dump(self, f)
         print(f"BarSeqFitnessFrame saved as: {pickle_file}")
+        
+    def cleaned_frame(self, count_threshold=3000, log_high_error_cutoff=0.71, num_good_hill_points=12):
+        frame = self.barcode_frame[3:]
+        frame = frame[frame["total_counts"]>count_threshold]
+        frame = frame[frame["log_high_level error"]<log_high_error_cutoff]
+        frame = frame[frame["good_hill_fit_points"]==num_good_hill_points]
+        return frame
 
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)
