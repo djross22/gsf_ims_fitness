@@ -737,8 +737,8 @@ class BarSeqFitnessFrame:
             barcode_frame["sensor_GP_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
         
         if plasmid == "pVER":
-            log_g_min = 1
-            log_g_max = 5.5
+            log_g_min = 1.2
+            log_g_max = 5.4
         else:
             log_g_min = 1
             log_g_max = 4.5
