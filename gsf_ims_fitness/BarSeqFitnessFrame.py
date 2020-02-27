@@ -534,6 +534,7 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
+        print("      Version from 2020-02-27")
         #os.chdir(self.notebook_dir)
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
