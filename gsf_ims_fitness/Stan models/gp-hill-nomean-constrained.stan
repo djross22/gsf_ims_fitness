@@ -23,9 +23,9 @@ transformed data {
   real sig_constr;
   real center_log_g;
   
-  low_constr = log_g_min + 0.7;
-  high_constr = log_g_max - 0.7;
-  sig_constr = 0.6;
+  low_constr = log_g_min + 0.5;
+  high_constr = log_g_max - 0.5;
+  sig_constr = 0.5;
   
   center_log_g = (log_g_min + log_g_max)/2;
   
