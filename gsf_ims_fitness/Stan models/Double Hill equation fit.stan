@@ -99,6 +99,9 @@ model {
   target += log1m(erf((log_g_min + 0.9 - log_high_level)/log_g_prior_scale));
   target += log1m(erf((log_high_level - log_g_max + 0.9)/log_g_prior_scale));
   
+  // noise scale, prior to keep it from getting too much < 1
+  sigma ~ inv_gamma(3, 6);
+  
   y ~ normal(mean_y, sigma*y_err);
 
 }
