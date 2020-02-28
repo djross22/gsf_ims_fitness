@@ -534,7 +534,7 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2020-02-27a")
+        print("      Version from 2020-02-28")
         #os.chdir(self.notebook_dir)
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
@@ -598,12 +598,12 @@ class BarSeqFitnessFrame:
                 log_g_min = 1.2
                 log_g_max = 5.4
                 log_g_prior_scale = 0.15
-                wild_type_ginf = 691.260519716633
+                wild_type_ginf = 2.44697108e+04
             else:
                 log_g_min = 1
                 log_g_max = 4.5
                 log_g_prior_scale = 0.3
-                wild_type_ginf = 100
+                wild_type_ginf = 1839
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
@@ -620,7 +620,7 @@ class BarSeqFitnessFrame:
                 stan_resid = np.median(stan_fit["rms_resid"])
                 stan_samples_out = np.array([stan_samples[key][::71,:].flatten() for key in params_list ])
                 stan_quantiles = np.array([np.quantile(stan_samples[key], quantile_list) for key in quantile_params_list ])
-                low_samples = stan_samples_arr[log_low_ind]
+                low_samples = 10**stan_samples_arr[log_low_ind]
                 hill_on_at_zero_prob = len(low_samples[low_samples>wild_type_ginf/4])/len(low_samples)
                 high_low_samples = stan_samples_arr[log_high_low_ind]
                 hill_invert_prob = len(high_low_samples[high_low_samples<0])/len(high_low_samples)
