@@ -25,7 +25,7 @@ transformed data {
   
   low_constr = log_g_min + 0.5;
   high_constr = log_g_max - 0.5;
-  sig_constr = 0.5;
+  sig_constr = 0.9;
   
   center_log_g = (log_g_min + log_g_max)/2;
   
