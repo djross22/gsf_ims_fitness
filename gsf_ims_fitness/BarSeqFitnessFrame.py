@@ -708,6 +708,7 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
+        print("      Version from 2020-03-02")
         
         stan_model = stan_utility.compile_model(stan_GP_model)
         
