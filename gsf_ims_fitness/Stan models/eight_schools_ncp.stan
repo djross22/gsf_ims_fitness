@@ -17,8 +17,8 @@ transformed parameters {
 }
 
 model {
-  mu ~ normal(0, 5);
-  tau ~ cauchy(0, 5);
+  mu ~ normal(0, 1);
+  tau ~ normal(0.5, 1);
   theta_tilde ~ normal(0, 1);
   y ~ normal(theta, sigma);
 }
