@@ -530,7 +530,8 @@ class BarSeqFitnessFrame:
                                       chains=4,
                                       auto_save=True,
                                       refit_index=None,
-                                      plasmid="pVER"):
+                                      plasmid="pVER",
+                                      return_fit=False):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
@@ -580,7 +581,7 @@ class BarSeqFitnessFrame:
         
         
 
-        def stan_fit_row(st_row, st_index):
+        def stan_fit_row(st_row, st_index, return_fit=False):
             print()
             print(f"fitting row index: {st_index}")
             initial = "b"
@@ -612,6 +613,8 @@ class BarSeqFitnessFrame:
                 stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
+                if return_fit:
+                    return stan_fit
                 stan_samples = stan_fit.extract(permuted=False, pars=params_list)
         
                 stan_samples_arr = np.array([stan_samples[key].flatten() for key in params_list ])
@@ -667,6 +670,8 @@ class BarSeqFitnessFrame:
             barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
         else:
             row_to_fit = barcode_frame.loc[refit_index]
+            if return_fit:
+                return stan_fit_row(row_to_fit, refit_index, return_fit=True)
             stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = stan_fit_row(row_to_fit, refit_index)
             arr_1 = barcode_frame.loc[refit_index, "sensor_params"]
             print(f"old: {arr_1}")
