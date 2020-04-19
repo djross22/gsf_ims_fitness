@@ -1435,7 +1435,8 @@ class BarSeqFitnessFrame:
                             ylim = None,
                             show_fits=True,
                             show_GP=False,
-                            log_g_scale=False):
+                            log_g_scale=False,
+                            box_size=8):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -1499,14 +1500,14 @@ class BarSeqFitnessFrame:
         
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
             if show_GP:
-                plt.rcParams["figure.figsize"] = [16,12]
+                plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
                 fig, axs_grid = plt.subplots(2, 2)
                 axl = axs_grid.flatten()[0]
                 axr = axs_grid.flatten()[2]
                 axg = axs_grid.flatten()[1]
                 axdg = axs_grid.flatten()[3]
             else:
-                plt.rcParams["figure.figsize"] = [16,6]
+                plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/4]
                 fig, axs_grid = plt.subplots(1, 2)
                 axl = axs_grid.flatten()[0]
                 axr = axs_grid.flatten()[1]
@@ -1791,7 +1792,7 @@ class BarSeqFitnessFrame:
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None, in_alpha=0.7,
                          error_bars=True, log_high_err_cutoff=0.71, legend=True,
-                         everything_color=None):
+                         everything_color=None, box_size=8):
         
         if in_labels is None:
             in_labels = [""] * len (input_frames)
@@ -1802,7 +1803,7 @@ class BarSeqFitnessFrame:
         if everything_color is None:
             everything_color = fitness.gray_out("xkcd:tea green", s_factor=0.7, v_factor=0.8)
             
-        plt.rcParams["figure.figsize"] = [16, 16]
+        plt.rcParams["figure.figsize"] = [2*box_size, 2*box_size]
         fig, axs_grid = plt.subplots(2, 2)
         axs = axs_grid.flatten()
     
