@@ -781,5 +781,26 @@ def fitness_scale():
 def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
     return colors.hsv_to_rgb(hsv_color)
+
+def fit_fitness_difference_params(plasmid="pVER"):
+    if plasmid == "pVER":
+        params = np.array([-0.72246,  13328,  3.2374])
+    else:
+        params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
+        
+    return params
+
+def log_g_limits(plasmid="pVER"):
+    if plasmid == "pVER":
+        log_g_min = 1.2
+        log_g_max = 5.4
+        log_g_prior_scale = 0.15
+        wild_type_ginf = 2.44697108e+04
+    else:
+        log_g_min = 1
+        log_g_max = 4.5
+        log_g_prior_scale = 0.3
+        wild_type_ginf = 1839
     
+    return (log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf)
         

@@ -540,10 +540,7 @@ class BarSeqFitnessFrame:
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
         if fit_fitness_difference_params is None:
-            if plasmid == "pVER":
-                fit_fitness_difference_params = np.array([-0.72246,  13328,  3.2374])
-            else:
-                fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
+            fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid)
         
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
@@ -595,16 +592,8 @@ class BarSeqFitnessFrame:
             
             valid = ~(np.isnan(y) | np.isnan(s))
             
-            if plasmid == "pVER":
-                log_g_min = 1.2
-                log_g_max = 5.4
-                log_g_prior_scale = 0.15
-                wild_type_ginf = 2.44697108e+04
-            else:
-                log_g_min = 1
-                log_g_max = 4.5
-                log_g_prior_scale = 0.3
-                wild_type_ginf = 1839
+            log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+            
             stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
@@ -718,10 +707,7 @@ class BarSeqFitnessFrame:
         stan_model = stan_utility.compile_model(stan_GP_model)
         
         if fit_fitness_difference_params is None:
-            if plasmid == "pVER":
-                fit_fitness_difference_params = np.array([-0.72246,  13328,  3.2374])
-            else:
-                fit_fitness_difference_params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
+            fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid)
         
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
@@ -753,12 +739,7 @@ class BarSeqFitnessFrame:
         if "sensor_GP_cov" not in barcode_frame.columns:
             barcode_frame["sensor_GP_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
         
-        if plasmid == "pVER":
-            log_g_min = 1.2 + 0.1
-            log_g_max = 5.4 - 0.2
-        else:
-            log_g_min = 1
-            log_g_max = 4.5
+        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
 
         def stan_fit_row(st_row, st_index):
             print()
