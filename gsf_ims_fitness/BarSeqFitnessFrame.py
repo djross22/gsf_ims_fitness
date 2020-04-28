@@ -1870,7 +1870,7 @@ class BarSeqFitnessFrame:
         frame = frame[frame["good_hill_fit_points"]>=num_good_hill_points]
         
         if exclude_mut_regions is None:
-            exclude_mut_regions = ["KAN", "Ori", "tetA", "YFP"]
+            exclude_mut_regions = ["KAN", "Ori", "tetA", "YFP", "insulator"]
             
         for reg in exclude_mut_regions:
             frame = frame[frame["pacbio_" + reg + "_mutations"]<=0]
