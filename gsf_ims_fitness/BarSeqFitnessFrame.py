@@ -1789,18 +1789,20 @@ class BarSeqFitnessFrame:
         axs = axs_grid.flatten()
     
         param_names = ["Low Level", "High Level", "High Low Level Ratio", "n"]
+        param_labels = ["G0", "Ginf", "Ginf/G0", "n"]
     
-        x_label = f'IC50'
+        x_param = f'IC50'
+        x_label = 'EC50'
         x_err_label = f'IC50 error'
     
         # This part plots the input input_frames
         for input_frame, c, lab in zip(input_frames, in_colors, in_labels):
-            for ax, name in zip(axs, param_names):
-                y_label = f'{name}'
+            for ax, name, y_label in zip(axs, param_names, param_labels):
+                y_param = f'{name}'
                 y_err_label = f'{name} error'
         
-                params_x = input_frame[x_label]
-                params_y = input_frame[y_label]
+                params_x = input_frame[x_param]
+                params_y = input_frame[y_param]
                 err_x = input_frame[x_err_label]
                 err_y = input_frame[y_err_label]
                 
@@ -1815,11 +1817,11 @@ class BarSeqFitnessFrame:
         plot_frame = self.barcode_frame[3:]
         plot_frame = plot_frame[plot_frame["total_counts"]>3000]
         plot_frame = plot_frame[plot_frame["log_high_level error"]<log_high_err_cutoff]
-        for ax, name in zip(axs, param_names):
-            y_label = f'{name}'
+        for ax, name, y_label in zip(axs, param_names, param_labels):
+            y_param = f'{name}'
     
-            params_x = plot_frame[x_label]
-            params_y = plot_frame[y_label]
+            params_x = plot_frame[x_param]
+            params_y = plot_frame[y_param]
             
             ax.set_xscale("log");
             xlim = ax.get_xlim()
@@ -1831,7 +1833,7 @@ class BarSeqFitnessFrame:
             ax.set_ylabel(y_label, size=20)
             ax.tick_params(labelsize=16);
             
-            if y_label!="n":
+            if y_param!="n":
                 ax.set_yscale("log")
         
         if legend:
