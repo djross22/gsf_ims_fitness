@@ -531,11 +531,12 @@ class BarSeqFitnessFrame:
                                       auto_save=True,
                                       refit_index=None,
                                       plasmid="pVER",
-                                      return_fit=False):
+                                      return_fit=False,
+                                      include_lactose_zero=False):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2020-02-28")
+        print("      Version from 2020-05-20")
         #os.chdir(self.notebook_dir)
         stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
@@ -590,16 +591,25 @@ class BarSeqFitnessFrame:
             y = (y_high - y_low)/y_low
             s = np.sqrt( s_high**2 + s_low**2 )/y_low
             
+            if include_lactose_zero:
+                print(f"      including zero lactose data for {st_index}")
+                y = np.insert(y, 0, st_row['lactose_fitness_diff'])
+                s = np.insert(s, 0, st_row['lactose_fitness_err'])
+                x_fit = np.insert(x, 0, 0)
+            else:
+                x_fit = x
+    
+            
             valid = ~(np.isnan(y) | np.isnan(s))
             
             log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
             
-            stan_data = dict(x=x[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
+            stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
         
             try:
-                stan_init = [ init_stan_fit(x[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
+                stan_init = [ init_stan_fit(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 if return_fit:
