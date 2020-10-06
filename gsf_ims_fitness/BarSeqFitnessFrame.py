@@ -1798,38 +1798,45 @@ class BarSeqFitnessFrame:
         fig, axs_grid = plt.subplots(2, 2)
         axs = axs_grid.flatten()
     
-        param_names = ["Low Level", "High Level", "High Low Level Ratio", "n"]
+        y_label_list = ["Low Level", "High Level", "High Low Level Ratio", "n"]
+        param_names = ["log_low_level", "log_high_level", "log_high_low_ratio", "log_n"]
     
         x_label = f'IC50'
-        x_err_label = f'IC50 error'
+        x_param = f'log_ic50'
+        x_err_label = f'log_ic50 error'
     
         # This part plots the input input_frames
         for input_frame, c, lab in zip(input_frames, in_colors, in_labels):
             for ax, name in zip(axs, param_names):
-                y_label = f'{name}'
                 y_err_label = f'{name} error'
         
-                params_x = input_frame[x_label]
-                params_y = input_frame[y_label]
+                params_x = input_frame[x_param]
+                params_y = input_frame[name]
                 err_x = input_frame[x_err_label]
                 err_y = input_frame[y_err_label]
                 
                 if error_bars:
-                    ax.errorbar(params_x, params_y, yerr=err_y, xerr=err_x, fmt="o", ms=4, color=c,
+                    yerr = err_y
+                    xerr = err_x
+                    xerr = log_plot_errorbars(params_x, xerr)
+                    yerr = log_plot_errorbars(params_y, yerr)
+                    #xerr = np.array([xerr]).transpose()
+                    #yerr = np.array([yerr]).transpose()
+                
+                    ax.errorbar(10**params_x, 10**params_y, yerr=yerr, xerr=xerr, fmt="o", ms=4, color=c,
                                 label=lab, alpha=in_alpha);
                 else:
-                    ax.plot(params_x, params_y, "o", ms=4, color=c,
+                    ax.plot(10**params_x, 10**params_y, "o", ms=4, color=c,
                             label=lab, alpha=in_alpha);
     
         # This part plots all the rest
         plot_frame = self.barcode_frame[3:]
         plot_frame = plot_frame[plot_frame["total_counts"]>3000]
         plot_frame = plot_frame[plot_frame["log_high_level error"]<log_high_err_cutoff]
-        for ax, name in zip(axs, param_names):
-            y_label = f'{name}'
-    
-            params_x = plot_frame[x_label]
-            params_y = plot_frame[y_label]
+        for ax, name, y_label in zip(axs, param_names, y_label_list):
+            
+            params_x = 10**plot_frame[x_param]
+            params_y = 10**plot_frame[name]
             
             ax.set_xscale("log");
             xlim = ax.get_xlim()
@@ -1896,6 +1903,14 @@ def plot_colors12():
         for i in range(8):
             p_c12.append(c)
     return p_c12
+
+def log_plot_errorbars(log_mu, log_sig):
+    mu = np.array(10**log_mu)
+    mu_low = np.array(10**(log_mu - log_sig))
+    mu_high = np.array(10**(log_mu + log_sig))
+    sig_low = mu - mu_low
+    sig_high = mu_high - mu
+    return np.array([sig_low, sig_high])
                 
 def hill_funct(x, low, high, mid, n):
     return low + (high-low)*( x**n )/( mid**n + x**n )
