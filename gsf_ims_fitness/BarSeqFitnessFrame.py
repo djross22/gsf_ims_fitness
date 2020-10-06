@@ -1798,10 +1798,10 @@ class BarSeqFitnessFrame:
         fig, axs_grid = plt.subplots(2, 2)
         axs = axs_grid.flatten()
     
-        y_label_list = ["Low Level", "High Level", "High Low Level Ratio", "n"]
+        y_label_list = ["G0", "Ginf", "Ginf/G0", "n"]
         param_names = ["log_low_level", "log_high_level", "log_high_low_ratio", "log_n"]
     
-        x_label = f'IC50'
+        x_label = f'EC50'
         x_param = f'log_ic50'
         x_err_label = f'log_ic50 error'
     
