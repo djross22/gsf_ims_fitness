@@ -1274,7 +1274,7 @@ class BarSeqFitnessFrame:
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
         x = inducer_conc_list
-        linthreshx = min([i for i in inducer_conc_list if i>0])
+        linthresh = min([i for i in inducer_conc_list if i>0])
         
         fit_plot_colors = sns.color_palette()
         
@@ -1298,8 +1298,8 @@ class BarSeqFitnessFrame:
                     barcode_str += row['reverse_BC'] + " "
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
                             transform=ax.transAxes, fontsize=13, fontfamily="Courier New")
-                    ax.set_xscale('symlog', linthreshx=linthreshx)
-                    ax.set_xlim(-linthreshx/10, 2*max(x));
+                    ax.set_xscale('symlog', linthresh=linthresh)
+                    ax.set_xlim(-linthresh/10, 2*max(x));
                     ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
                     ax.set_ylabel('Fitness (log(10)/plate)', size=14)
                     ax.tick_params(labelsize=12);
@@ -1373,7 +1373,7 @@ class BarSeqFitnessFrame:
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
         x = inducer_conc_list
-        linthreshx = min([i for i in inducer_conc_list if i>0])
+        linthresh = min([i for i in inducer_conc_list if i>0])
         
         fit_plot_colors = sns.color_palette()
         
@@ -1397,14 +1397,14 @@ class BarSeqFitnessFrame:
                     barcode_str += row['reverse_BC'] + " "
                     ax.text(x=1., y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
                             transform=ax.transAxes, fontsize=13, fontfamily="Courier New")
-                    ax.set_xscale('symlog', linthreshx=linthreshx)
-                    ax.set_xlim(-linthreshx/10, 2*max(x));
+                    ax.set_xscale('symlog', linthresh=linthresh)
+                    ax.set_xlim(-linthresh/10, 2*max(x));
                     ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
                     ax.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
                     ax.tick_params(labelsize=12);
                     
             if show_fits:
-                x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
+                x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
                 x_fit = np.insert(x_fit, 0, 0)
                 params = row["sensor_params"]
                 y_fit = fit_funct(x_fit, *params)
@@ -1485,7 +1485,7 @@ class BarSeqFitnessFrame:
         #plot fitness curves
         
         x = inducer_conc_list
-        linthreshx = min([i for i in inducer_conc_list if i>0])
+        linthresh = min([i for i in inducer_conc_list if i>0])
         
         fit_plot_colors = sns.color_palette()
         
@@ -1507,8 +1507,8 @@ class BarSeqFitnessFrame:
             plt.subplots_adjust(hspace = .35)
             
             for ax in axs_grid.flatten():
-                ax.set_xscale('symlog', linthreshx=linthreshx)
-                ax.set_xlim(-linthreshx/7, 1.5*max(x));
+                ax.set_xscale('symlog', linthresh=linthresh)
+                ax.set_xlim(-linthresh/7, 1.5*max(x));
                 ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
             
             for initial in ["b", "e"]:
@@ -1548,7 +1548,7 @@ class BarSeqFitnessFrame:
                     axr.tick_params(labelsize=12);
                     
             if show_fits:
-                x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
+                x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
                 x_fit = np.insert(x_fit, 0, 0)
                 params = row["sensor_params"]
                 y_fit = fit_funct(x_fit, *params)
@@ -1576,7 +1576,7 @@ class BarSeqFitnessFrame:
                     axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=fit_plot_colors[3]);
                     
                 # Also plot Hill fit result for g
-                x_fit = np.logspace(np.log10(linthreshx/10), np.log10(2*max(x)))
+                x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
                 x_fit = np.insert(x_fit, 0, 0)
                 hill_params = 10**row["sensor_params"][:4]
                 axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
