@@ -1,5 +1,5 @@
 """
-Downloaded from github.com/betanalpha/jupyter_case_studies
+This code was downloaded from github.com/betanalpha/jupyter_case_studies
 on Mon July 2, 2018
 
 Associated license.txt file contents:
