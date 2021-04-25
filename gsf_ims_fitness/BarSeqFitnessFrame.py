@@ -1234,7 +1234,12 @@ class BarSeqFitnessFrame:
                             inducer=None,
                             include_ref_seqs=True,
                             includeChimeras=False,
-                            ylim = None):
+                            ylim=None,
+                            plot_size=[8, 6],
+                            fontsize=13,
+                            ax_label_size=14,
+                            show_bc_str=True,
+                            real_fitness_units=False):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -1257,6 +1262,13 @@ class BarSeqFitnessFrame:
         if inducer is None:
             inducer = self.inducer
             
+        if real_fitness_units:
+            fit_scale = fitness.fitness_scale()
+            fit_units = '1/h'
+        else:
+            fit_scale = 1
+            fit_units = 'log(10)/plate'
+            
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
         
@@ -1267,7 +1279,7 @@ class BarSeqFitnessFrame:
         
         #plot fitness curves
         num_plot_rows = int(np.round(len(barcode_frame)/2 + 0.1))
-        plt.rcParams["figure.figsize"] = [16,6*num_plot_rows]
+        plt.rcParams["figure.figsize"] = [2*plot_size[0],plot_size[1]*num_plot_rows]
         fig, axs_grid = plt.subplots(num_plot_rows, 2)
         plt.subplots_adjust(hspace = .35)
         axs = axs_grid.flatten()
@@ -1280,12 +1292,12 @@ class BarSeqFitnessFrame:
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial in ["b", "e"]:
-                y = row[f"fitness_{low_tet}_estimate_{initial}"]
-                s = row[f"fitness_{low_tet}_err_{initial}"]
+                y = row[f"fitness_{low_tet}_estimate_{initial}"]*fit_scale
+                s = row[f"fitness_{low_tet}_err_{initial}"]*fit_scale
                 fill_style = "full" if initial=="b" else "none"
                 ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
-                y = row[f"fitness_{high_tet}_estimate_{initial}"]
-                s = row[f"fitness_{high_tet}_err_{initial}"]
+                y = row[f"fitness_{high_tet}_estimate_{initial}"]*fit_scale
+                s = row[f"fitness_{high_tet}_err_{initial}"]*fit_scale
                 ax.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
                 if ylim is not None:
                     ax.set_ylim(ylim);
@@ -1293,22 +1305,26 @@ class BarSeqFitnessFrame:
                 if initial == "b":
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
-                    barcode_str += row['RS_name'] + ": "
-                    barcode_str += row['forward_BC'] + ",\n"
-                    barcode_str += row['reverse_BC'] + " "
+                    barcode_str += row['RS_name']
+                    if show_bc_str:
+                        barcode_str += ": " + row['forward_BC'] + ",\n"
+                        barcode_str += row['reverse_BC'] + " "
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
-                            transform=ax.transAxes, fontsize=13, fontfamily="Courier New")
+                            transform=ax.transAxes, fontsize=fontsize, fontfamily="Courier New")
                     ax.set_xscale('symlog', linthresh=linthresh)
                     ax.set_xlim(-linthresh/10, 2*max(x));
-                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
-                    ax.set_ylabel('Fitness (log(10)/plate)', size=14)
-                    ax.tick_params(labelsize=12);
+                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=ax_label_size)
+                    ax.set_ylabel(f'Growth Rate ({fit_units})', size=ax_label_size)
+                    ax.tick_params(labelsize=ax_label_size-2);
             
         if save_plots:
             pdf.savefig()
     
         if save_plots:
             pdf.close()
+            
+        return fig, axs_grid
+        
     
     def plot_fitness_difference_curves(self,
                                        save_plots=False,
