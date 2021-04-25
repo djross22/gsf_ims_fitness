@@ -8,26 +8,11 @@ data {
   vector[N] y_err;       // estimated error of gene expression at each concentration
   real log_g_min;        // lower bound on log_low_level and log_high_level
   real log_g_max;        // upper bound on log_low_level and log_high_level
+  real log_x_min;
+  real log_x_max;
 }
 
 transformed data {
-  real x_min;
-  real x_max;
-  real log_x_min;
-  real log_x_max;
-  
-  x_max = max(x);
-  x_min = x_max;
-  for (i in 1:N) {
-    if (x[i]>0) {
-      if (x[i]<x_min) {
-	    x_min = x[i];
-	  }
-	}
-  }
-  
-  log_x_max = log10(x_max) + 1.289;
-  log_x_min = log10(x_min) - 1.3;
   
 }
 
