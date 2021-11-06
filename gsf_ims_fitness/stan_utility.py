@@ -70,7 +70,7 @@ def check_energy(fit):
     return no_warning
 
 
-def check_n_eff(fit, ratio_threshold=0.001):
+def check_n_eff(fit, ratio_threshold=0.001, verbose=True):
     """Checks the effective sample size per iteration"""
     fit_summary = fit.summary(probs=[0.5])
     n_effs = [x[4] for x in fit_summary['summary']]
@@ -81,16 +81,16 @@ def check_n_eff(fit, ratio_threshold=0.001):
     for n_eff, name in zip(n_effs, names):
         ratio = n_eff / n_iter
         if (ratio < ratio_threshold):
-            print('n_eff / iter for parameter {} is {}!'.format(name, ratio))
+            if verbose: print('n_eff / iter for parameter {} is {}!'.format(name, ratio))
             no_warning = False
     if no_warning:
-        print('n_eff / iter looks reasonable for all parameters')
+        if verbose: print('n_eff / iter looks reasonable for all parameters')
     else:
-        print('  n_eff / iter below 0.001 indicates that the effective sample size has likely been overestimated')
+        if verbose: print('  n_eff / iter below 0.001 indicates that the effective sample size has likely been overestimated')
     return no_warning
 
 
-def check_rhat(fit, rhat_threshold=1.1):
+def check_rhat(fit, rhat_threshold=1.1, verbose=True):
     """Checks the potential scale reduction factors"""
     from math import isnan
     from math import isinf
@@ -102,12 +102,12 @@ def check_rhat(fit, rhat_threshold=1.1):
     no_warning = True
     for rhat, name in zip(rhats, names):
         if (rhat > rhat_threshold or isnan(rhat) or isinf(rhat)):
-            print('Rhat for parameter {} is {}!'.format(name, rhat))
+            if verbose: print('Rhat for parameter {} is {}!'.format(name, rhat))
             no_warning = False
     if no_warning:
-        print('Rhat looks reasonable for all parameters')
+        if verbose: print('Rhat looks reasonable for all parameters')
     else:
-        print('  Rhat above 1.1 indicates that the chains very likely have not mixed')
+        if verbose: print('  Rhat above 1.1 indicates that the chains very likely have not mixed')
     return no_warning
 
 
