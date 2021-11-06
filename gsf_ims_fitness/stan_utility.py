@@ -6,12 +6,12 @@ Associated license.txt file contents:
     The code in this repository is copyrighted by Columbia University and licensed under the new BSD (3-clause) license:
 
       https://opensource.org/licenses/BSD-3-Clause
-    
-    The text in this repository is copyrighted by Michael Betancourt and licensed under the CC BY-NC 4.0 license: 
-    
+
+    The text in this repository is copyrighted by Michael Betancourt and licensed under the CC BY-NC 4.0 license:
+
       https://creativecommons.org/licenses/by-nc/4.0/
-    
-    
+
+
 """
 
 import pystan
@@ -87,6 +87,7 @@ def check_n_eff(fit, ratio_threshold=0.001):
         print('n_eff / iter looks reasonable for all parameters')
     else:
         print('  n_eff / iter below 0.001 indicates that the effective sample size has likely been overestimated')
+    return no_warning
 
 
 def check_rhat(fit, rhat_threshold=1.1):
@@ -107,6 +108,7 @@ def check_rhat(fit, rhat_threshold=1.1):
         print('Rhat looks reasonable for all parameters')
     else:
         print('  Rhat above 1.1 indicates that the chains very likely have not mixed')
+    return no_warning
 
 
 def check_all_diagnostics(fit, max_depth=10):
@@ -158,7 +160,7 @@ def compile_model(filename, model_name=None, **kwargs):
 
     See http://pystan.readthedocs.io/en/latest/avoiding_recompilation.html"""
     from hashlib import md5
-    
+
     return_directory = os.getcwd()
     os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
 
@@ -177,7 +179,7 @@ def compile_model(filename, model_name=None, **kwargs):
                 pickle.dump(sm, f)
         else:
             print("Using cached StanModel")
-            
+
         os.chdir(return_directory)
-        
+
         return sm
