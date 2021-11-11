@@ -69,10 +69,10 @@ model {
   }
   
   // Priors on params
-  log_k_a ~ normal(2.61, 3);
-  log_k_i ~ normal(0.67, 3);
-  delta_eps_AI ~ normal(0.4, 6);
-  delta_eps_RA ~ normal(-15.5, 6);
+  log_k_a ~ normal(2.61, 2.5);
+  log_k_i ~ normal(0.67, 2.5);
+  delta_eps_AI ~ normal(0.4, 5);
+  delta_eps_RA ~ normal(-15.5, 5);
   log_g_max ~ normal(log10(y_max), 0.05);
   
   log_rep_ratio ~ normal(0, 0.015);
