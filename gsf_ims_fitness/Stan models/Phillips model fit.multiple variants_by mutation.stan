@@ -66,7 +66,7 @@ parameters {
   
   real<lower=0> sigma;  // scale factor for standard deviation of noise in y
   
-  vector<lower=-0.03, upper=0.03>[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
+  vector<lower=-0.06, upper=0.06>[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
   vector<lower=-50, upper=50>[num_reps] rep_offset;         // offset for different replicates
 }
 
