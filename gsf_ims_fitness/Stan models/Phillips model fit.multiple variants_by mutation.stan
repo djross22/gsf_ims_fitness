@@ -135,13 +135,6 @@ model {
     c3 = R/N_NS * exp(-delta_eps_RA_var[variant[i]]);
 	
     mean_y[i] = g_max*rep_ratio[rep[i]]/(1 + (c1/(c1+c2))*c3) + rep_offset[rep[i]];
-	
-	print("i: ", i);
-	print("c1: ", c1);
-	print("c2: ", c2);
-	print("c3: ", c3);
-	print("mean_y[i]: ", mean_y[i]);
-	print("")
   }
   
   // Priors on params
