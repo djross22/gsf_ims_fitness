@@ -17,6 +17,7 @@ data {
   
   int<lower=1> num_mut;  // number of differrent mutations
   int<lower=0, upper=1> mut_code[num_var-1, num_mut];   // one-hot encoding for  presense of mutations in each variant; variant 0 (WT) has no mutations
+  real<lower=0> eps_RA_prior_scale[num_mut];   // scale multiplier for width of prior on operator binding free energy term (delta_eps_RA_mut) 
   
   real delta_prior_width; // width of prior on delta-parameters
   real epi_prior_width;   // width of prior on parameter epistasis
@@ -157,7 +158,9 @@ model {
   delta_eps_AI_mut ~ normal(0, delta_prior_width);
   delta_eps_AI_epi ~ normal(0, epi_prior_width);
   
-  delta_eps_RA_mut ~ normal(0, delta_prior_width);
+  for (mut in 1:num_mut) {
+    delta_eps_RA_mut[mut] ~ normal(0, delta_prior_width*eps_RA_prior_scale[mut]);
+  }
   delta_eps_RA_epi ~ normal(0, epi_prior_width);
   
   // prior on max output level
