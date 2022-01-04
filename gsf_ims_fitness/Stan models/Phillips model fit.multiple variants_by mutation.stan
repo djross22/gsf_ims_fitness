@@ -20,7 +20,9 @@ data {
   
   real delta_prior_width; // width of prior on delta-parameters
   real epi_prior_width;   // width of prior on parameter epistasis
-
+  
+  real rep_ratio_scale;   // parameter to set the scale for the half-normal prior on log_rep_ratio
+  real rep_offset_scale;  // parameter to set the scale for the half-normal prior on log_rep_ratio
 }
 
 transformed data {
@@ -66,8 +68,11 @@ parameters {
   
   real<lower=0> sigma;  // scale factor for standard deviation of noise in y
   
-  vector<lower=-0.06, upper=0.06>[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
-  vector<lower=-50, upper=50>[num_reps] rep_offset;         // offset for different replicates
+  vector<lower=-3*rep_ratio_scale, upper=3*rep_ratio_scale>[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
+  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;   // offset for different replicates
+  // hyper-paramters for log_rep_ratio and rep_offset
+  real<lower=0> rep_ratio_sigma;
+  real<lower=0> rep_offset_sigma;
 }
 
 transformed parameters {
@@ -137,7 +142,7 @@ model {
     mean_y[i] = g_max*rep_ratio[rep[i]]/(1 + (c1/(c1+c2))*c3) + rep_offset[rep[i]];
   }
   
-  // Priors on params
+  // priors on free energy params
   log_k_a_wt ~ normal(2.14, 0.3);
   log_k_i_wt ~ normal(-0.28, 0.3);
   delta_eps_AI_wt ~ normal(4.5, 0.6);
@@ -155,11 +160,18 @@ model {
   delta_eps_RA_mut ~ normal(0, delta_prior_width);
   delta_eps_RA_epi ~ normal(0, epi_prior_width);
   
+  // prior on max output level
   log_g_max ~ normal(log10(y_max), 0.05);
   
-  log_rep_ratio ~ normal(0, 0.015);
-  rep_offset ~ normal(0, 25);
+  // priors on scale hyper-paramters for log_rep_ratio and rep_offset
+  rep_ratio_sigma ~ normal(0, rep_ratio_scale);
+  rep_offset_sigma ~ normal(0, rep_offset_scale);
   
+  // priors on log_rep_ratio and rep_offset
+  log_rep_ratio ~ normal(0, rep_ratio_sigma);
+  rep_offset ~ normal(0, rep_offset_sigma);
+  
+  // model of the data (dose-response curve with noise)
   y ~ normal(mean_y, sigma*y_err);
 
 }
