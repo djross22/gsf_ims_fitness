@@ -96,6 +96,12 @@ transformed parameters {
       delta_eps_AI_var[var] = delta_eps_AI_wt + delta_eps_AI_epi[var-num_non_epi_var];
       delta_eps_RA_var[var] = delta_eps_RA_wt + delta_eps_RA_epi[var-num_non_epi_var];
 	}
+    else {
+      log_k_a_var[var] = log_k_a_wt;
+      log_k_i_var[var] = log_k_i_wt;
+      delta_eps_AI_var[var] = delta_eps_AI_wt;
+      delta_eps_RA_var[var] = delta_eps_RA_wt;
+	}
 	
 	for (mut in 1:num_mut) {
 	  log_k_a_var[var] += mut_code[var-1, mut]*log_k_a_mut[mut];
@@ -129,6 +135,13 @@ model {
     c3 = R/N_NS * exp(-delta_eps_RA_var[variant[i]]);
 	
     mean_y[i] = g_max*rep_ratio[rep[i]]/(1 + (c1/(c1+c2))*c3) + rep_offset[rep[i]];
+	
+	print("i: ", i);
+	print("c1: ", c1);
+	print("c2: ", c2);
+	print("c3: ", c3);
+	print("mean_y[i]: ", mean_y[i]);
+	print("")
   }
   
   // Priors on params
