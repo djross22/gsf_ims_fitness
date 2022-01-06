@@ -149,11 +149,11 @@ model {
   delta_eps_AI_wt ~ normal(4.5, 0.6);
   delta_eps_RA_wt ~ normal(-13.9, 3);
   
-  log_k_a_mut ~ normal(0, delta_prior_width/2);
-  log_k_a_epi ~ normal(0, epi_prior_width);
+  log_k_a_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
+  log_k_a_epi ~ normal(0, epi_prior_width/2.3);
   
-  log_k_i_mut ~ normal(0, delta_prior_width/2);
-  log_k_i_epi ~ normal(0, epi_prior_width);
+  log_k_i_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
+  log_k_i_epi ~ normal(0, epi_prior_width/2.3);
   
   delta_eps_AI_mut ~ normal(0, delta_prior_width);
   delta_eps_AI_epi ~ normal(0, epi_prior_width);
