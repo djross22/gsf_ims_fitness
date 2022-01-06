@@ -164,7 +164,7 @@ model {
   delta_eps_RA_epi ~ normal(0, epi_prior_width);
   
   // prior on max output level
-  log_g_max ~ normal(log10(y_max), 0.05);
+  log_g_max ~ normal(log10(y_max), 0.5);
   
   // priors on scale hyper-paramters for log_rep_ratio and rep_offset
   rep_ratio_sigma ~ normal(0, rep_ratio_scale);
