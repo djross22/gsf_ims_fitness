@@ -37,7 +37,7 @@ transformed data {
   int num_non_epi_var;  // number of variants with less than two mutations
   
   hill_n = 2;
-  N_NS = 4600000;
+  N_NS = 3*4600000;
   
   x_out[1] = 0;
   for (i in 2:16) {
