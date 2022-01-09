@@ -5,3 +5,5 @@ __pycache__
 gsf_ims_fitness.egg-info/**
 notebooks/.ipynb_checkpoints/**
 *pkl
+
+*.bak
