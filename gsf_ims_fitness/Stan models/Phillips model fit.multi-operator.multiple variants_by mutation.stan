@@ -36,14 +36,14 @@ data {
 transformed data {
   real hill_n;
   real N_NS;
-  vector[16] x_out;
+  vector[19] x_out;
   int num_non_epi_var;  // number of variants with less than two mutations
   
   hill_n = 2;
   N_NS = 3*4600000;
   
   x_out[1] = 0;
-  for (i in 2:16) {
+  for (i in 2:19) {
     x_out[i] = 2^(i-2);
   }
   
@@ -208,7 +208,7 @@ model {
 
 generated quantities {
   // Local variables
-  real y_out[num_var, 16];
+  real y_out[num_var, 19];
   real mean_offset;
   real geo_mean_ratio;
   
@@ -216,7 +216,7 @@ generated quantities {
   geo_mean_ratio = 10^mean(log_rep_ratio);
   
   for (var in 1:num_var) {
-    for (i in 1:16) {
+    for (i in 1:19) {
       real c1;
       real c2;
       real pA;
