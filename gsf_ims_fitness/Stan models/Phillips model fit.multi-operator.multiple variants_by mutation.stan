@@ -6,7 +6,9 @@ data {
   vector[N] x;           // inducer concentration
   vector[N] y;           // gene expression (from cytometry) at each concentration
   vector[N] y_err;       // estimated error of gene expression at each concentration
-  real y_max;            // geometric mean for prior on maximum gene expression value
+  
+  real y_max;             // geometric mean for prior on maximum gene expression value
+  real g_max_prior_width; // geometric std for prior on maximum gene expression value
   
   real<lower=2> copy_num_prior_mean;  // geometric mean for prior on plasmid/operator copy number
   real<lower=1> R_prior_mean;         // geometric mean for prior on repressor dimer copy number
@@ -185,7 +187,7 @@ model {
   delta_eps_RA_epi ~ normal(0, epi_prior_width);
   
   // prior on max output level
-  log_g_max ~ normal(log10(y_max), 0.5);
+  log_g_max ~ normal(log10(y_max), g_max_prior_width);
   
   // priors on plasmid/operator and repressor dimer copy numbers
   log_copy_num ~ normal(log10(copy_num_prior_mean), copy_num_prior_width);
