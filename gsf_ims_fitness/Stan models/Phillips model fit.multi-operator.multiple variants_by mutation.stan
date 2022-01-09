@@ -215,15 +215,25 @@ generated quantities {
   
   for (var in 1:num_var) {
     for (i in 1:16) {
-	  real c1;
+      real c1;
       real c2;
-      real c3;
+      real pA;
+	  real xRA;
+	  real lam;
+	  real fold_change;
 	  
       c1 = (1 + x_out[i]/K_A[var])^hill_n;
       c2 = ( (1 + x_out[i]/K_I[var])^hill_n ) * exp(-delta_eps_AI_var[var]);
-      c3 = R/N_NS * exp(-delta_eps_RA_var[var]);
+	  pA = c1/(c1+c2);
+	  xRA = exp(-delta_eps_RA_var[var]);
 	
-      y_out[var, i] = g_max*geo_mean_ratio/(1 + (c1/(c1+c2))*c3) + mean_offset;
+	  lam = -N_NS + pA*R - N_S*xRA + pA*R*xRA;
+      lam = lam + sqrt(4*pA*R*xRA*(N_NS + N_S - pA*R) + (N_NS + N_S*xRA - pA*R*(1 + xRA))^2);
+      lam = lam/(2*xRA*(N_NS + N_S - pA*R));
+	
+      fold_change = 1/(1 + lam*xRA);
+	
+      y_out[var, i] = g_max*geo_mean_ratio*fold_change + mean_offset;
     }
   }
   
