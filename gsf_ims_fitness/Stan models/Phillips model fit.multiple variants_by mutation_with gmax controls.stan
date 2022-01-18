@@ -51,7 +51,6 @@ transformed data {
   }
   
   num_non_epi_var = num_var - num_epi_var;
-  vector[num_contr_reps] rep_ratio_contr;
 }
 
 parameters {
@@ -98,7 +97,9 @@ transformed parameters {
   vector[num_var] delta_eps_RA_var;
   
   real g_max;
+  
   vector[num_reps] rep_ratio;
+  vector[num_contr_reps] rep_ratio_contr;
   
   log_k_a_var[1] = log_k_a_wt;
   log_k_i_var[1] = log_k_i_wt;
