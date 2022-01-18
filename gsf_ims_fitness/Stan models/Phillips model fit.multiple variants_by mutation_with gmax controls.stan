@@ -149,11 +149,12 @@ model {
   // Local variables
   vector[N] mean_y;
   vector[N_contr] mean_y_contr;
-  real c1;
-  real c2;
-  real c3;
   
   for (i in 1:N) {
+    real c1;
+    real c2;
+    real c3;
+	
     c1 = (1 + x[i]/K_A[variant[i]])^hill_n;
     c2 = ( (1 + x[i]/K_I[variant[i]])^hill_n ) * exp(-delta_eps_AI_var[variant[i]]);
     c3 = R/N_NS * exp(-delta_eps_RA_var[variant[i]]);
