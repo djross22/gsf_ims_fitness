@@ -26,6 +26,7 @@ data {
   int<lower=0, upper=1> mut_code[num_var-1, num_mut];   // one-hot encoding for  presense of mutations in each variant; variant 0 (WT) has no mutations
   real<lower=0> eps_RA_prior_scale[num_mut];   // scale multiplier for width of prior on operator binding free energy term (delta_eps_RA_mut) 
   
+  real wt_prior_width;    // width of prior on wild-type free energy parameters
   real delta_prior_width; // width of prior on delta-parameters
   real epi_prior_width;   // width of prior on parameter epistasis
   
@@ -164,10 +165,10 @@ model {
   }
   
   // priors on free energy params
-  log_k_a_wt ~ normal(2.14, 0.3);
-  log_k_i_wt ~ normal(-0.28, 0.3);
-  delta_eps_AI_wt ~ normal(4.5, 0.6);
-  delta_eps_RA_wt ~ normal(-13.9, 3);
+  log_k_a_wt ~ normal(2.14, wt_prior_width/2.3);
+  log_k_i_wt ~ normal(-0.28, wt_prior_width/2.3);
+  delta_eps_AI_wt ~ normal(4.5, wt_prior_width);
+  delta_eps_RA_wt ~ normal(-13.9, wt_prior_width*5);
   
   log_k_a_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
   log_k_a_epi ~ normal(0, epi_prior_width/2.3);
