@@ -18,8 +18,9 @@ data {
   real g_max_prior_width; // geometric std for prior on maximum gene expression value
   
   real<lower=2> copy_num_prior_mean;  // geometric mean for prior on plasmid/operator copy number
+  real<lower=0> copy_num_prior_width; // geometric std for prior on plasmid/operator copy number
   real<lower=1> R_prior_mean;         // geometric mean for prior on repressor dimer copy number
-  real<lower=0> copy_num_prior_width; // geometric std for priors on plasmid/operator and repressor dimer copy numbers
+  real<lower=0> log_R_prior_width;    // geometric std for prior on repressor dimer copy number
   
   int rep[N];            // integer to indicate the measurement replicate
   int<lower=1> num_reps; // number of measurement replicates (for all variants)
@@ -220,7 +221,7 @@ model {
   
   // priors on plasmid/operator and repressor dimer copy numbers
   log_copy_num ~ normal(log10(copy_num_prior_mean), copy_num_prior_width);
-  log_R ~ normal(log10(R_prior_mean), copy_num_prior_width);
+  log_R ~ normal(log10(R_prior_mean), log_R_prior_width);
   
   // priors on scale hyper-paramters for log_rep_ratio and rep_offset
   rep_ratio_sigma ~ normal(0, rep_ratio_scale);
