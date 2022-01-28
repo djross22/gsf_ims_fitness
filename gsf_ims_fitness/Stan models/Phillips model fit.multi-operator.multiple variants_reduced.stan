@@ -118,6 +118,8 @@ transformed parameters {
   vector[num_var] delta_eps_AI_var;
   vector[num_var] delta_eps_RA_var;
   
+  vector[N] mean_y;
+  
   log_k_a_var[1] = log_k_a_wt;
   log_k_i_var[1] = log_k_i_wt;
   delta_eps_AI_var[1] = delta_eps_AI_wt;
@@ -151,13 +153,6 @@ transformed parameters {
     K_I[var] = 10^log_k_i_var[var];
   }
   
-}
-
-model {
-  // Local variables
-  vector[N] mean_y;
-  vector[N_contr] mean_y_contr;
-  
   for (i in 1:N) {
     real c1;
     real c2;
@@ -180,6 +175,9 @@ model {
     mean_y[i] = g_max*fold_change;
   }
   
+}
+
+model {
   // priors on free energy params
   log_k_a_wt ~ normal(log_k_a_wt_prior_mean, log_k_a_wt_prior_std);
   log_k_i_wt ~ normal(log_k_i_wt_prior_mean, log_k_i_wt_prior_std);

@@ -119,6 +119,9 @@ transformed parameters {
   vector[num_reps] rep_ratio;
   vector[num_contr_reps] rep_ratio_contr;
   
+  vector[N] mean_y;
+  vector[N_contr] mean_y_contr;
+  
   log_k_a_var[1] = log_k_a_wt;
   log_k_i_var[1] = log_k_i_wt;
   delta_eps_AI_var[1] = delta_eps_AI_wt;
@@ -163,13 +166,6 @@ transformed parameters {
     rep_ratio_contr[j] = 10^log_rep_ratio_contr[j];
   }
   
-}
-
-model {
-  // Local variables
-  vector[N] mean_y;
-  vector[N_contr] mean_y_contr;
-  
   for (i in 1:N) {
     real c1;
     real c2;
@@ -196,6 +192,9 @@ model {
     mean_y_contr[i] = g_max*rep_ratio_contr[rep_contr[i]] + rep_offset_contr[rep_contr[i]];
   }
   
+}
+
+model {
   // priors on free energy params
   log_k_a_wt ~ normal(log_k_a_wt_prior_mean, log_k_a_wt_prior_std);
   log_k_i_wt ~ normal(log_k_i_wt_prior_mean, log_k_i_wt_prior_std);
