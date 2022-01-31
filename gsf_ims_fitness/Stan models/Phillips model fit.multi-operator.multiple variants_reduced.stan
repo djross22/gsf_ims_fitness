@@ -33,6 +33,7 @@ data {
   int<lower=1> num_mut;  // number of differrent mutations
   int<lower=0, upper=1> mut_code[num_var-1, num_mut];   // one-hot encoding for  presense of mutations in each variant; variant 0 (WT) has no mutations
   real<lower=0> eps_RA_prior_scale[num_mut];   // scale multiplier for width of prior on operator binding free energy term (delta_eps_RA_mut) 
+  real<lower=0> RA_epi_prior_scale[num_epi_var]; // scale multiplier for width of prior on operator binding free energy epistasis (delta_eps_RA_epi) 
   
   // priors on wild-type free energy parameters
   real log_k_a_wt_prior_mean;
@@ -196,7 +197,9 @@ model {
   for (mut in 1:num_mut) {
     delta_eps_RA_mut[mut] ~ normal(0, delta_prior_width*eps_RA_prior_scale[mut]);
   }
-  delta_eps_RA_epi ~ normal(0, epi_prior_width);
+  for (var in 1:num_epi_var) {
+    delta_eps_RA_epi[var] ~ normal(0, epi_prior_width*RA_epi_prior_scale[var]);
+  }
   
   // model of the data (dose-response curve with noise)
   y ~ normal(mean_y, sigma*y_err);
