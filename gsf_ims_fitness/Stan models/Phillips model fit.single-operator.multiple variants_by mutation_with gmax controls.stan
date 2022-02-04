@@ -14,6 +14,7 @@ data {
   vector[N] y;           // gene expression (from cytometry) at each concentration
   vector[N] y_err;       // estimated error of gene expression at each concentration
   real y_max;            // geometric mean for prior on maximum gene expression value
+  real g_max_prior_width; // geometric std for prior on maximum gene expression value
   
   int rep[N];            // integer to indicate the measurement replicate
   int<lower=1> num_reps; // number of measurement replicates (for all variants)
@@ -198,7 +199,7 @@ model {
   }
   
   // prior on max output level
-  log_g_max ~ normal(log10(y_max), 0.5);
+  log_g_max ~ normal(log10(y_max), g_max_prior_width);
   
   // priors on scale hyper-paramters for log_rep_ratio and rep_offset
   rep_ratio_sigma ~ normal(0, rep_ratio_scale);
