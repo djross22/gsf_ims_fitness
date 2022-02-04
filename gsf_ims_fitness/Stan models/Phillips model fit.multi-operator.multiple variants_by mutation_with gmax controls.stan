@@ -94,11 +94,11 @@ parameters {
   
   real<lower=0> sigma;  // scale factor for standard deviation of noise in y
   
-  vector<lower=-3*rep_ratio_scale, upper=3*rep_ratio_scale>[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
-  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;   // offset for different replicates
+  vector[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
+  vector[num_reps] rep_offset;     // offset for different replicates
   
-  vector<lower=-3*rep_ratio_scale, upper=3*rep_ratio_scale>[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
-  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_contr_reps] rep_offset_contr;   // offset for control replicates
+  vector[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
+  vector[num_contr_reps] rep_offset_contr;     // offset for control replicates
   
   // hyper-paramters for log_rep_ratio and rep_offset
   real<lower=0> rep_ratio_sigma;
