@@ -303,7 +303,17 @@ class BarSeqFitnessFrame:
                 barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
         
         spike_in_fitness_0 = {"AO-B": np.array([0.9637]*12), "AO-E": np.array([0.9666]*12)}
-        spike_in_fitness_tet = {"AO-B": np.array([0.8972]*12), "AO-E": np.array([0.8757]*12)}
+        if self.high_tet == 20:
+            spike_in_fitness_tet = {"AO-B": np.array([0.8972]*12), "AO-E": np.array([0.8757]*12)}
+        elif self.high_tet == 10:
+            # Preliminary estimates based on average of [tet] = zero and 20
+            spike_in_fitness_tet = {"AO-B": np.array([0.93045]*12), "AO-E": np.array([0.92115]*12)}
+        else:
+            raise ValueError(f'Unknown value for high_tet: {self.high_tet}')
+            
+        ref_fit_str_B = str(spike_in_fitness_0["AO-B"]) + ':' + str(spike_in_fitness_tet["AO-B"])
+        ref_fit_str_E = str(spike_in_fitness_0["AO-E"]) + ':' + str(spike_in_fitness_tet["AO-E"])
+        print(f'Reference fitness values, AO-B: {ref_fit_str_B}, AO-E: {ref_fit_str_E}')
     
         #ref_index_b = barcode_frame[barcode_frame["RS_name"]=="AO-B"].index[0]
         #ref_index_e = barcode_frame[barcode_frame["RS_name"]=="AO-E"].index[0]
