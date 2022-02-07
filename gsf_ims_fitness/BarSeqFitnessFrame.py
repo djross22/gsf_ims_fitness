@@ -1515,6 +1515,7 @@ class BarSeqFitnessFrame:
         
         fit_plot_colors = sns.color_palette()
         
+        fig_axs_list = []
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
             if show_GP:
                 plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
@@ -1606,12 +1607,16 @@ class BarSeqFitnessFrame:
                 x_fit = np.insert(x_fit, 0, 0)
                 hill_params = 10**row["sensor_params"][:4]
                 axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
+                
+            fig_axs_list.append((fig, axs_grid))
             
         if save_plots:
             pdf.savefig()
     
         if save_plots:
             pdf.close()
+            
+        return fig_axs_list
     
     def plot_count_ratios_vs_time(self, plot_range,
                                   inducer=None,
