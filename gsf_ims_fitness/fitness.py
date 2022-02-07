@@ -782,9 +782,12 @@ def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
     return colors.hsv_to_rgb(hsv_color)
 
-def fit_fitness_difference_params(plasmid="pVER"):
+def fit_fitness_difference_params(plasmid="pVER", tet_conc=20):
     if plasmid == "pVER":
-        params = np.array([-0.72246,  13328,  3.2374])
+        if tet_conc==20:
+            params = np.array([-0.72246,  13328,  3.2374])
+        elif tet_conc==10:
+            params = np.array([-0.8102, 4955, 1.817])
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
