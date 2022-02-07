@@ -1007,7 +1007,7 @@ class BarSeqFitnessFrame:
         if save_plots:
             pdf.close()
         
-    def plot_read_counts(self, num_to_plot=None, save_plots=False, pdf_file=None):
+    def plot_read_counts(self, num_to_plot=None, save_plots=False, pdf_file=None, vmin=None):
         
         barcode_frame = self.barcode_frame
         
@@ -1049,7 +1049,7 @@ class BarSeqFitnessFrame:
         axs[0].set_ylabel('Total Reads per Sample', size=20);
         axs[0].tick_params(labelsize=16);
     
-        axs[1].matshow(BC_total_arr, cmap="inferno");
+        axs[1].matshow(BC_total_arr, cmap="inferno", vmin=vmin);
         axs[1].grid(b=False);
         axs[1].set_xticklabels([i+1 for i in range(12)], size=16);
         axs[1].set_xticks([i for i in range(12)]);
