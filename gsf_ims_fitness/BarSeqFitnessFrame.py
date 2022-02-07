@@ -1453,7 +1453,8 @@ class BarSeqFitnessFrame:
                             show_fits=True,
                             show_GP=False,
                             log_g_scale=False,
-                            box_size=8):
+                            box_size=8,
+                            show_barcode_info=True):
         
         low_tet = self.low_tet
         high_tet = self.high_tet
@@ -1562,13 +1563,14 @@ class BarSeqFitnessFrame:
                     axl.set_ylim(ylim);
             
                 if initial == "b":
-                    barcode_str = str(index) + ': '
-                    barcode_str += format(row[f'total_counts'], ",") + "; "
-                    barcode_str += row['RS_name'] + ": "
-                    barcode_str += row['forward_BC'] + ", "
-                    barcode_str += row['reverse_BC'] + " "
-                    axl.text(x=1, y=1.05, s=barcode_str, horizontalalignment='center', verticalalignment='top',
-                            transform=axl.transAxes, fontsize=13, fontfamily="Courier New")
+                    if show_barcode_info:
+                        barcode_str = str(index) + ': '
+                        barcode_str += format(row[f'total_counts'], ",") + "; "
+                        barcode_str += row['RS_name'] + ": "
+                        barcode_str += row['forward_BC'] + ", "
+                        barcode_str += row['reverse_BC'] + " "
+                        axl.text(x=1, y=1.05, s=barcode_str, horizontalalignment='center', verticalalignment='top',
+                                transform=axl.transAxes, fontsize=13, fontfamily="Courier New")
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
                     axl.tick_params(labelsize=12);
                     axr.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
