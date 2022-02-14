@@ -40,8 +40,8 @@ data {
   real logit_n_eff_wt_prior_mean;
   real logit_n_eff_wt_prior_std;
   
-  real delta_prior_width; // width of prior on delta-parameters
-  real epi_prior_width;   // width of prior on parameter epistasis
+  real delta_prior_width_hill; // width of prior on delta-parameters
+  real epi_prior_width_hill;   // width of prior on parameter epistasis
   
   real rep_ratio_scale;   // parameter to set the scale for the half-normal prior on log_rep_ratio
   real rep_offset_scale;  // parameter to set the scale for the half-normal prior on log_rep_ratio
@@ -183,17 +183,17 @@ model {
   log_ec50_wt ~ normal(log_ec50_wt_prior_mean, log_ec50_wt_prior_std);
   logit_n_eff_wt ~ normal(logit_n_eff_wt_prior_mean, logit_n_eff_wt_prior_std);
   
-  logit_g0_mut ~ normal(0, delta_prior_width);
-  logit_g0_epi ~ normal(0, epi_prior_width);
+  logit_g0_mut ~ normal(0, delta_prior_width_hill);
+  logit_g0_epi ~ normal(0, epi_prior_width_hill);
   
-  logit_ginf_mut ~ normal(0, delta_prior_width);
-  logit_ginf_epi ~ normal(0, epi_prior_width);
+  logit_ginf_mut ~ normal(0, delta_prior_width_hill);
+  logit_ginf_epi ~ normal(0, epi_prior_width_hill);
   
-  log_ec50_mut ~ normal(0, delta_prior_width);
-  log_ec50_epi ~ normal(0, epi_prior_width);
+  log_ec50_mut ~ normal(0, delta_prior_width_hill);
+  log_ec50_epi ~ normal(0, epi_prior_width_hill);
   
-  logit_n_eff_mut ~ normal(0, delta_prior_width);
-  logit_n_eff_epi ~ normal(0, epi_prior_width);
+  logit_n_eff_mut ~ normal(0, delta_prior_width_hill);
+  logit_n_eff_epi ~ normal(0, epi_prior_width_hill);
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
