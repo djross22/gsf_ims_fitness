@@ -242,7 +242,7 @@ generated quantities {
 	
       fold_change = 1/(1 + lam*xRA);
 	
-      y_out[var, i] = g_max*geo_mean_ratio*fold_change + mean_offset;
+      y_out[var, i] = g_max*fold_change;
       fc_out[var, i] = fold_change;
     }
   }
