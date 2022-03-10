@@ -39,14 +39,23 @@ data {
   real delta_eps_RA_wt_prior_std;
   
   real delta_prior_width; // width of prior on delta-parameters
-  real epi_prior_width;   // width of prior on parameter epistasis
+  real epi_prior_width_1;   // width of 1st mixture component of prior on parameter epistasis
+  real epi_prior_width_2;   // width of 2nd mixture component of prior on parameter epistasis
+  real epi_prior_phi;       // weight for 1st mixture component of prior on parameter epistasis
+  
 }
 
 transformed data {
+  
   real hill_n;
   real N_NS;
   vector[19] x_out;
   int num_non_epi_var;  // number of variants with less than two mutations
+  real log_phi_1;
+  real log_phi_2;
+  
+  log_phi_1 = log(epi_prior_phi);
+  log_phi_2 = log(1 - epi_prior_phi);
   
   hill_n = 2;
   N_NS = 3*4600000;
@@ -175,19 +184,22 @@ model {
   delta_eps_RA_wt ~ normal(delta_eps_RA_wt_prior_mean, delta_eps_RA_wt_prior_std);
   
   log_k_a_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
-  log_k_a_epi ~ normal(0, epi_prior_width/2.3);
   
   log_k_i_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
-  log_k_i_epi ~ normal(0, epi_prior_width/2.3);
   
   delta_eps_AI_mut ~ normal(0, delta_prior_width);
-  delta_eps_AI_epi ~ normal(0, epi_prior_width);
   
   for (mut in 1:num_mut) {
     delta_eps_RA_mut[mut] ~ normal(0, delta_prior_width*eps_RA_prior_scale[mut]);
   }
+  
   for (var in 1:num_epi_var) {
-    delta_eps_RA_epi[var] ~ normal(0, epi_prior_width*RA_epi_prior_scale[var]);
+    // factor of 1/2.3 is to compensate for use of log10 instead of ln
+	target += log_sum_exp(log_phi_1 + normal_lpdf(log_k_a_epi[var] | 0, epi_prior_width_1/2.3), log_phi_2 + normal_lpdf(log_k_a_epi[var] | 0, epi_prior_width_2/2.3));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(log_k_i_epi[var] | 0, epi_prior_width_1/2.3), log_phi_2 + normal_lpdf(log_k_i_epi[var] | 0, epi_prior_width_2/2.3));
+	
+	target += log_sum_exp(log_phi_1 + normal_lpdf(delta_eps_AI_epi[var] | 0, epi_prior_width_1), log_phi_2 + normal_lpdf(delta_eps_AI_epi[var] | 0, epi_prior_width_2));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(delta_eps_RA_epi[var] | 0, epi_prior_width_1*RA_epi_prior_scale[var]), log_phi_2 + normal_lpdf(delta_eps_RA_epi[var] | 0, epi_prior_width_2*RA_epi_prior_scale[var]));
   }
   
   // prior on max output level
@@ -230,7 +242,7 @@ generated quantities {
 	
       fold_change = 1/(1 + lam*xRA);
 	
-      y_out[var, i] = g_max*fold_change;
+      y_out[var, i] = g_max*geo_mean_ratio*fold_change + mean_offset;
       fc_out[var, i] = fold_change;
     }
   }
