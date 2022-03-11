@@ -7,9 +7,6 @@ data {
   vector[N_contr] y_contr;       // gene expression (from cytometry) for control strains
   vector[N_contr] y_contr_err;   // estimated error of gene expression for control strains
   
-  int rep_contr[N_contr];        // integer to indicate the measurement replicate for controls
-  int<lower=1> num_contr_reps;   // number of measurement replicates for controls
-  
   int<lower=1> N;        // number of data points
   vector[N] x;           // inducer concentration
   vector[N] y;           // gene expression (from cytometry) at each concentration
@@ -23,9 +20,6 @@ data {
   real<lower=1> R_prior_mean;         // geometric mean for prior on repressor dimer copy number
   real<lower=0> log_R_prior_width;    // geometric std for prior on repressor dimer copy number
   
-  int rep[N];            // integer to indicate the measurement replicate
-  int<lower=1> num_reps; // number of measurement replicates (for all variants)
-  
   int variant[N];        // numerical index to indicate variants
   
   // priors on wild-type free energy parameters
@@ -38,8 +32,6 @@ data {
   real delta_eps_RA_wt_prior_mean;
   real delta_eps_RA_wt_prior_std;
   
-  real rep_ratio_scale;   // parameter to set the scale for the half-normal prior on log_rep_ratio
-  real rep_offset_scale;  // parameter to set the scale for the half-normal prior on log_rep_ratio
 }
 
 transformed data {
@@ -78,15 +70,6 @@ parameters {
   
   real<lower=0> sigma;  // scale factor for standard deviation of noise in y
   
-  vector<lower=-3*rep_ratio_scale, upper=3*rep_ratio_scale>[num_reps] log_rep_ratio;  // log10 of multiplicative correction factor for different replicates
-  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;   // offset for different replicates
-  
-  vector<lower=-3*rep_ratio_scale, upper=3*rep_ratio_scale>[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
-  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_contr_reps] rep_offset_contr;   // offset for control replicates
-  
-  // hyper-paramters for log_rep_ratio and rep_offset
-  real<lower=0> rep_ratio_sigma;
-  real<lower=0> rep_offset_sigma;
 }
 
 transformed parameters {
@@ -100,9 +83,6 @@ transformed parameters {
   real g_max;
   real N_S;
   real R;
-  
-  vector[num_reps] rep_ratio;
-  vector[num_contr_reps] rep_ratio_contr;
   
   vector[N] mean_y;
   vector[N_contr] mean_y_contr;
@@ -118,13 +98,6 @@ transformed parameters {
   g_max = 10^log_g_max;
   N_S = 10^log_copy_num;
   R = 10^log_R;
-  
-  for (j in 1:num_reps) {
-    rep_ratio[j] = 10^log_rep_ratio[j];
-  }
-  for (j in 1:num_contr_reps) {
-    rep_ratio_contr[j] = 10^log_rep_ratio_contr[j];
-  }
   
   for (i in 1:N) {
     real c1;
@@ -145,11 +118,11 @@ transformed parameters {
 	
     fold_change = 1/(1 + lam*xRA);
 	
-    mean_y[i] = g_max*rep_ratio[rep[i]]*fold_change + rep_offset[rep[i]];
+    mean_y[i] = g_max*fold_change;
   }
   
   for (i in 1:N_contr) {
-    mean_y_contr[i] = g_max*rep_ratio_contr[rep_contr[i]] + rep_offset_contr[rep_contr[i]];
+    mean_y_contr[i] = g_max;
   }
   
 }
@@ -168,21 +141,14 @@ model {
   log_copy_num ~ normal(log10(copy_num_prior_mean), copy_num_prior_width);
   log_R ~ normal(log10(R_prior_mean), log_R_prior_width);
   
-  // priors on scale hyper-paramters for log_rep_ratio and rep_offset
-  rep_ratio_sigma ~ normal(0, rep_ratio_scale);
-  rep_offset_sigma ~ normal(0, rep_offset_scale);
-  
-  // priors on log_rep_ratio and rep_offset
-  log_rep_ratio ~ normal(0, rep_ratio_sigma);
-  rep_offset ~ normal(0, rep_offset_sigma);
-  log_rep_ratio_contr ~ normal(0, rep_ratio_sigma);
-  rep_offset_contr ~ normal(0, rep_offset_sigma);
+  // prior on scale parameter for log-normal measurement error
+  sigma ~ normal(0, 1);
   
   // model of the data (dose-response curve with noise)
-  y ~ normal(mean_y, sigma*y_err);
+  y ~ lognormal(log_mean_y, sigma);
   
   // model of the control strain data (constant, max output)
-  y_contr ~ normal(mean_y_contr, sigma*y_contr_err);
+  y_contr ~ lognormal(log_mean_y_contr, sigma);
 
 }
 
@@ -190,11 +156,6 @@ generated quantities {
   // Local variables
   real y_out[num_var, 19];
   real fc_out[num_var, 19];
-  real mean_offset;
-  real geo_mean_ratio;
-  
-  mean_offset = mean(rep_offset);
-  geo_mean_ratio = 10^mean(log_rep_ratio);
   
   for (var in 1:num_var) {
     for (i in 1:19) {
@@ -216,7 +177,7 @@ generated quantities {
 	
       fold_change = 1/(1 + lam*xRA);
 	
-      y_out[var, i] = g_max*geo_mean_ratio*fold_change + mean_offset;
+      y_out[var, i] = g_max*fold_change;
       fc_out[var, i] = fold_change;
     }
   }
