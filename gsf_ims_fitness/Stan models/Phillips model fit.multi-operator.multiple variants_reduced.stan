@@ -108,7 +108,6 @@ parameters {
   
   real<lower=0> sigma;  // scale factor for standard deviation of noise in y
   
-  
 }
 
 transformed parameters {
@@ -201,11 +200,14 @@ model {
     delta_eps_RA_epi[var] ~ normal(0, epi_prior_width_2*RA_epi_prior_scale[var]);
   }
   
+  // prior on scale parameter for log-normal measurement error
+  sigma ~ normal(0, 1);
+  
   // model of the data (dose-response curve with noise)
-  y ~ normal(mean_y, sigma*y_err);
+  y ~ lognormal(log_mean_y, sigma);
   
   // model of the control strain data (constant, max output)
-  y_contr ~ normal(g_max, sigma*y_contr_err);
+  y_contr ~ lognormal(log_mean_y_contr, sigma);
 
 }
 
