@@ -46,7 +46,7 @@ data {
   real delta_eps_RA_wt_prior_std;
   
   real delta_prior_width; // width of prior on delta-parameters
-  real epi_prior_width;   // width of prior on parameter epistasis
+  real epi_prior_width_2;   // width of prior on parameter epistasis
   
   real rep_ratio_scale;   // parameter to set the scale for the half-normal prior on log_rep_ratio
   real rep_offset_scale;  // parameter to set the scale for the half-normal prior on log_rep_ratio
@@ -186,19 +186,19 @@ model {
   delta_eps_RA_wt ~ normal(delta_eps_RA_wt_prior_mean, delta_eps_RA_wt_prior_std);
   
   log_k_a_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
-  log_k_a_epi ~ normal(0, epi_prior_width/2.3);
+  log_k_a_epi ~ normal(0, epi_prior_width_2/2.3);
   
   log_k_i_mut ~ normal(0, delta_prior_width/2.3); // factor of 1/2.3 is to compensate for use of log10 instead of ln
-  log_k_i_epi ~ normal(0, epi_prior_width/2.3);
+  log_k_i_epi ~ normal(0, epi_prior_width_2/2.3);
   
   delta_eps_AI_mut ~ normal(0, delta_prior_width);
-  delta_eps_AI_epi ~ normal(0, epi_prior_width);
+  delta_eps_AI_epi ~ normal(0, epi_prior_width_2);
   
   for (mut in 1:num_mut) {
     delta_eps_RA_mut[mut] ~ normal(0, delta_prior_width*eps_RA_prior_scale[mut]);
   }
   for (var in 1:num_epi_var) {
-    delta_eps_RA_epi[var] ~ normal(0, epi_prior_width*RA_epi_prior_scale[var]);
+    delta_eps_RA_epi[var] ~ normal(0, epi_prior_width_2*RA_epi_prior_scale[var]);
   }
   
   // model of the data (dose-response curve with noise)
