@@ -128,6 +128,12 @@ transformed parameters {
 }
 
 model {
+  vector[N] log_mean_y;
+  vector[N_contr] log_mean_y_contr;
+  
+  log_mean_y = log(mean_y);
+  log_mean_y_contr = log(mean_y_contr);
+
   // priors on free energy params
   log_k_a_wt ~ normal(log_k_a_wt_prior_mean, log_k_a_wt_prior_std);
   log_k_i_wt ~ normal(log_k_i_wt_prior_mean, log_k_i_wt_prior_std);

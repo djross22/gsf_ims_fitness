@@ -155,6 +155,10 @@ transformed parameters {
 }
 
 model {
+  vector[N] log_mean_y;
+  
+  log_mean_y = log(mean_y);
+  
   // priors on free energy params
   log_k_a_wt ~ normal(log_k_a_wt_prior_mean, log_k_a_wt_prior_std);
   log_k_i_wt ~ normal(log_k_i_wt_prior_mean, log_k_i_wt_prior_std);
@@ -182,9 +186,6 @@ model {
   
   // model of the data (dose-response curve with noise)
   y ~ lognormal(log_mean_y, sigma);
-  
-  // model of the control strain data (constant, max output)
-  y_contr ~ lognormal(log_mean_y_contr, sigma);
 
 }
 
