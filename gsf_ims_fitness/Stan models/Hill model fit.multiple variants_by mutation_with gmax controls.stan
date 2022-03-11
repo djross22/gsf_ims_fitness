@@ -35,7 +35,9 @@ data {
   real logit_n_eff_wt_prior_std;
   
   real delta_prior_width_hill; // width of prior on delta-parameters
-  real epi_prior_width_hill;   // width of prior on parameter epistasis
+  real epi_prior_width_1_hill;   // width of 1st mixture component of prior on parameter epistasis
+  real epi_prior_width_2_hill;   // width of 2nd mixture component of prior on parameter epistasis
+  real epi_prior_phi_hill;       // weight for 1st mixture component of prior on parameter epistasis
   
 }
 
@@ -43,6 +45,11 @@ transformed data {
   real hill_n;
   vector[19] x_out;
   int num_non_epi_var;  // number of variants with less than two mutations
+  real log_phi_1;
+  real log_phi_2;
+  
+  log_phi_1 = log(epi_prior_phi_hill);
+  log_phi_2 = log(1 - epi_prior_phi_hill);
   
   hill_n = 2; // Sets upper bound on n_eff
   
@@ -156,17 +163,18 @@ model {
   log_ec50_wt ~ normal(log_ec50_wt_prior_mean, log_ec50_wt_prior_std);
   logit_n_eff_wt ~ normal(logit_n_eff_wt_prior_mean, logit_n_eff_wt_prior_std);
   
+  // priors on mutational  effects
   logit_g0_mut ~ normal(0, delta_prior_width_hill);
-  logit_g0_epi ~ normal(0, epi_prior_width_hill);
-  
   logit_ginf_mut ~ normal(0, delta_prior_width_hill);
-  logit_ginf_epi ~ normal(0, epi_prior_width_hill);
-  
   log_ec50_mut ~ normal(0, delta_prior_width_hill);
-  log_ec50_epi ~ normal(0, epi_prior_width_hill);
-  
   logit_n_eff_mut ~ normal(0, delta_prior_width_hill);
-  logit_n_eff_epi ~ normal(0, epi_prior_width_hill);
+  
+  for (var in 1:num_epi_var) {
+	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_g0_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_g0_epi[var] | 0, epi_prior_width_2_hill));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_ginf_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_ginf_epi[var] | 0, epi_prior_width_2_hill));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(log_ec50_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(log_ec50_epi[var] | 0, epi_prior_width_2_hill));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_n_eff_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_n_eff_epi[var] | 0, epi_prior_width_2_hill));
+  }
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
