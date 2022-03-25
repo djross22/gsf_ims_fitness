@@ -232,9 +232,18 @@ model {
 
 generated quantities {
   vector[num_var] delta_eps_RA_var;
+  vector[num_mut] delta_eps_RA_mut;
+  vector[num_epi_var] delta_eps_RA_epi;
   real g_max;
   real y_out[num_var, 19];
   real fc_out[num_var, 19];
+  
+  for (n in 1:num_mut) {
+    delta_eps_RA_mut[n] = 0;
+  }
+  for (n in 1:num_epi_var) {
+    delta_eps_RA_epi[n] = 0;
+  }
   
   g_max = 10^log_g_max;
   
