@@ -32,5 +32,11 @@
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
   
+  // model of the data (dose-response curve with noise)
+  y ~ lognormal(log_mean_y, sigma);
+  
+  // model of the control strain data (constant, max output)
+  y_contr ~ lognormal(log_mean_y_contr, sigma);
+  
 //}
 

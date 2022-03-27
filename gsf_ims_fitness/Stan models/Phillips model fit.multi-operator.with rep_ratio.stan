@@ -60,6 +60,8 @@ transformed parameters {
 
 model {
 
+#include Free_energy_model.model.shared.stan
+
 #include Free_energy_model.model.rep_ratio.stan
 
 #include Free_energy_model.model.multi_operator.stan

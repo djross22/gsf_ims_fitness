@@ -53,7 +53,8 @@ transformed parameters {
 }
 
 model {
-#include Free_energy_model.model.no_rep_ratio.stan
+
+#include Free_energy_model.model.shared.stan
 
 }
 
