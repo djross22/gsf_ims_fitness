@@ -28,31 +28,13 @@ parameters {
   // In this version of the model, the base parameters belong to the first variant (the wild-type)
   //     and there is a delta_param associated with each mutation (with additive effects)
   //     plus an epistasis term associated with each variant other than the wild-type
-  real log_k_a_wt;         // log10 of IPTG binding affinity to active state
-  vector[num_mut] log_k_a_mut;
-  vector[num_epi_var] log_k_a_epi;
   
-  real log_k_i_wt;         // log10 of IPTG binding affinity to inactive state
-  vector[num_mut] log_k_i_mut;
-  vector[num_epi_var] log_k_i_epi;
+#include Free_energy_model.parameters.shared.stan
   
-  real delta_eps_AI_wt;    // free energy difference between active and inactive states
-  vector[num_mut] delta_eps_AI_mut;
-  vector[num_epi_var] delta_eps_AI_epi;
-  
-  real delta_eps_RA_wt;    // free energy for Active TF to operator
-  vector[num_mut] delta_eps_RA_mut;
-  vector[num_epi_var] delta_eps_RA_epi;
-  
-  real log_g_max;                // log10 of maximum possible gene expression
-  real<lower=0> log_copy_num;    // log10 of plasmid/operator copy number
-  real<lower=0> log_R;           // log10 of repressor dimer copy number
-  
-  real<lower=0> sigma;  // scale factor for standard deviation of noise in y
-  
-  vector[num_reps] log_rep_ratio;              // log10 of multiplicative correction factor for different replicates
-  vector[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
-  real<lower=0> rep_ratio_sigma;               // hyper-paramters for log_rep_ratio and log_rep_ratio_contr
+
+#include Free_energy_model.parameters.multi_operator.stan
+
+#include Free_energy_model.parameters.rep_ratio.stan
   
 }
 
