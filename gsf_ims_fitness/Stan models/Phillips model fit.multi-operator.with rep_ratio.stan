@@ -1,6 +1,12 @@
 // Fit dose-response curves to Phillips lab model for allosteric TFs
 //
 
+functions {
+
+#include functions.fold_change_multi.stan
+
+}
+
 data {
 
 #include Free_energy_model.data.shared.stan
@@ -30,7 +36,6 @@ parameters {
   //     plus an epistasis term associated with each variant other than the wild-type
   
 #include Free_energy_model.parameters.shared.stan
-  
 
 #include Free_energy_model.parameters.multi_operator.stan
 
@@ -92,23 +97,9 @@ transformed parameters {
   R = 10^log_R;
   
   for (i in 1:N) {
-    real c1;
-    real c2;
-    real pA;
-	real xRA;
-	real lam;
 	real fold_change;
-	
-    c1 = (1 + x[i]/K_A[variant[i]])^hill_n;
-    c2 = ( (1 + x[i]/K_I[variant[i]])^hill_n ) * exp(-delta_eps_AI_var[variant[i]]);
-	pA = c1/(c1+c2);
-	xRA = exp(-delta_eps_RA_var[variant[i]]);
-	
-	lam = -N_NS + pA*R - N_S*xRA + pA*R*xRA;
-    lam = lam + sqrt(4*pA*R*xRA*(N_NS + N_S - pA*R) + (N_NS + N_S*xRA - pA*R*(1 + xRA))^2);
-    lam = lam/(2*xRA*(N_NS + N_S - pA*R));
-	
-    fold_change = 1/(1 + lam*xRA);
+  
+    fold_change = fold_change_fnct(x[i], K_A[variant[i]], K_I[variant[i]], delta_eps_AI_var[variant[i]], delta_eps_RA_var[variant[i]], hill_n, N_NS, R, N_S);
 	
     //mean_y[i] = g_max*fold_change;
     log_mean_y[i] = ln_10*log_g_max + log(fold_change) + log_rep_ratio[rep[i]];
@@ -181,23 +172,9 @@ generated quantities {
   
   for (var in 1:num_var) {
     for (i in 1:19) {
-      real c1;
-      real c2;
-      real pA;
-	  real xRA;
-	  real lam;
 	  real fold_change;
-	  
-      c1 = (1 + x_out[i]/K_A[var])^hill_n;
-      c2 = ( (1 + x_out[i]/K_I[var])^hill_n ) * exp(-delta_eps_AI_var[var]);
-	  pA = c1/(c1+c2);
-	  xRA = exp(-delta_eps_RA_var[var]);
-	
-	  lam = -N_NS + pA*R - N_S*xRA + pA*R*xRA;
-      lam = lam + sqrt(4*pA*R*xRA*(N_NS + N_S - pA*R) + (N_NS + N_S*xRA - pA*R*(1 + xRA))^2);
-      lam = lam/(2*xRA*(N_NS + N_S - pA*R));
-	
-      fold_change = 1/(1 + lam*xRA);
+  
+      fold_change = fold_change_fnct(x_out[i], K_A[var], K_I[var], delta_eps_AI_var[var], delta_eps_RA_var[var], hill_n, N_NS, R, N_S);
 	
       y_out[var, i] = g_max*fold_change;
       fc_out[var, i] = fold_change;
