@@ -20,6 +20,7 @@ transformed data {
 #include Free_energy_model.transformed_data_decl.shared.stan
   
   real R; // specific to single-operator model
+  real N_S; // operator copy number
 
 #include Free_energy_model.transformed_data_assign.shared.stan
   
@@ -28,6 +29,7 @@ transformed data {
   log_phi_2 = log(1 - epi_prior_phi);
   R = 200;
   N_NS = 4600000;
+  N_S = 1;
   
 }
 
@@ -109,7 +111,7 @@ generated quantities {
     for (i in 1:19) {
 	  real f_c;
   
-      f_c = fold_change_fnct(x_out[i], K_A[var], K_I[var], delta_eps_AI_var[var], delta_eps_RA_var[var], hill_n, N_NS, R);
+      f_c = fold_change_fnct(x_out[i], K_A[var], K_I[var], delta_eps_AI_var[var], delta_eps_RA_var[var], hill_n, N_NS, R, N_S);
 	
       y_out[var, i] = g_max*f_c;
       fc_out[var, i] = f_c;
