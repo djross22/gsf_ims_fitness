@@ -47,10 +47,8 @@ transformed parameters {
 
 #include Free_energy_model.transformed_parameters.shared.stan
 
+//This include file has both declarations and assignments in it. So, it has to go after and include file that has other declarations. 
 #include Free_energy_model.transformed_parameters.multi_operator.stan
-  
-  N_S = 10^log_copy_num;
-  R = 10^log_R;
 
 #include Free_energy_model.transformed_parameters.variant_free_energies.stan
 
