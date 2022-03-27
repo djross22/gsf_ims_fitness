@@ -12,28 +12,16 @@ data {
 }
 
 transformed data {
-  real ln_10;
-  real hill_n;
-  real N_NS;
-  vector[19] x_out;
-  int num_non_epi_var;  // number of variants with less than two mutations
-  real log_phi_1;
-  real log_phi_2;
+
+#include Free_energy_model.transformed_data_decl.shared.stan
+
+#include Free_energy_model.transformed_data_assign.shared.stan
   
+  // transformed data variable assignments specific to each model
   log_phi_1 = log(epi_prior_phi);
   log_phi_2 = log(1 - epi_prior_phi);
   
-  hill_n = 2;
   N_NS = 3*4600000;
-  
-  x_out[1] = 0;
-  for (i in 2:19) {
-    x_out[i] = 2^(i-2);
-  }
-  
-  num_non_epi_var = num_var - num_epi_var;
-  
-  ln_10 = log(10.0);
 }
 
 parameters {
