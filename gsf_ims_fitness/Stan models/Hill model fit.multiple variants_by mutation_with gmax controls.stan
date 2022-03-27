@@ -2,42 +2,10 @@
 //
 
 data {
-  int<lower=1> N_contr;          // number of data points for control strains LacI deletions
-  vector[N_contr] y_contr;       // gene expression (from cytometry) for control strains
-  vector[N_contr] y_contr_err;   // estimated error of gene expression for control strains
   
-  int<lower=1> N;        // number of data points
-  vector[N] x;           // inducer concentration
-  vector[N] y;           // gene expression (from cytometry) at each concentration
-  vector[N] y_err;       // estimated error of gene expression at each concentration
+#include Free_energy_model.data.shared.stan
   
-  real y_max;             // geometric mean for prior on maximum gene expression value
-  real g_max_prior_width; // geometric std for prior on maximum gene expression value
-  
-  int<lower=1> num_var;  // number of variants
-  int variant[N];        // numerical index to indicate variants
-  int<lower=0> num_epi_var;  // number of variants with more than one mutation (only define epistasis for these)
-  
-  int<lower=0> num_mut;  // number of differrent mutations
-  int<lower=0, upper=1> mut_code[num_var-1, num_mut];   // one-hot encoding for  presense of mutations in each variant; variant 0 (WT) has no mutations
-  
-  // priors on wild-type Hill parameters
-  real logit_g0_wt_prior_mean;
-  real logit_g0_wt_prior_std;
-  
-  real logit_ginf_wt_prior_mean;
-  real logit_ginf_wt_prior_std;
-  
-  real log_ec50_wt_prior_mean;
-  real log_ec50_wt_prior_std;
-  
-  real logit_n_eff_wt_prior_mean;
-  real logit_n_eff_wt_prior_std;
-  
-  real delta_prior_width_hill; // width of prior on delta-parameters
-  real epi_prior_width_1_hill;   // width of 1st mixture component of prior on parameter epistasis
-  real epi_prior_width_2_hill;   // width of 2nd mixture component of prior on parameter epistasis
-  real epi_prior_phi_hill;       // weight for 1st mixture component of prior on parameter epistasis
+#include Hill_model.data.hill.stan
   
 }
 

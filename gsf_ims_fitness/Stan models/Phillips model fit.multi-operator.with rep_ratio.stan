@@ -2,54 +2,12 @@
 //
 
 data {
-  int<lower=1> N_contr;          // number of data points for control strains LacI deletions
-  vector[N_contr] y_contr;       // gene expression (from cytometry) for control strains
-  vector[N_contr] y_contr_err;   // estimated error of gene expression for control strains
-  
-  int rep_contr[N_contr];        // integer to indicate the measurement replicate for controls
-  int<lower=1> num_contr_reps;   // number of measurement replicates for controls
-  
-  int<lower=1> N;        // number of data points
-  vector[N] x;           // inducer concentration
-  vector[N] y;           // gene expression (from cytometry) at each concentration
-  vector[N] y_err;       // estimated error of gene expression at each concentration
-  
-  real y_max;             // geometric mean for prior on maximum gene expression value
-  real g_max_prior_width; // geometric std for prior on maximum gene expression value
-  
-  real<lower=2> copy_num_prior_mean;  // geometric mean for prior on plasmid/operator copy number
-  real<lower=0> copy_num_prior_width; // geometric std for prior on plasmid/operator copy number
-  real<lower=1> R_prior_mean;         // geometric mean for prior on repressor dimer copy number
-  real<lower=0> log_R_prior_width;    // geometric std for prior on repressor dimer copy number
-  
-  int rep[N];            // integer to indicate the measurement replicate
-  int<lower=1> num_reps; // number of measurement replicates (for all variants)
-  
-  int<lower=2> num_var;  // number of variants
-  int variant[N];        // numerical index to indicate variants
-  int<lower=0> num_epi_var;  // number of variants with more than one mutation (only define epistasis for these)
-  
-  int<lower=1> num_mut;  // number of differrent mutations
-  int<lower=0, upper=1> mut_code[num_var-1, num_mut];   // one-hot encoding for  presense of mutations in each variant; variant 0 (WT) has no mutations
-  real<lower=0> eps_RA_prior_scale[num_mut];   // scale multiplier for width of prior on operator binding free energy term (delta_eps_RA_mut) 
-  real<lower=0> RA_epi_prior_scale[num_epi_var]; // scale multiplier for width of prior on operator binding free energy epistasis (delta_eps_RA_epi) 
-  
-  // priors on wild-type free energy parameters
-  real log_k_a_wt_prior_mean;
-  real log_k_a_wt_prior_std;
-  real log_k_i_wt_prior_mean;
-  real log_k_i_wt_prior_std;
-  real delta_eps_AI_wt_prior_mean;
-  real delta_eps_AI_wt_prior_std;
-  real delta_eps_RA_wt_prior_mean;
-  real delta_eps_RA_wt_prior_std;
-  
-  real delta_prior_width; // width of prior on delta-parameters
-  real epi_prior_width_1;   // width of 1st mixture component of prior on parameter epistasis
-  real epi_prior_width_2;   // width of 2nd mixture component of prior on parameter epistasis
-  real epi_prior_phi;       // weight for 1st mixture component of prior on parameter epistasis
-  
-  real rep_ratio_scale;   // parameter to set the scale for the half-normal prior on log_rep_ratio
+
+#include Free_energy_model.data.shared.stan
+
+#include Free_energy_model.data.free_energy.stan
+
+#include Free_energy_model.data.multi_operator.stan
   
 }
 
