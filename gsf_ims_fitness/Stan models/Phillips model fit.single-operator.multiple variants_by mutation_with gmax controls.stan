@@ -19,7 +19,7 @@ transformed data {
 
 #include Free_energy_model.transformed_data_decl.shared.stan
   
-  real R; // specific to single-operator model
+  real R;   // specific to single-operator model
   real N_S; // operator copy number
 
 #include Free_energy_model.transformed_data_assign.shared.stan
