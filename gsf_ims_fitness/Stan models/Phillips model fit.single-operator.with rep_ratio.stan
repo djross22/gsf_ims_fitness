@@ -58,14 +58,16 @@ transformed parameters {
 
 model {
 
-#include Free_energy_model.model.no_rep_ratio.stan
+#include Free_energy_model.model.rep_ratio.stan
 
 }
 
 generated quantities {
-  // Local variables
+  real g_max;
   real y_out[num_var, 19];
   real fc_out[num_var, 19];
+  
+  g_max = 10^log_g_max;
   
   for (var in 1:num_var) {
     for (i in 1:19) {
