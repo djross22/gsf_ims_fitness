@@ -1,91 +1,42 @@
 // Fit dose-response curves to Phillips lab model for allosteric TFs
 //
 
+functions {
+
+#include functions.fold_change_single.stan
+
+}
+
 data {
-  int<lower=1> N_contr;          // number of data points for control strains LacI deletions
-  vector[N_contr] y_contr;       // gene expression (from cytometry) for control strains
-  vector[N_contr] y_contr_err;   // estimated error of gene expression for control strains
-  
-  int<lower=1> N;        // number of data points
-  vector[N] x;           // inducer concentration
-  vector[N] y;           // gene expression (from cytometry) at each concentration
-  vector[N] y_err;       // estimated error of gene expression at each concentration
-  real y_max;            // geometric mean for prior on maximum gene expression value
-  real g_max_prior_width; // geometric std for prior on maximum gene expression value
-  
-  int<lower=2> num_var;  // number of variants
-  int variant[N];        // numerical index to indicate variants
-  int<lower=0> num_epi_var;  // number of variants with more than one mutation (only define epistasis for these)
-  
-  int<lower=1> num_mut;  // number of differrent mutations
-  int<lower=0, upper=1> mut_code[num_var-1, num_mut];   // one-hot encoding for  presense of mutations in each variant; variant 0 (WT) has no mutations
-  real<lower=0> eps_RA_prior_scale[num_mut];   // scale multiplier for width of prior on operator binding free energy term (delta_eps_RA_mut) 
-  real<lower=0> RA_epi_prior_scale[num_epi_var]; // scale multiplier for width of prior on operator binding free energy epistasis (delta_eps_RA_epi) 
-  
-  // priors on wild-type free energy parameters
-  real log_k_a_wt_prior_mean;
-  real log_k_a_wt_prior_std;
-  real log_k_i_wt_prior_mean;
-  real log_k_i_wt_prior_std;
-  real delta_eps_AI_wt_prior_mean;
-  real delta_eps_AI_wt_prior_std;
-  real delta_eps_RA_wt_prior_mean;
-  real delta_eps_RA_wt_prior_std;
-  
-  real delta_prior_width; // width of prior on delta-parameters
-  real epi_prior_width_1;   // width of 1st mixture component of prior on parameter epistasis
-  real epi_prior_width_2;   // width of 2nd mixture component of prior on parameter epistasis
-  real epi_prior_phi;       // weight for 1st mixture component of prior on parameter epistasis
+
+#include Free_energy_model.data.shared.stan
+
+#include Free_energy_model.data.free_energy.stan
   
 }
 
 transformed data {
-  real R;
-  real hill_n;
-  real N_NS;
-  vector[19] x_out;
-  int num_non_epi_var;  // number of variants with less than two mutations
-  real log_phi_1;
-  real log_phi_2;
+
+#include Free_energy_model.transformed_data_decl.shared.stan
   
+  real R; // specific to single-operator model
+
+#include Free_energy_model.transformed_data_assign.shared.stan
+  
+  // transformed data variable assignments specific to each model
   log_phi_1 = log(epi_prior_phi);
   log_phi_2 = log(1 - epi_prior_phi);
-  
   R = 200;
-  hill_n = 2;
   N_NS = 4600000;
   
-  x_out[1] = 0;
-  for (i in 2:19) {
-    x_out[i] = 2^(i-2);
-  }
-  
-  num_non_epi_var = num_var - num_epi_var;
 }
 
 parameters {
   // In this version of the model, the base parameters belong to the first variant (the wild-type)
   //     and there is a delta_param associated with each mutation (with additive effects)
   //     plus an epistasis term associated with each variant other than the wild-type
-  real log_k_a_wt;         // log10 of IPTG binding affinity to active state
-  vector[num_mut] log_k_a_mut;
-  vector[num_epi_var] log_k_a_epi;
   
-  real log_k_i_wt;         // log10 of IPTG binding affinity to inactive state
-  vector[num_mut] log_k_i_mut;
-  vector[num_epi_var] log_k_i_epi;
-  
-  real delta_eps_AI_wt;    // free energy difference between active and inactive states
-  vector[num_mut] delta_eps_AI_mut;
-  vector[num_epi_var] delta_eps_AI_epi;
-  
-  real delta_eps_RA_wt;    // free energy for Active TF to operator
-  vector[num_mut] delta_eps_RA_mut;
-  vector[num_epi_var] delta_eps_RA_epi;
-  
-  real log_g_max;       // log10 of maximum possible gene expression
-  
-  real<lower=0> sigma;  // scale factor for standard deviation of noise in y
+#include Free_energy_model.parameters.shared.stan
   
 }
 
@@ -138,15 +89,11 @@ transformed parameters {
   g_max = 10^log_g_max;
   
   for (i in 1:N) {
-    real c1;
-    real c2;
-    real c3;
+	real fold_change;
+  
+    fold_change = fold_change_fnct(x[i], K_A[variant[i]], K_I[variant[i]], delta_eps_AI_var[variant[i]], delta_eps_RA_var[variant[i]], hill_n, N_NS, R);
 	
-    c1 = (1 + x[i]/K_A[variant[i]])^hill_n;
-    c2 = ( (1 + x[i]/K_I[variant[i]])^hill_n ) * exp(-delta_eps_AI_var[variant[i]]);
-    c3 = R/N_NS * exp(-delta_eps_RA_var[variant[i]]);
-	
-    mean_y[i] = g_max/(1 + (c1/(c1+c2))*c3);
+    mean_y[i] = g_max*fold_change;
   }
   
   for (i in 1:N_contr) {
@@ -208,16 +155,12 @@ generated quantities {
   
   for (var in 1:num_var) {
     for (i in 1:19) {
-	  real c1;
-      real c2;
-      real c3;
-	  
-      c1 = (1 + x_out[i]/K_A[var])^hill_n;
-      c2 = ( (1 + x_out[i]/K_I[var])^hill_n ) * exp(-delta_eps_AI_var[var]);
-      c3 = R/N_NS * exp(-delta_eps_RA_var[var]);
+	  real f_c;
+  
+      f_c = fold_change_fnct(x_out[i], K_A[var], K_I[var], delta_eps_AI_var[var], delta_eps_RA_var[var], hill_n, N_NS, R);
 	
-      y_out[var, i] = g_max/(1 + (c1/(c1+c2))*c3);
-      fc_out[var, i] = 1/(1 + (c1/(c1+c2))*c3);
+      y_out[var, i] = g_max*f_c;
+      fc_out[var, i] = f_c;
     }
   }
   

@@ -3,7 +3,7 @@
 
 functions {
 
-#include functions.fold_change_multi.stan
+#include functions.fold_change_single.stan
 
 }
 
@@ -12,22 +12,23 @@ data {
 #include Free_energy_model.data.shared.stan
 
 #include Free_energy_model.data.free_energy.stan
-
-#include Free_energy_model.data.multi_operator.stan
   
 }
 
 transformed data {
 
 #include Free_energy_model.transformed_data_decl.shared.stan
+  
+  real R; // specific to single-operator model
 
 #include Free_energy_model.transformed_data_assign.shared.stan
   
   // transformed data variable assignments specific to each model
   log_phi_1 = log(epi_prior_phi);
   log_phi_2 = log(1 - epi_prior_phi);
+  R = 200;
+  N_NS = 4600000;
   
-  N_NS = 3*4600000;
 }
 
 parameters {
@@ -37,7 +38,7 @@ parameters {
   
 #include Free_energy_model.parameters.shared.stan
 
-#include Free_energy_model.parameters.multi_operator.stan
+#include Free_energy_model.parameters.rep_ratio.stan
   
 }
 
@@ -50,8 +51,6 @@ transformed parameters {
   vector[num_var] delta_eps_RA_var;
   
   real g_max;
-  real N_S;
-  real R;
   
   vector[N] mean_y;
   vector[N_contr] mean_y_contr;
@@ -90,13 +89,11 @@ transformed parameters {
   }
   
   g_max = 10^log_g_max;
-  N_S = 10^log_copy_num;
-  R = 10^log_R;
   
   for (i in 1:N) {
 	real fold_change;
   
-    fold_change = fold_change_fnct(x[i], K_A[variant[i]], K_I[variant[i]], delta_eps_AI_var[variant[i]], delta_eps_RA_var[variant[i]], hill_n, N_NS, R, N_S);
+    fold_change = fold_change_fnct(x[i], K_A[variant[i]], K_I[variant[i]], delta_eps_AI_var[variant[i]], delta_eps_RA_var[variant[i]], hill_n, N_NS, R);
 	
     mean_y[i] = g_max*fold_change;
   }
@@ -142,10 +139,6 @@ model {
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
   
-  // priors on plasmid/operator and repressor dimer copy numbers
-  log_copy_num ~ normal(log10(copy_num_prior_mean), copy_num_prior_width);
-  log_R ~ normal(log10(R_prior_mean), log_R_prior_width);
-  
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
   
@@ -164,12 +157,12 @@ generated quantities {
   
   for (var in 1:num_var) {
     for (i in 1:19) {
-	  real fold_change;
+	  real f_c;
   
-      fold_change = fold_change_fnct(x_out[i], K_A[var], K_I[var], delta_eps_AI_var[var], delta_eps_RA_var[var], hill_n, N_NS, R, N_S);
+      f_c = fold_change_fnct(x_out[i], K_A[var], K_I[var], delta_eps_AI_var[var], delta_eps_RA_var[var], hill_n, N_NS, R);
 	
-      y_out[var, i] = g_max*fold_change;
-      fc_out[var, i] = fold_change;
+      y_out[var, i] = g_max*f_c;
+      fc_out[var, i] = f_c;
     }
   }
   
