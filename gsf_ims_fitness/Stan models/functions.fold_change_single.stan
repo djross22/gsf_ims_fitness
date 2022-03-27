@@ -1,7 +1,7 @@
 
 //functions {
 
-  real fold_change_fnct(real x_in, real k_a, real k_i, real eps_ai, real eps_ra, real h_n, real n_ns, real r){
+  real fold_change_fnct(real x_in, real k_a, real k_i, real eps_ai, real eps_ra, real h_n, real n_ns, real r, real n_s){
     real c1;
     real c2;
     real c3;
