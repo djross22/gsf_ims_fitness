@@ -46,8 +46,6 @@ transformed parameters {
 
 #include Free_energy_model.transformed_parameters.shared.stan
 
-#include Free_energy_model.transformed_parameters.no_rep_ratio.stan
-
 #include Free_energy_model.transformed_parameters.variant_free_energies.stan
 
 #include Free_energy_model.transformed_parameters.fold_change_no_rep_ratio.stan

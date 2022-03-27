@@ -47,8 +47,6 @@ transformed parameters {
 
 #include Free_energy_model.transformed_parameters.multi_operator.stan
 
-#include Free_energy_model.transformed_parameters.no_rep_ratio.stan
-
   N_S = 10^log_copy_num;
   R = 10^log_R;
 
