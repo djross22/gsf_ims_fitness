@@ -44,71 +44,19 @@ parameters {
 }
 
 transformed parameters {
-  vector[num_var] K_A;
-  vector[num_var] K_I;
-  vector[num_var] log_k_a_var;
-  vector[num_var] log_k_i_var;
-  vector[num_var] delta_eps_AI_var;
-  vector[num_var] delta_eps_RA_var;
-  
-  //real g_max;
-  real N_S;
-  real R;
-  
-  //vector[N] mean_y;
-  //vector[N_contr] mean_y_contr;
-  vector[N] log_mean_y;
-  vector[N_contr] log_mean_y_contr;
-  
-  log_k_a_var[1] = log_k_a_wt;
-  log_k_i_var[1] = log_k_i_wt;
-  delta_eps_AI_var[1] = delta_eps_AI_wt;
-  delta_eps_RA_var[1] = delta_eps_RA_wt;
-  
-  K_A[1] = 10^log_k_a_var[1];
-  K_I[1] = 10^log_k_i_var[1];
-  
-  for (var in 2:num_var) {
-    if (var > num_non_epi_var) {
-      log_k_a_var[var] = log_k_a_wt + log_k_a_epi[var-num_non_epi_var];
-      log_k_i_var[var] = log_k_i_wt + log_k_i_epi[var-num_non_epi_var];
-      delta_eps_AI_var[var] = delta_eps_AI_wt + delta_eps_AI_epi[var-num_non_epi_var];
-      delta_eps_RA_var[var] = delta_eps_RA_wt + delta_eps_RA_epi[var-num_non_epi_var];
-	}
-    else {
-      log_k_a_var[var] = log_k_a_wt;
-      log_k_i_var[var] = log_k_i_wt;
-      delta_eps_AI_var[var] = delta_eps_AI_wt;
-      delta_eps_RA_var[var] = delta_eps_RA_wt;
-	}
-	
-	for (mut in 1:num_mut) {
-	  log_k_a_var[var] += mut_code[var-1, mut]*log_k_a_mut[mut];
-	  log_k_i_var[var] += mut_code[var-1, mut]*log_k_i_mut[mut];
-	  delta_eps_AI_var[var] += mut_code[var-1, mut]*delta_eps_AI_mut[mut];
-	  delta_eps_RA_var[var] += mut_code[var-1, mut]*delta_eps_RA_mut[mut];
-	}
-	
-	K_A[var] = 10^log_k_a_var[var];
-    K_I[var] = 10^log_k_i_var[var];
-  }
+
+#include Free_energy_model.transformed_parameters.shared.stan
+
+#include Free_energy_model.transformed_parameters.multi_operator.stan
+
+#include Free_energy_model.transformed_parameters.rep_ratio.stan
   
   N_S = 10^log_copy_num;
   R = 10^log_R;
-  
-  for (i in 1:N) {
-	real fold_change;
-  
-    fold_change = fold_change_fnct(x[i], K_A[variant[i]], K_I[variant[i]], delta_eps_AI_var[variant[i]], delta_eps_RA_var[variant[i]], hill_n, N_NS, R, N_S);
-	
-    //mean_y[i] = g_max*fold_change;
-    log_mean_y[i] = ln_10*log_g_max + log(fold_change) + log_rep_ratio[rep[i]];
-  }
-  
-  for (i in 1:N_contr) {
-    //mean_y_contr[i] = g_max;
-    log_mean_y_contr[i] = ln_10*log_g_max + log_rep_ratio_contr[rep_contr[i]];
-  }
+
+#include Free_energy_model.transformed_parameters.variant_free_energies.stan
+
+#include Free_energy_model.transformed_parameters.fold_change_rep_ratio.stan
   
 }
 
