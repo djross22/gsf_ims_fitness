@@ -1,12 +1,6 @@
 // Fit dose-response curves to Phillips lab model for allosteric TFs
 //
 
-functions {
-
-#include functions.fold_change_single.stan
-
-}
-
 data {
 
 #include Free_energy_model.data.shared.stan
