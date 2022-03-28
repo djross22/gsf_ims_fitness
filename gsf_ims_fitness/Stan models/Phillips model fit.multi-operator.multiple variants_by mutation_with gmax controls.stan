@@ -59,5 +59,7 @@ model {
 generated quantities {
 
 #include Free_energy_model.generated_quantities.shared.stan
+
+#include Free_energy_model.generated_quantities.multi.stan
   
 }
