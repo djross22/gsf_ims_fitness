@@ -62,7 +62,7 @@ transformed parameters {
 
 #include Free_energy_model.transformed_parameters.shared.stan
 
-//This include file has both declarations and assignments in it. So, it has to go after and include file that has other declarations. 
+//This include file has both declarations and assignments in it. So, it has to go after any include file that has other declarations. 
 #include Free_energy_model.transformed_parameters.multi_operator.stan
 
 #include Free_energy_model.transformed_parameters.variant_free_energies.stan
