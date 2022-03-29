@@ -11,5 +11,9 @@
   vector[N] log_mean_y;
   vector[N_contr] log_mean_y_contr;
   
+  // measured values with g_min subtracted
+  vector[N] y_shifted;
+  vector[N_contr] y_contr_shifted;
+  
 //}
 

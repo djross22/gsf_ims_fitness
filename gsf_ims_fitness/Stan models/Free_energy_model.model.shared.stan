@@ -28,15 +28,17 @@
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
+  // prior on min output level
+  g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
   
   // model of the data (dose-response curve with noise)
-  y ~ lognormal(log_mean_y, sigma);
+  y_shifted ~ lognormal(log_mean_y, sigma);
   
   // model of the control strain data (constant, max output)
-  y_contr ~ lognormal(log_mean_y_contr, sigma);
+  y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
   
 //}
 

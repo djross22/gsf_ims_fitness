@@ -9,6 +9,7 @@
   int num_non_epi_var;  // number of variants with less than two mutations
   real log_phi_1;
   real log_phi_2;
+  real min_y;
   
 //}
 

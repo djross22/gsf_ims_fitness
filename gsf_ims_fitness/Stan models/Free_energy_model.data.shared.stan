@@ -29,5 +29,9 @@
   
   real rep_ratio_scale;   // parameter to set the scale for the half-normal prior on log_rep_ratio
   
+  // prior for non-fluorescent control level
+  real g_min_prior_mu;
+  real g_min_prior_std;
+  
 //}
 
