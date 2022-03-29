@@ -13,11 +13,11 @@
 	
     fold_change = 1/(1 + (c1/(c1+c2))*c3);
 	
-    log_mean_y[i] = ln_10*log_g_max + log(fold_change) + log_rep_ratio[rep[i]];
+    log_mean_y[i] = ln_10*log_g_max + log(fold_change) + rep_ratio_sigma*log_rep_ratio[rep[i]];
   }
   
   for (i in 1:N_contr) {
-    log_mean_y_contr[i] = ln_10*log_g_max + log_rep_ratio_contr[rep_contr[i]];
+    log_mean_y_contr[i] = ln_10*log_g_max + rep_ratio_sigma*log_rep_ratio_contr[rep_contr[i]];
   }
   
 //}
