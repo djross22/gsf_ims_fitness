@@ -13,9 +13,11 @@
   int<lower=1> N_contr;          // number of data points for control strains LacI deletions
   vector[N_contr] y_contr;       // gene expression (from cytometry) for control strains
   vector[N_contr] y_contr_err;   // estimated error of gene expression for control strains
-  
   int rep_contr[N_contr];        // integer to indicate the measurement replicate for controls
   int<lower=1> num_contr_reps;   // number of measurement replicates for controls
+  
+  int<lower=1> N_g_min;          // number of data points for g_min control strains (no YFP)
+  vector[N_g_min] y_g_min;       // gene expression (from cytometry) for g_min control strains
   
   real y_max;             // geometric mean for prior on maximum gene expression value
   real g_max_prior_width; // geometric std for prior on maximum gene expression value
