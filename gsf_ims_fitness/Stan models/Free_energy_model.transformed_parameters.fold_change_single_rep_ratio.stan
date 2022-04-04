@@ -16,14 +16,14 @@
     log_mean_y[i] = ln_10*log_g_max + log(fold_change) + rep_ratio_sigma*log_rep_ratio[rep[i]];
 	
     // measured values with g_min and rep_offset subtracted
-    y_shifted[i] = y[i] - g_min - rep_offset_sigma*rep_offset[rep[i]];
+    y_shifted[i] = y[i] - g_min - offset_sigma*rep_offset[rep[i]];
 	
   }
   
   for (i in 1:N_contr) {
     log_mean_y_contr[i] = ln_10*log_g_max + rep_ratio_sigma*log_rep_ratio_contr[rep_contr[i]];
 	
-    y_contr_shifted[i] = y_contr[i] - g_min - rep_offset_sigma*rep_offset_contr[rep_contr[i]];
+    y_contr_shifted[i] = y_contr[i] - g_min - offset_sigma*rep_offset_contr[rep_contr[i]];
   }
   
 //}

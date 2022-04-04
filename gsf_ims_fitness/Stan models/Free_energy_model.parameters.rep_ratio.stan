@@ -7,7 +7,6 @@
   
   vector[num_reps] rep_offset;              // additional g_min shift for different replicates
   vector[num_contr_reps] rep_offset_contr;  // additional g_min shift for control replicates
-  real<lower=0> rep_offset_sigma;           // hyper-paramters for width of rep_offset and rep_offset_contr priors
   
 //}
 
