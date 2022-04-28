@@ -29,6 +29,26 @@ sns.set()
 #import ipywidgets as widgets
 #from ipywidgets import interact#, interact_manual
 
+def get_sample_plate_map(inducer, inducer_conc_list):
+        
+    inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
+    inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
+            
+    with_tet = []
+    plate_list = []
+    for r in rows():
+        for c in columns():
+            plate_list.append( int(2+(c-1)/3) )
+            with_tet.append(r in rows()[1::2])
+
+    sample_plate_map = pd.DataFrame({"well": wells()})
+    sample_plate_map['with_tet'] = with_tet
+    sample_plate_map[inducer] = inducer_conc_list_in_plate
+    sample_plate_map['growth_plate'] = plate_list
+    sample_plate_map.set_index('well', inplace=True, drop=False)
+    
+    return sample_plate_map
+
 def bar_seq_threshold_plot(notebook_dir,
                            experiment=None,
                            save_plots=False,

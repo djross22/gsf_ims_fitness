@@ -263,22 +263,8 @@ class BarSeqFitnessFrame:
         
         if refit_index is None:
             print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
-        
-            inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
-            inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
             
-            with_tet = []
-            plate_list = []
-            for r in fitness.rows():
-                for c in fitness.columns():
-                    plate_list.append( int(2+(c-1)/3) )
-                    with_tet.append(r in fitness.rows()[1::2])
-        
-            sample_plate_map = pd.DataFrame({"well": fitness.wells()})
-            sample_plate_map['with_tet'] = with_tet
-            sample_plate_map[inducer] = inducer_conc_list_in_plate
-            sample_plate_map['growth_plate'] = plate_list
-            sample_plate_map.set_index('well', inplace=True, drop=False)
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list)
         
             wells_with_high_tet = []
             wells_with_low_tet = []
@@ -356,12 +342,11 @@ class BarSeqFitnessFrame:
                     s = []
                     for i in range(len(n_reads)): # iteration over time points 0-3
                         if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
-                            x.append(x0[i])
-                            y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0[i][j]))
-                            sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j])
                             if ("no-tet", x0[i], inducer_conc_list[j]) in ignore_samples:
-                                sigma = np.inf
-                            s.append(sigma)
+                                x.append(x0[i])
+                                y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0[i][j]))
+                                sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j])
+                                s.append(sigma)
                                 
                     if len(x)>1:
                         popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
@@ -377,8 +362,8 @@ class BarSeqFitnessFrame:
                         else:
                             slope_0 = 0
                 
-                slopes = np.asarray(slopes)
-                errors = np.asarray(errors)
+                slopes = np.array(slopes)
+                errors = np.array(errors)
                 f_0_est = spike_in_fitness_0[spike_in] + slopes/np.log(10)
                 f_0_err = errors/np.log(10)
             
@@ -392,12 +377,11 @@ class BarSeqFitnessFrame:
                     s = []
                     for i in range(len(n_reads)): # iteration over time points 0-3
                         if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
-                            x.append(x0[i])
-                            y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet[i][j]))
-                            sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j])
-                            if ("tet", x0[i], inducer_conc_list[j]) in ignore_samples:
-                                sigma = np.inf
-                            s.append(sigma)
+                            if ("tet", x0[i], inducer_conc_list[j]) not in ignore_samples:
+                                x.append(x0[i])
+                                y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet[i][j]))
+                                sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j])
+                                s.append(sigma)
                             
                     if len(x)>1:
                         def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=np.log(5))
@@ -1038,7 +1022,7 @@ class BarSeqFitnessFrame:
     
         r12 = np.asarray(np.split(np.asarray(BC_totals), 8)).transpose().flatten()
     
-        axs[0].scatter(index_list, r12, c=plot_colors12(), s=70);
+        axs[0].scatter(index_list, r12, c=plot_colors96(), s=70);
         for i in range(13):
             axs[0].plot([i*8+0.5, i*8+0.5],[min(BC_totals), max(BC_totals)], color='gray');
         axs[0].set_title("Total Read Counts Per Sample", fontsize=32)
@@ -1066,7 +1050,11 @@ class BarSeqFitnessFrame:
             
     def plot_read_fractions(self,
                             save_plots=False,
-                            num_to_plot=None):
+                            num_to_plot=5,
+                            plot_range=None,
+                            plot_size=16,
+                            plot_fraction=True,
+                            marker_size=70):
     
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
@@ -1077,34 +1065,51 @@ class BarSeqFitnessFrame:
     
         os.chdir(self.data_directory)
         
+        if plot_range is None:
+            f_data = self.barcode_frame.iloc[:num_to_plot]
+        else:
+            f_data = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
+        
         #Plot read fraction across all samples for first several barcodes
-        plt.rcParams["figure.figsize"] = [16,6*num_to_plot]
-        fig, axs = plt.subplots(num_to_plot, 1)
-    
-        f_data = self.barcode_frame[:num_to_plot]
-    
+        plt.rcParams["figure.figsize"] = [plot_size,6*len(f_data)*plot_size/16]
+        fig, axs = plt.subplots(len(f_data), 1)
+        
+        sample_plate_map = fitness.get_sample_plate_map(self.inducer, self.inducer_conc_list)
+        
+        if plot_fraction:
+            plot_param = "fraction_"
+        else:
+            plot_param = ""
         for (index, row), ax in zip(f_data.iterrows(), axs):
-            y = []
-            x = []
             y_for_scale = []
-            for i, t in enumerate(fitness.wells_by_column()):
-                y.append(row["fraction_" + t])
-                x.append(i+1)
-                if (row["fraction_" + t])>0:
-                    y_for_scale.append(row["fraction_" + t])
-    
-            ax.scatter(x, y, c=plot_colors12(), s=70);
+            for marker, with_tet in zip(['o', '^'], [False, True]):
+                y = []
+                x = []
+                for i, t in enumerate(fitness.wells_by_column()):
+                    df = sample_plate_map
+                    df = df[df.well==t]
+                    df = df[df.with_tet==with_tet]
+                    if len(df)>0:
+                        y.append(row[plot_param + t])
+                        x.append(i+1)
+                    if (row[plot_param + t])>0:
+                        y_for_scale.append(row[plot_param + t])
+        
+                ax.scatter(x, y, c=plot_colors48(), s=marker_size, marker=marker);
             ax.set_ylim(0.5*min(y_for_scale), 2*max(y));
             ax.set_yscale("log")
             barcode_str = str(index) + ', '
             if row['RS_name'] != "": barcode_str += row['RS_name'] + ", "
             barcode_str += row['forward_BC'] + ', ' + row['reverse_BC']
             ax.text(x=0.05, y=0.95, s=barcode_str, horizontalalignment='left', verticalalignment='top',
-                     transform=ax.transAxes, fontsize=14)
+                     transform=ax.transAxes, fontsize=plot_size)
         
             for i in range(13):
                 ax.plot([i*8+0.5, i*8+0.5],[0.6*min(y_for_scale), 1.2*max(y)], color='gray');
-        axs[0].set_title("Read Fraction Per Barcode", fontsize=32);
+        if plot_fraction:
+            axs[0].set_title("Read Fraction Per Barcode", fontsize=2*plot_size);
+        else:
+            axs[0].set_title("Read Count Per Barcode", fontsize=2*plot_size);
         if save_plots:
             pdf.savefig()
     
@@ -1295,7 +1300,7 @@ class BarSeqFitnessFrame:
         axs = axs_grid.flatten()
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
-        x = inducer_conc_list
+        x = np.array(inducer_conc_list)
         linthresh = min([i for i in inducer_conc_list if i>0])
         
         fit_plot_colors = sns.color_palette()
@@ -1305,10 +1310,18 @@ class BarSeqFitnessFrame:
                 y = row[f"fitness_{low_tet}_estimate_{initial}"]*fit_scale
                 s = row[f"fitness_{low_tet}_err_{initial}"]*fit_scale
                 fill_style = "full" if initial=="b" else "none"
-                ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
+                x_plot = x[~np.isnan(y)]
+                y_plot = y[~np.isnan(y)]
+                s_plot = s[~np.isnan(y)]
+                if len(x_plot)>0:
+                    ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 y = row[f"fitness_{high_tet}_estimate_{initial}"]*fit_scale
                 s = row[f"fitness_{high_tet}_err_{initial}"]*fit_scale
-                ax.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
+                x_plot = x[~np.isnan(y)]
+                y_plot = y[~np.isnan(y)]
+                s_plot = s[~np.isnan(y)]
+                if len(x_plot)>0:
+                    ax.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
                 if ylim is not None:
                     ax.set_ylim(ylim);
             
@@ -1624,7 +1637,8 @@ class BarSeqFitnessFrame:
                                   inducer=None,
                                   inducer_conc_list=None,
                                   with_tet=None,
-                                  mark_samples=[]):
+                                  mark_samples=[],
+                                  show_spike_ins=["b", "e"]):
         if with_tet is None:
             plot_tet = True
             plot_no_tet = True
@@ -1636,7 +1650,7 @@ class BarSeqFitnessFrame:
         low_tet = self.low_tet
         high_tet = self.high_tet
         
-        plot_count_frame = barcode_frame.iloc[plot_range[0]:plot_range[1]]
+        plot_count_frame = barcode_frame.loc[plot_range[0]:plot_range[1]]
         plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
         fig, axs = plt.subplots(len(plot_count_frame), 1)
     
@@ -1689,73 +1703,203 @@ class BarSeqFitnessFrame:
         
         #Run for both AO-B and AO-E
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
-            spike_in_reads_0 = [ spike_in_row[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
-            spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
-        
-            x0 = [2, 3, 4, 5]
-        
-            for (index, row), ax in zip(plot_count_frame.iterrows(), axs): # iterate over barcodes
-                x_mark = []
-                y_mark = []
-                
-                if plot_no_tet:
-                    n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
-                    for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-                        x = []
-                        y = []
-                        s = []
-                        for i in range(len(n_reads)): # iteration over time points 0-3
-                            if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
-                                x.append(x0[i])
-                                y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
-                                s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))/np.log(10) )
-                                
-                                if ("no-tet", x0[i], inducer_conc_list[j]) in mark_samples:
-                                    x_mark.append(x0[i])
-                                    y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
-                                
-                        label = inducer_conc_list[j] if initial=="b" else None
-                        fillstyle = "full" if initial=="b" else "none"
-                        ax.errorbar(x, y, s, c=plot_colors()[j], marker='o', ms=8, fillstyle=fillstyle, label=label)
+            if initial in show_spike_ins:
+                spike_in_reads_0 = [ spike_in_row[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
+                spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
             
-                if plot_tet:
-                    n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
-                    for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-                        x = []
-                        y = []
-                        s = []
-                        for i in range(len(n_reads)): # iteration over time points 0-3
-                            if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
-                                x.append(x0[i])
-                                y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
-                                s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))/np.log(10) )
-                                
-                                if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
-                                    x_mark.append(x0[i])
-                                    y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
-                        
-                        if plot_no_tet:
-                            label = None
-                        else:
-                            label = inducer_conc_list[j] if initial=="b" else None
-                        fillstyle = "full" if initial=="b" else "none"
-                        ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle, label=label)
+                x0 = [2, 3, 4, 5]
+            
+                for (index, row), ax in zip(plot_count_frame.iterrows(), axs): # iterate over barcodes
+                    x_mark = []
+                    y_mark = []
                     
-                barcode_str = str(index) + ', '
-                barcode_str += row['RS_name'] + ": "
-                barcode_str += row['forward_BC'] + ", "
-                barcode_str += row['reverse_BC']
-                ax.text(x=0.0, y=1.05, s=barcode_str, horizontalalignment='left', verticalalignment='top',
-                        transform=ax.transAxes, fontsize=10, fontfamily="Courier New")
-                ax.set_xlabel('Plate Number', size=16)
-                ax.set_ylabel('Log10(count ÷ spike-in count)', size=16)
-                ax.set_xticks([2, 3, 4, 5])
-                leg = ax.legend(loc='lower left', bbox_to_anchor= (1.03, 0.07), ncol=3, borderaxespad=0, frameon=True, fontsize=10)
-                leg.get_frame().set_edgecolor('k');
+                    if plot_no_tet:
+                        n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                        for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                            x = []
+                            y = []
+                            s = []
+                            for i in range(len(n_reads)): # iteration over time points 0-3
+                                if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
+                                    x.append(x0[i])
+                                    y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                                    s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j]))/np.log(10) )
+                                    
+                                    if ("no-tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                        x_mark.append(x0[i])
+                                        y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_0[i][j]))
+                                    
+                            label = inducer_conc_list[j] if initial=="b" else None
+                            fillstyle = "full" if initial=="b" else "none"
+                            ax.errorbar(x, y, s, c=plot_colors()[j], marker='o', ms=8, fillstyle=fillstyle, label=label)
                 
-                ax.plot(x_mark, y_mark, c='k', marker='o', ms=18, fillstyle="none", markeredgewidth=3, zorder=1000, linestyle="none")
+                    if plot_tet:
+                        n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                        for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                            x = []
+                            y = []
+                            s = []
+                            for i in range(len(n_reads)): # iteration over time points 0-3
+                                if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
+                                    x.append(x0[i])
+                                    y.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
+                                    s.append( (np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j]))/np.log(10) )
+                                    
+                                    if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                        x_mark.append(x0[i])
+                                        y_mark.append(np.log10(n_reads[i][j]) - np.log10(spike_in_reads_tet[i][j]))
+                            
+                            if plot_no_tet:
+                                label = None
+                            else:
+                                label = inducer_conc_list[j] if initial=="b" else None
+                            fillstyle = "full" if initial=="b" else "none"
+                            ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle, label=label)
+                        
+                    barcode_str = str(index) + ', '
+                    barcode_str += row['RS_name'] + ": "
+                    barcode_str += row['forward_BC'] + ", "
+                    barcode_str += row['reverse_BC']
+                    ax.text(x=0.0, y=1.05, s=barcode_str, horizontalalignment='left', verticalalignment='top',
+                            transform=ax.transAxes, fontsize=10, fontfamily="Courier New")
+                    ax.set_xlabel('Plate Number', size=16)
+                    ax.set_ylabel('Log10(count ÷ spike-in count)', size=16)
+                    ax.set_xticks([2, 3, 4, 5])
+                    leg = ax.legend(loc='lower left', bbox_to_anchor= (1.03, 0.07), ncol=3, borderaxespad=0, frameon=True, fontsize=10)
+                    leg.get_frame().set_edgecolor('k');
+                    
+                    ax.plot(x_mark, y_mark, c='k', marker='o', ms=18, fillstyle="none", markeredgewidth=3, zorder=1000, linestyle="none")
         
+    def plot_counts_vs_time(self, plot_range,
+                                  inducer=None,
+                                  inducer_conc_list=None,
+                                  with_tet=None,
+                                  mark_samples=[]):
+
+        if with_tet is None:
+            plot_tet = True
+            plot_no_tet = True
+        else:
+            plot_tet = with_tet
+            plot_no_tet = not with_tet
             
+        barcode_frame = self.barcode_frame
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        
+        plot_count_frame = barcode_frame.loc[plot_range[0]:plot_range[1]].copy()
+        plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
+        fig, axs = plt.subplots(len(plot_count_frame), 1)
+    
+        if inducer_conc_list is None:
+            inducer_conc_list = self.inducer_conc_list
+            
+        if inducer is None:
+            inducer = self.inducer
+    
+        inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
+        inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
+        
+        with_tet = []
+        plate_list = []
+        for r in fitness.rows():
+            for c in fitness.columns():
+                plate_list.append( int(2+(c-1)/3) )
+                with_tet.append(r in fitness.rows()[1::2])
+    
+        sample_plate_map = pd.DataFrame({"well": fitness.wells()})
+        sample_plate_map['with_tet'] = with_tet
+        sample_plate_map[inducer] = inducer_conc_list_in_plate
+        sample_plate_map['growth_plate'] = plate_list
+        sample_plate_map.set_index('well', inplace=True, drop=False)
+    
+        wells_with_high_tet = []
+        wells_with_low_tet = []
+    
+        for i in range(2,6):
+            df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
+            df = df.sort_values([inducer])
+            wells_with_high_tet.append(df["well"].values)
+            df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
+            df = df.sort_values([inducer])
+            wells_with_low_tet.append(df["well"].values)
+    
+        for i in range(2,6):
+            counts_0 = []
+            counts_tet = []
+            for index, row in plot_count_frame.iterrows():
+                row_0 = row[wells_with_low_tet[i-2]]
+                counts_0.append(row_0.values)
+                row_tet = row[wells_with_high_tet[i-2]]
+                counts_tet.append(row_tet.values)
+            plot_count_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
+            plot_count_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
+
+        x0 = [2, 3, 4, 5]
+    
+        for (index, row), ax in zip(plot_count_frame.iterrows(), axs): # iterate over barcodes
+            x_mark = []
+            y_mark = []
+            
+            if plot_no_tet:
+                n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                    x = []
+                    y = []
+                    s = []
+                    for i in range(len(n_reads)): # iteration over time points 0-3
+                        if n_reads[i][j]>0:
+                            x.append(x0[i])
+                            y.append(np.log10(n_reads[i][j]))
+                            s.append( (np.sqrt(1/n_reads[i][j])/np.log(10)) )
+                            
+                            if ("no-tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                x_mark.append(x0[i])
+                                y_mark.append(np.log10(n_reads[i][j]))
+                            
+                    label = inducer_conc_list[j]
+                    fillstyle = "full"
+                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='o', ms=8, fillstyle=fillstyle, label=label)
+        
+            if plot_tet:
+                n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
+                    x = []
+                    y = []
+                    s = []
+                    for i in range(len(n_reads)): # iteration over time points 0-3
+                        if n_reads[i][j]>0:
+                            x.append(x0[i])
+                            y.append(np.log10(n_reads[i][j]))
+                            s.append( (np.sqrt(1/n_reads[i][j])/np.log(10)) )
+                            
+                            if ("tet", x0[i], inducer_conc_list[j]) in mark_samples:
+                                x_mark.append(x0[i])
+                                y_mark.append(np.log10(n_reads[i][j]))
+                    
+                    if plot_no_tet:
+                        label = None
+                    else:
+                        label = inducer_conc_list[j]
+                    fillstyle = "full"
+                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle, label=label)
+                
+            barcode_str = str(index) + ', '
+            barcode_str += row['RS_name'] + ": "
+            barcode_str += row['forward_BC'] + ", "
+            barcode_str += row['reverse_BC']
+            ax.text(x=0.0, y=1.05, s=barcode_str, horizontalalignment='left', verticalalignment='top',
+                    transform=ax.transAxes, fontsize=10, fontfamily="Courier New")
+            ax.set_xlabel('Plate Number', size=16)
+            ax.set_ylabel('Log10(count)', size=16)
+            ax.set_xticks([2, 3, 4, 5])
+            leg = ax.legend(loc='lower left', bbox_to_anchor= (1.03, 0.07), ncol=3, borderaxespad=0, frameon=True, fontsize=10)
+            leg.get_frame().set_edgecolor('k');
+            
+            ax.plot(x_mark, y_mark, c='k', marker='o', ms=18, fillstyle="none", markeredgewidth=3, zorder=1000, linestyle="none")
+        
+         
+    
     def plot_chimera_plot(self,
                           save_plots=False,
                           chimera_cut_line=None):
@@ -1930,10 +2074,17 @@ class BarSeqFitnessFrame:
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)
     
-def plot_colors12():
+def plot_colors96():
     p_c12 = [ ]
     for c in plot_colors():
         for i in range(8):
+            p_c12.append(c)
+    return p_c12
+    
+def plot_colors48():
+    p_c12 = [ ]
+    for c in plot_colors():
+        for i in range(4):
             p_c12.append(c)
     return p_c12
 
