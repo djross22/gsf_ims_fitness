@@ -342,7 +342,7 @@ class BarSeqFitnessFrame:
                     s = []
                     for i in range(len(n_reads)): # iteration over time points 0-3
                         if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
-                            if ("no-tet", x0[i], inducer_conc_list[j]) in ignore_samples:
+                            if ("no-tet", x0[i], inducer_conc_list[j]) not in ignore_samples:
                                 x.append(x0[i])
                                 y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0[i][j]))
                                 sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j])
