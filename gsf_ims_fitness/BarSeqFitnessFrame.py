@@ -1650,6 +1650,9 @@ class BarSeqFitnessFrame:
         low_tet = self.low_tet
         high_tet = self.high_tet
         
+        if plot_range is None:
+            plot_range = [0, max(barcode_frame.index)]
+        
         plot_count_frame = barcode_frame.loc[plot_range[0]:plot_range[1]]
         plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
         fig, axs = plt.subplots(len(plot_count_frame), 1)
@@ -1786,6 +1789,9 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
         high_tet = self.high_tet
+        
+        if plot_range is None:
+            plot_range = [0, max(barcode_frame.index)]
         
         plot_count_frame = barcode_frame.loc[plot_range[0]:plot_range[1]].copy()
         plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
