@@ -395,7 +395,7 @@ class BarSeqFitnessFrame:
                 
                 slopes = np.asarray(slopes)
                 errors = np.asarray(errors)
-                f_tet_est = spike_in_fitness_tet["AO-B"] + slopes/np.log(10)
+                f_tet_est = spike_in_fitness_tet[spike_in] + slopes/np.log(10)
                 f_tet_err = errors/np.log(10)
                 
                 f_tet_est_list.append(f_tet_est)
