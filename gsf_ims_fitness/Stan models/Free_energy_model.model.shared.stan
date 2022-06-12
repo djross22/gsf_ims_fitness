@@ -40,5 +40,9 @@
   // model of the control strain data (constant, max output)
   y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
   
+  // model of the g_min strain data (constant, min output)
+  y_g_min ~ normal(g_min, offset_sigma);
+  offset_sigma ~ normal(0, rep_offset_scale);
+  
 //}
 

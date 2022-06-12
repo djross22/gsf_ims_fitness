@@ -21,7 +21,7 @@
 	
       f_c = 1/(1 + lam*xRA);
 	
-      y_out[var, i] = g_max*f_c + g_min;
+      y_out[var, i] = g_max*f_c;
       fc_out[var, i] = f_c;
     }
   }
