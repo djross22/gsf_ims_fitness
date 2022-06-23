@@ -42,8 +42,17 @@ parameters {
   vector[num_epi_var] logit_n_eff_epi;
   
   real log_g_max;                // log10 of maximum possible gene expression
+  real g_min;           // minimum possible fluorescence (non-fluor control level)
   
-  real<lower=0> sigma;  // scale factor for standard deviation of noise in y
+  real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
+  real<lower=0> offset_sigma;  // scale factor for standard deviation of noise in g_min
+  
+  vector[num_reps] log_rep_ratio;              // log10 of multiplicative correction factor for different replicates
+  vector[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
+  real<lower=0> rep_ratio_sigma;               // hyper-paramters for log_rep_ratio and log_rep_ratio_contr
+  
+  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;              // additional g_min shift for different replicates
+  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_contr_reps] rep_offset_contr;  // additional g_min shift for control replicates
   
 }
 
@@ -58,13 +67,12 @@ transformed parameters {
   vector[num_var] log_ec50_var;
   vector[num_var] logit_n_eff_var;
   
-  real g_max;
+  vector[N] log_mean_y;
+  vector[N_contr] log_mean_y_contr;
   
-  vector[N] fold_change;
-  vector[N] mean_y;
-  vector[N_contr] mean_y_contr;
-  
-  g_max = 10^log_g_max;
+  // measured values with g_min subtracted
+  vector[N] y_shifted;
+  vector[N_contr] y_contr_shifted;
   
   logit_g0_var[1] = logit_g0_wt;
   logit_ginf_var[1] = logit_ginf_wt;
@@ -104,24 +112,25 @@ transformed parameters {
   }
   
   for (i in 1:N) {
-    fold_change[i] = g0[variant[i]] + (ginf[variant[i]] - g0[variant[i]])*(x[i]^n_eff[variant[i]])/(ec50[variant[i]]^n_eff[variant[i]] + x[i]^n_eff[variant[i]]);
+	real fold_change;
+	
+    fold_change = g0[variant[i]] + (ginf[variant[i]] - g0[variant[i]])*(x[i]^n_eff[variant[i]])/(ec50[variant[i]]^n_eff[variant[i]] + x[i]^n_eff[variant[i]]);
     
-    mean_y[i] = g_max*fold_change[i];
+    log_mean_y[i] = ln_10*log_g_max + log(fold_change) + log_rep_ratio[rep[i]];
+	
+    // measured values with g_min and rep_offset subtracted
+    y_shifted[i] = y[i] - g_min - rep_offset[rep[i]];
   }
   
   for (i in 1:N_contr) {
-    mean_y_contr[i] = g_max;
+    log_mean_y_contr[i] = ln_10*log_g_max + log_rep_ratio_contr[rep_contr[i]];
+	
+    y_contr_shifted[i] = y_contr[i] - g_min - rep_offset_contr[rep_contr[i]];
   }
   
 }
 
 model {
-  vector[N] log_mean_y;
-  vector[N_contr] log_mean_y_contr;
-  
-  log_mean_y = log(mean_y);
-  log_mean_y_contr = log(mean_y_contr);
-  
   // priors on free energy params
   logit_g0_wt ~ normal(logit_g0_wt_prior_mean, logit_g0_wt_prior_std);
   logit_ginf_wt ~ normal(logit_ginf_wt_prior_mean, logit_ginf_wt_prior_std);
@@ -143,26 +152,46 @@ model {
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
+  // prior on min output level
+  g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
   
   // model of the data (dose-response curve with noise)
-  y ~ lognormal(log_mean_y, sigma);
+  y_shifted ~ lognormal(log_mean_y, sigma);
   
   // model of the control strain data (constant, max output)
-  y_contr ~ lognormal(log_mean_y_contr, sigma);
+  y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
+  
+  // model of the g_min strain data (constant, min output)
+  y_g_min ~ normal(g_min, offset_sigma);
+  offset_sigma ~ normal(0, rep_offset_scale);
+  
+  // prior on scale hyper-parameter for log_rep_ratio
+  rep_ratio_sigma ~ normal(0, rep_ratio_scale);
+  
+  // priors on log_rep_ratio and log_rep_ratio_contr
+  log_rep_ratio ~ normal(0, rep_ratio_sigma);
+  log_rep_ratio_contr ~ normal(0, rep_ratio_sigma);
+  
+  // priors on rep_offset and rep_offset_contr
+  rep_offset ~ normal(0, offset_sigma);
+  rep_offset_contr ~ normal(0, offset_sigma);
 
 }
 
 generated quantities {
-  // Local variables
   real y_out[num_var, 19];
   real fc_out[num_var, 19];
   
   real log_g0[num_var];
   real log_ginf[num_var];
   real log_ec50[num_var];
+  
+  real g_max;
+  
+  g_max = 10^log_g_max;
   
   for (var in 1:num_var) {
     for (i in 1:19) {
