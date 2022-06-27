@@ -807,7 +807,8 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20):
         if tet_conc==20:
             params = np.array([-0.72246,  13328,  3.2374])
         elif tet_conc==10:
-            params = np.array([-0.8102, 4955, 1.817])
+            #params = np.array([-0.8102, 4955, 1.817])
+            params = np.array([-0.8175, 4.967e+03, 1.815])
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
