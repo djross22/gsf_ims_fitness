@@ -1908,7 +1908,8 @@ class BarSeqFitnessFrame:
     
     def plot_chimera_plot(self,
                           save_plots=False,
-                          chimera_cut_line=None):
+                          chimera_cut_line=None,
+                          plot_size=8):
             
         barcode_frame = self.barcode_frame[self.barcode_frame["possibleChimera"]]
         
@@ -1920,7 +1921,7 @@ class BarSeqFitnessFrame:
             pdf_file = 'barcode fitness plots.pdf'
             pdf = PdfPages(pdf_file)
         
-        plt.rcParams["figure.figsize"] = [8,8]
+        plt.rcParams["figure.figsize"] = [plot_size, plot_size]
         fig, axs = plt.subplots(1, 1)
         axs.set_ylabel('Chimera Read Count per Sample', size=20)
         axs.set_xlabel('Geometric Mean of Parental Read Counts', size=20);
@@ -1962,6 +1963,8 @@ class BarSeqFitnessFrame:
     
         if save_plots:
             pdf.close()
+            
+        return fig, axs
             
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None, in_alpha=0.7,
