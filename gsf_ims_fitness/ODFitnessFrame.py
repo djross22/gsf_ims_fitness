@@ -342,7 +342,7 @@ class ODFitnessFrame:
         if save_plots:
             pdf.close()
             
-        return fig
+        return fig, axs
             
     def plot_fitness_curves(self,
                             show_plots=True,
@@ -427,5 +427,5 @@ class ODFitnessFrame:
         if save_plots:
             pdf.close()
             
-        return fig
+        return fig, axs
         
