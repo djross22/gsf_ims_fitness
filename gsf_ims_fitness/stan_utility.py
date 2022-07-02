@@ -154,7 +154,7 @@ def partition_div(fit):
     return nondiv_params, div_params
 
 
-def compile_model(filename, model_name=None, **kwargs):
+def compile_model(filename, model_name=None, force_recompile=False):
     """This will automatically cache models - great if you're just running a
     script on the command line.
 
@@ -171,14 +171,19 @@ def compile_model(filename, model_name=None, **kwargs):
             cache_fn = 'cached-model-{}.pkl'.format(code_hash)
         else:
             cache_fn = 'cached-{}-{}.pkl'.format(model_name, code_hash)
-        try:
-            sm = pickle.load(open(cache_fn, 'rb'))
-        except:
+        if force_recompile:
             sm = pystan.StanModel(model_code=model_code)
             with open(cache_fn, 'wb') as f:
                 pickle.dump(sm, f)
         else:
-            print("Using cached StanModel")
+            try:
+                sm = pickle.load(open(cache_fn, 'rb'))
+            except:
+                sm = pystan.StanModel(model_code=model_code)
+                with open(cache_fn, 'wb') as f:
+                    pickle.dump(sm, f)
+            else:
+                print("Using cached StanModel")
 
         os.chdir(return_directory)
 
