@@ -381,7 +381,9 @@ class ODFitnessFrame:
         
         current_palette = sns.color_palette()
         plot_colors = current_palette
-        for conc in Tet_concentrations:
+        for j, conc in enumerate(Tet_concentrations):
+            if len(plasmids)==1:
+                plot_colors = [ current_palette[j] ]
             for c, plas in zip(plot_colors, plasmids):
                 frame = fitness_frame[(fitness_frame['tet_concentration']==conc)]
                 frame = frame[(frame['plasmid']==plas)]
@@ -398,7 +400,10 @@ class ODFitnessFrame:
                 else:
                     marker = "-o" if conc==0 else "-^"
                     print(f"{plas}: {np.mean(y)} +- {np.std(y)}")
-                label=plas + f', {conc}' if conc==0 else ""
+                if len(plasmids)>1:
+                    label=plas + f', {conc}' if conc==0 else ""
+                else:
+                    label=plas + f', [tet] = {conc}'
                 axs.errorbar(x, y, yerr=y_err, fmt=marker, label=label, markersize=size, color=c)
         linthresh = min([i for i in x if i>0])
         axs.set_xscale('symlog', linthresh=linthresh)
@@ -406,7 +411,7 @@ class ODFitnessFrame:
             axs.set_ylim(y_min, y_max);
         #axs.set_xlim(-linthreshx/10, 2*max(x));
         if si_plot==False:
-            leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.1), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
+            leg = axs.legend(loc='lower right', bbox_to_anchor= (0.975, 0.03), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
             leg.get_frame().set_edgecolor('k');
             axs.text(0.5, 1.025, self.experiment, horizontalalignment='center', verticalalignment='center', transform=axs.transAxes, size=20);
         axs.set_xlabel(f'[{inducer}] (µmol/L)', size=20)
