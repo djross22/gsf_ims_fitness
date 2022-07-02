@@ -400,8 +400,8 @@ class ODFitnessFrame:
                     print(f"{plas}: {np.mean(y)} +- {np.std(y)}")
                 label=plas + f', {conc}' if conc==0 else ""
                 axs.errorbar(x, y, yerr=y_err, fmt=marker, label=label, markersize=size, color=c)
-        linthreshx = min([i for i in x if i>0])
-        axs.set_xscale('symlog', linthreshx=linthreshx)
+        linthresh = min([i for i in x if i>0])
+        axs.set_xscale('symlog', linthresh=linthresh)
         if (y_min is not None) and (y_max is not None):
             axs.set_ylim(y_min, y_max);
         #axs.set_xlim(-linthreshx/10, 2*max(x));
