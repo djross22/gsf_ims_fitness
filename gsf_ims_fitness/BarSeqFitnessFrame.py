@@ -1985,11 +1985,16 @@ class BarSeqFitnessFrame:
         axs = axs_grid.flatten()
     
         y_label_list = ["G0", "Ginf", "Ginf/G0", "n"]
-        param_names = ["log_low_level", "log_high_level", "log_high_low_ratio", "log_n"]
+        if 'log_g0' in self.barcode_frame.columns.values:
+            param_names = ["log_g0", "log_ginf", "log_ginf_g0_ratio", "log_n"]
+            x_param = f'log_ec50'
+            x_err_label = f'log_ec50 error'
+        else:
+            param_names = ["log_low_level", "log_high_level", "log_high_low_ratio", "log_n"]
+            x_param = f'log_ic50'
+            x_err_label = f'log_ic50 error'
     
         x_label = f'EC50'
-        x_param = f'log_ic50'
-        x_err_label = f'log_ic50 error'
     
         # This part plots the input input_frames
         for input_frame, c, lab in zip(input_frames, in_colors, in_labels):
@@ -2018,7 +2023,10 @@ class BarSeqFitnessFrame:
         # This part plots all the rest
         plot_frame = self.barcode_frame[3:]
         plot_frame = plot_frame[plot_frame["total_counts"]>3000]
-        plot_frame = plot_frame[plot_frame["log_high_level error"]<log_high_err_cutoff]
+        if 'log_g0' in self.barcode_frame.columns.values:
+            plot_frame = plot_frame[plot_frame["log_ginf error"]<log_high_err_cutoff]
+        else:
+            plot_frame = plot_frame[plot_frame["log_high_level error"]<log_high_err_cutoff]
         for ax, name, y_label in zip(axs, param_names, y_label_list):
             
             params_x = 10**plot_frame[x_param]
@@ -2069,7 +2077,10 @@ class BarSeqFitnessFrame:
     def cleaned_frame(self, count_threshold=3000, log_high_error_cutoff=0.7, num_good_hill_points=12, exclude_mut_regions=None):
         frame = self.barcode_frame
         frame = frame[frame["total_counts"]>count_threshold]
-        frame = frame[frame["log_high_level error"]<log_high_error_cutoff]
+        if 'log_ginf' in frame.columns.values:
+            frame = frame[frame["log_ginf error"]<log_high_error_cutoff]
+        else:
+            frame = frame[frame["log_high_level error"]<log_high_error_cutoff]
         frame = frame[frame["good_hill_fit_points"]>=num_good_hill_points]
         
         if exclude_mut_regions is None:
