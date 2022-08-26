@@ -69,15 +69,8 @@ transformed parameters {
 #include Free_energy_model.transformed_parameters.multi_operator.stan
 
 // ***** include Free_energy_model.transformed_parameters.variant_free_energies.stan
-  log_k_a_var[1] = log_k_a_wt;
-  log_k_i_var[1] = log_k_i_wt;
-  delta_eps_AI_var[1] = delta_eps_AI_wt;
-  delta_eps_RA_var[1] = delta_eps_RA_wt;
   
-  K_A[1] = 10^log_k_a_var[1];
-  K_I[1] = 10^log_k_i_var[1];
-  
-  for (var in 2:num_var) {
+  for (var in 1:num_var) {
     if (var > num_non_epi_var) {
       log_k_a_var[var] = log_k_a_wt + log_k_a_epi[var-num_non_epi_var];
       log_k_i_var[var] = log_k_i_wt + log_k_i_epi[var-num_non_epi_var];
