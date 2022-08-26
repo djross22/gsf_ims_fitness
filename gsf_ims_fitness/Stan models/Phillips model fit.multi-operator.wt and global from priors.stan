@@ -9,10 +9,23 @@ data {
 
 #include Free_energy_model.data.multi_operator.stan
 
-real rep_ratio_sigma_mu;
-real rep_ratio_sigma_std;
-real offset_sigma_mu;
-real offset_sigma_std;
+  real rep_ratio_sigma_prior_mu;
+  real rep_ratio_sigma_prior_std;
+  
+  real offset_sigma_prior_mu;
+  real offset_sigma_prior_std;
+  
+  real log_g_max_prior_mu;
+  real log_g_max_prior_std;
+  
+  real sigma_prior_mu;
+  real sigma_prior_std;
+  
+  real log_copy_num_prior_mu;
+  real log_copy_num_prior_std;
+  
+  real log_R_prior_mu;
+  real log_R_prior_std;
   
 }
 
@@ -154,12 +167,12 @@ model {
   }
   
   // prior on max output level
-  log_g_max ~ normal(log10(y_max), g_max_prior_width);
+  log_g_max ~ normal(log_g_max_prior_mu, log_g_max_prior_std);
   // prior on min output level
   g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
-  sigma ~ normal(0, 1);
+  sigma ~ normal(sigma_prior_mu, sigma_prior_std);
   
   // model of the data (dose-response curve with noise)
   y_shifted ~ lognormal(log_mean_y, sigma);
@@ -168,17 +181,21 @@ model {
 
 // ***** include Free_energy_model.model.rep_ratio.stan
   // prior on scale hyper-parameter for log_rep_ratio
-  rep_ratio_sigma ~ normal(rep_ratio_sigma_mu, rep_ratio_sigma_std);
+  rep_ratio_sigma ~ normal(rep_ratio_sigma_prior_mu, rep_ratio_sigma_prior_std);
   
   // prior on log_rep_ratio
   log_rep_ratio ~ normal(0, rep_ratio_sigma);
   
   // prior on rep_offset
   rep_offset ~ normal(0, offset_sigma);
-  offset_sigma ~ normal(offset_sigma_mu, offset_sigma_std);
+  offset_sigma ~ normal(offset_sigma_prior_mu, offset_sigma_prior_std);
 // *****
 
-#include Free_energy_model.model.multi_operator.stan
+// ***** #include Free_energy_model.model.multi_operator.stan
+  // priors on plasmid/operator and repressor dimer copy numbers
+  log_copy_num ~ normal(log_copy_num_prior_mu, log_copy_num_prior_std);
+  log_R ~ normal(log_R_prior_mu, log_R_prior_std);
+// *****
 
 }
 
