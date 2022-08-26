@@ -30,7 +30,7 @@ transformed data {
 }
 
 parameters {
-  // In this version of the model, the base parameters belong to the first variant (the wild-type)
+  // In this version of the model, the base parameters belong to the wild-type variant (which is not included in the input data, informed mainly by the priors)
   //     and there is a delta_param associated with each mutation (with additive effects)
   //     plus an epistasis term associated with each variant other than the wild-type
   
@@ -38,7 +38,14 @@ parameters {
 
 #include Free_energy_model.parameters.multi_operator.stan
 
-#include Free_energy_model.parameters.rep_ratio.stan
+// ***** include Free_energy_model.parameters.rep_ratio.stan
+  vector[num_reps] log_rep_ratio;              // log10 of multiplicative correction factor for different replicates
+  vector[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
+  real<lower=0> rep_ratio_sigma;               // hyper-paramters for log_rep_ratio and log_rep_ratio_contr
+  
+  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;              // additional g_min shift for different replicates
+  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_contr_reps] rep_offset_contr;  // additional g_min shift for control replicates
+// *****
   
 }
 
