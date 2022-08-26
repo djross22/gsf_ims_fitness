@@ -8,6 +8,11 @@ data {
 #include Free_energy_model.data.free_energy.stan
 
 #include Free_energy_model.data.multi_operator.stan
+
+real rep_ratio_sigma_mu;
+real rep_ratio_sigma_std;
+real offset_sigma_mu;
+real offset_sigma_std;
   
 }
 
@@ -48,11 +53,9 @@ transformed parameters {
   vector[num_var] delta_eps_RA_var;
   
   vector[N] log_mean_y;
-  vector[N_contr] log_mean_y_contr;
   
   // measured values with g_min subtracted
   vector[N] y_shifted;
-  vector[N_contr] y_contr_shifted;
 // *****
 
 //This include file has both declarations and assignments in it. So, it has to go after any include file that has other declarations. 
@@ -118,12 +121,6 @@ transformed parameters {
     // measured values with g_min and rep_offset subtracted
     y_shifted[i] = y[i] - g_min - rep_offset[rep[i]];
   }
-  
-  for (i in 1:N_contr) {
-    log_mean_y_contr[i] = ln_10*log_g_max + log_rep_ratio_contr[rep_contr[i]];
-	
-    y_contr_shifted[i] = y_contr[i] - g_min - rep_offset_contr[rep_contr[i]];
-  }
 // *****
   
 }
@@ -167,25 +164,18 @@ model {
   // model of the data (dose-response curve with noise)
   y_shifted ~ lognormal(log_mean_y, sigma);
   
-  // model of the control strain data (constant, max output)
-  y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
-  
-  // model of the g_min strain data (constant, min output)
-  y_g_min ~ normal(g_min, offset_sigma);
-  offset_sigma ~ normal(0, rep_offset_scale);
 // *****
 
 // ***** include Free_energy_model.model.rep_ratio.stan
   // prior on scale hyper-parameter for log_rep_ratio
-  rep_ratio_sigma ~ normal(0, rep_ratio_scale);
+  rep_ratio_sigma ~ normal(rep_ratio_sigma_mu, rep_ratio_sigma_std);
   
-  // priors on log_rep_ratio and log_rep_ratio_contr
+  // prior on log_rep_ratio
   log_rep_ratio ~ normal(0, rep_ratio_sigma);
-  log_rep_ratio_contr ~ normal(0, rep_ratio_sigma);
   
-  // priors on rep_offset and rep_offset_contr
+  // prior on rep_offset
   rep_offset ~ normal(0, offset_sigma);
-  rep_offset_contr ~ normal(0, offset_sigma);
+  offset_sigma ~ normal(offset_sigma_mu, offset_sigma_std);
 // *****
 
 #include Free_energy_model.model.multi_operator.stan
