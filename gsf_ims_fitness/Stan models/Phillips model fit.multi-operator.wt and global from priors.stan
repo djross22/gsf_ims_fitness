@@ -5,7 +5,27 @@ data {
 
 #include Free_energy_model.data.shared.stan
 
-#include Free_energy_model.data.free_energy.stan
+// ***** #include Free_energy_model.data.free_energy.stan
+  // Input data for priors on wild-type free energy parameters (single- and multi-operator models)
+  real log_k_a_wt_prior_mu;
+  real log_k_a_wt_prior_std;
+  real log_k_i_wt_prior_mu;
+  real log_k_i_wt_prior_std;
+  real delta_eps_AI_wt_prior_mu;
+  real delta_eps_AI_wt_prior_std;
+  real delta_eps_RA_wt_prior_mu;
+  real delta_eps_RA_wt_prior_std;
+  
+  // priors on mutational effects and epistasis  (single- and multi-operator models)
+  real delta_prior_width;   // width of prior on "_mut" parameters (mutational effects)
+  real epi_prior_width_1;   // width of 1st mixture component of prior on parameter epistasis
+  real epi_prior_width_2;   // width of 2nd mixture component of prior on parameter epistasis
+  real epi_prior_phi;       // weight for 1st mixture component of prior on parameter epistasis
+  
+  real<lower=0> eps_RA_prior_scale[num_mut];     // scale multiplier for width of priors on operator binding free energy term (delta_eps_RA_mut) 
+  real<lower=0> RA_epi_prior_scale[num_epi_var]; // scale multiplier for width of priors on operator binding free energy epistasis (delta_eps_RA_epi) 
+  
+// *****
 
 #include Free_energy_model.data.multi_operator.stan
 
@@ -142,10 +162,10 @@ model {
 
 // ***** include Free_energy_model.model.shared.stan
   // priors on free energy params
-  log_k_a_wt ~ normal(log_k_a_wt_prior_mean, log_k_a_wt_prior_std);
-  log_k_i_wt ~ normal(log_k_i_wt_prior_mean, log_k_i_wt_prior_std);
-  delta_eps_AI_wt ~ normal(delta_eps_AI_wt_prior_mean, delta_eps_AI_wt_prior_std);
-  delta_eps_RA_wt ~ normal(delta_eps_RA_wt_prior_mean, delta_eps_RA_wt_prior_std);
+  log_k_a_wt ~ normal(log_k_a_wt_prior_mu, log_k_a_wt_prior_std);
+  log_k_i_wt ~ normal(log_k_i_wt_prior_mu, log_k_i_wt_prior_std);
+  delta_eps_AI_wt ~ normal(delta_eps_AI_wt_prior_mu, delta_eps_AI_wt_prior_std);
+  delta_eps_RA_wt ~ normal(delta_eps_RA_wt_prior_mu, delta_eps_RA_wt_prior_std);
   
   log_k_a_mut ~ normal(0, delta_prior_width/ln_10); // factor of 1/ln_10 is to compensate for use of log10 instead of ln
   
