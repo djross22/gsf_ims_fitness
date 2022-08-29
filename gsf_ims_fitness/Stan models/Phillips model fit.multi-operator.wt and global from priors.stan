@@ -144,10 +144,10 @@ transformed parameters {
 	}
 	
 	for (mut in 1:num_mut) {
-	  log_k_a_var[var] += mut_code[var-1, mut]*log_k_a_mut[mut];
-	  log_k_i_var[var] += mut_code[var-1, mut]*log_k_i_mut[mut];
-	  delta_eps_AI_var[var] += mut_code[var-1, mut]*delta_eps_AI_mut[mut];
-	  delta_eps_RA_var[var] += mut_code[var-1, mut]*delta_eps_RA_mut[mut];
+	  log_k_a_var[var] += mut_code[var, mut]*log_k_a_mut[mut];
+	  log_k_i_var[var] += mut_code[var, mut]*log_k_i_mut[mut];
+	  delta_eps_AI_var[var] += mut_code[var, mut]*delta_eps_AI_mut[mut];
+	  delta_eps_RA_var[var] += mut_code[var, mut]*delta_eps_RA_mut[mut];
 	}
 	
 	K_A[var] = 10^log_k_a_var[var];
