@@ -140,7 +140,35 @@ model {
 
 generated quantities {
 
-#include Free_energy_model.generated_quantities.shared.stan
+// ***** #include Free_energy_model.generated_quantities.shared.stan
+  real g_max;
+  real y_out[num_var, 19];
+  real fc_out[num_var, 19];
+  
+  //this gets instered here becasue all declarations must come before any operations
+  vector[num_mut] log_k_a_mut;
+  vector[num_epi_var] log_k_a_epi;
+  vector[num_mut] log_k_i_mut;
+  vector[num_epi_var] log_k_i_epi;
+  vector[num_mut] delta_eps_AI_mut;
+  vector[num_epi_var] delta_eps_AI_epi;
+  
+  for (var in 1:num_epi_var) {
+    log_k_a_epi[var] = 0;
+    log_k_i_epi[var] = 0;
+    delta_eps_AI_epi[var] = 0;
+  }
+  
+  for (mut in 1:num_mut) {
+    log_k_a_mut[mut] = 0;
+    log_k_i_mut[mut] = 0;
+    delta_eps_AI_mut[mut] = 0;
+  }
+  //
+  
+  
+  g_max = 10^log_g_max;
+// *****
 
 #include Free_energy_model.generated_quantities.multi.stan
   
