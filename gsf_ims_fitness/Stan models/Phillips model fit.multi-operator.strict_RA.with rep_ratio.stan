@@ -11,9 +11,9 @@ data {
 
 #include Free_energy_model.data.multi_operator.stan
 
-  int<lower=0, upper=1> can_shift_allostery[num_mut]; should be zero for mutations in the DNA binding domain and one otherwise
+  int<lower=0, upper=1> can_shift_allostery[num_mut]; // should be zero for mutations in the DNA binding domain and one otherwise
   
-  int<lower=0, upper=1> can_have_allosteric_epi[num_epi_var]; should be one for variants with two or more mutations in the core and zero otherwise
+  int<lower=0, upper=1> can_have_allosteric_epi[num_epi_var]; // should be one for variants with two or more mutations in the core and zero otherwise
   
 }
 
