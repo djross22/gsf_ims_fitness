@@ -14,6 +14,7 @@
   // measured values with g_min subtracted
   vector[N] y_shifted;
   vector[N_contr] y_contr_shifted;
+  vector[N_g_min] y_g_min_shifted;
   
 //}
 

@@ -26,5 +26,9 @@
     y_contr_shifted[i] = y_contr[i] - g_min - rep_offset_contr[rep_contr[i]];
   }
   
+  for (i in 1:N_g_min) {
+    y_g_min_shifted[i] = y_g_min[i] - g_min - rep_offset_g_min[rep_g_min[i]];
+  }
+  
 //}
 
