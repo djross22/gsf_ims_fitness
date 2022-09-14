@@ -75,6 +75,7 @@ transformed parameters {
   // measured values with g_min subtracted
   vector[N] y_shifted;
   vector[N_contr] y_contr_shifted;
+  vector[N_g_min] y_g_min_shifted;
   
   logit_g0_var[1] = logit_g0_wt;
   logit_ginf_var[1] = logit_ginf_wt;
@@ -171,8 +172,8 @@ model {
   y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
   
   // model of the g_min strain data (constant, min output)
-  g_min_sigma ~ normal(0, g_min_prior_std)
-  y_g_min_shifted ~ normal(0, g_min_sigma)
+  g_min_sigma ~ normal(0, g_min_prior_std);
+  y_g_min_shifted ~ normal(0, g_min_sigma);
   rep_offset_g_min  ~ normal(0, offset_sigma);
   offset_sigma ~ normal(0, rep_offset_scale);
   
