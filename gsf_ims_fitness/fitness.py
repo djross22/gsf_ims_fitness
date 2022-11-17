@@ -29,21 +29,114 @@ sns.set()
 #import ipywidgets as widgets
 #from ipywidgets import interact#, interact_manual
 
-def get_sample_plate_map(inducer, inducer_conc_list):
-        
-    inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
-    inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
-            
-    with_tet = []
-    plate_list = []
-    for r in rows():
-        for c in columns():
-            plate_list.append( int(2+(c-1)/3) )
-            with_tet.append(r in rows()[1::2])
+def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_conc_list_2=None, tet_conc_list=None):
 
-    sample_plate_map = pd.DataFrame({"well": wells()})
+    """
+    This method returns a dataframe that has the growth conditions for each well in the BarSeq output plate.
+    Each row is a well in the output plate.
+    The columns indicate which time point ('growth_plate'), whether or not the sample included antibiotic ('with_tet'),
+        and the concentration(s) of inducer(s) (inducer, inducer_2)
+        For plate layouts with >1 antibiotic concentration, there is also a column with the antibiotic concentration ('antibiotic_conc') 
+    
+    Parameters
+    ----------
+    inducer : string
+        Identifier for the inducer used in the experiment
+        
+    inducer_2 : string
+        Identifier for the second inducer used in the experiment
+        
+    inducer_conc_list : list or array of float
+        A list of inducer concentrations used in the experiment
+        
+    inducer_conc_list_2 : list or array of float
+        A list of inducer_2 concentrations used in the experiment
+        
+    tet_conc_list : list or array of float
+        A list of non-zero antibiotic concentrations used in the experiment
+
+    Returns
+    -------
+    sample_plate_map : Pandas.DataFrame
+        A dataframe with the growth conditions for each well in the BarSeq output plate
+    """
+    
+    if inducer_2 is None:
+        # This handles the case for the original plate layout, with 12 inducer concentrations, each measured with and without antibiotic
+        inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
+        inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
+                
+        with_tet = []
+        plate_list = []
+        well_list = []
+        for r in rows():
+            for c in columns():
+                plate_list.append( int(2+(c-1)/3) )
+                with_tet.append(r in rows()[1::2])
+                well_list.append(r + str(c))
+    else:
+        # This handles the case for the plate layout with 2 inducers and 2 antibiotic concentrations
+        zero_tet_inducer_conc = max(inducer_conc_list)/5
+        zero_tet_inducer_conc_2 = max(inducer_conc_list_2)/5
+        layout_dict = {}
+        for r1, r2, r3, r4, c1, c2, x1, x2 in zip(['A', 'C', 'E', 'G', 'A'] , ['G', 'E', 'C', 'A', 'G'],
+                                                  ['B', 'D', 'F', 'H', 'B'] , ['H', 'F', 'D', 'B', 'H'],
+                                                  [1, 1, 1, 1, 2], [3, 3, 3, 3, 2],
+                                                  inducer_conc_list[::-1], inducer_conc_list_2[::-1]):
+            for y in [0, 3, 6, 9]:
+                w1 = f"{r1}{c1 + y}"
+                w2 = f"{r2}{c2 + y}"
+                w3 = f"{r3}{c1 + y}"
+                w4 = f"{r4}{c2 + y}"
+                layout_dict[w1] = [x1, inducer, tet_conc_list[0]]
+                layout_dict[w2] = [x1, inducer, tet_conc_list[1]]
+                layout_dict[w3] = [x2, inducer_2, tet_conc_list[0]]
+                layout_dict[w4] = [x2, inducer_2, tet_conc_list[1]]
+        for y in [0, 3, 6, 9]:
+            w = f"C{2 + y}"
+            layout_dict[w] = [0, 'none', 0]
+            w = f"D{2 + y}"
+            layout_dict[w] = [0, 'none', tet_conc_list[0]]
+            w = f"E{2 + y}"
+            layout_dict[w] = [zero_tet_inducer_conc, inducer, 0]
+            w = f"F{2 + y}"
+            layout_dict[w] = [zero_tet_inducer_conc_2, inducer_2, 0]
+        
+        with_tet = []
+        plate_list = []
+        well_list = []
+        inducer_conc_list_in_plate = []
+        inducer_2_conc_list_in_plate = []
+        antibiotic_conc = []
+        for r in rows():
+            for c in columns():
+                w = r + str(c)
+                plate_list.append( int(2+(c-1)/3) )
+                v = layout_dict[w]
+                with_tet.append(v[2]>0)
+                antibiotic_conc.append(v[2])
+                well_list.append(w)
+                
+                if v[1] == inducer:
+                    inducer_conc_list_in_plate.append(v[0])
+                else:
+                    inducer_conc_list_in_plate.append(0)
+                
+                if v[1] == inducer_2:
+                    inducer_2_conc_list_in_plate.append(v[0])
+                else:
+                    inducer_2_conc_list_in_plate.append(0)
+
+    sample_plate_map = pd.DataFrame({"well": well_list})
+    
     sample_plate_map['with_tet'] = with_tet
+    if tet_conc_list is not None:
+        sample_plate_map['antibiotic_conc'] = antibiotic_conc
+        
     sample_plate_map[inducer] = inducer_conc_list_in_plate
+    if inducer_2 is not None:
+        sample_plate_map[inducer_2] = inducer_2_conc_list_in_plate
+        
     sample_plate_map['growth_plate'] = plate_list
     sample_plate_map.set_index('well', inplace=True, drop=False)
     
