@@ -65,42 +65,65 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
         # This handles the case for the original plate layout, with 12 inducer concentrations, each measured with and without antibiotic
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
-                
+        
+        layout_dict = {}
+        for zip_tup in zip(['A', 'C', 'E', 'G', 'A', 'C', 'E', 'G', 'A', 'C', 'E', 'G'],
+                           ['B', 'D', 'F', 'H', 'B', 'D', 'F', 'H', 'B', 'D', 'F', 'H'],
+                           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 
+                           [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]):
+            r1, r2, s1, s2 = zip_tup
+            for y in [0, 3, 6, 9]:
+                w1 = f"{r1}{c1 + y}"
+                w2 = f"{r2}{c2 + y}"
+                layout_dict[w1] = s1
+                layout_dict[w2] = s2
+        
         with_tet = []
         plate_list = []
         well_list = []
+        sample_id = []
         for r in rows():
             for c in columns():
+                w = r + str(c)
                 plate_list.append( int(2+(c-1)/3) )
                 with_tet.append(r in rows()[1::2])
-                well_list.append(r + str(c))
+                well_list.append(f"{r}{c}")
+                sample_id.append(layout_dict[w])
     else:
         # This handles the case for the plate layout with 2 inducers and 2 antibiotic concentrations
+        inducer_conc_list.sort()
+        inducer_conc_list_2.sort()
+        
         zero_tet_inducer_conc = max(inducer_conc_list)/5
         zero_tet_inducer_conc_2 = max(inducer_conc_list_2)/5
         layout_dict = {}
-        for r1, r2, r3, r4, c1, c2, x1, x2 in zip(['A', 'C', 'E', 'G', 'A'] , ['G', 'E', 'C', 'A', 'G'],
-                                                  ['B', 'D', 'F', 'H', 'B'] , ['H', 'F', 'D', 'B', 'H'],
-                                                  [1, 1, 1, 1, 2], [3, 3, 3, 3, 2],
-                                                  inducer_conc_list[::-1], inducer_conc_list_2[::-1]):
+        for zip_tup in zip(['A', 'C', 'E', 'G', 'A'], ['G', 'E', 'C', 'A', 'G'],
+                           ['B', 'D', 'F', 'H', 'B'], ['H', 'F', 'D', 'B', 'H'],
+                           [1, 1, 1, 1, 2], [3, 3, 3, 3, 2],
+                           inducer_conc_list[::-1], inducer_conc_list_2[::-1],
+                           [1, 2, 3, 4, 5], [12, 11, 10, 9, 8], [13, 14, 15, 16, 17], [24, 23, 22, 21, 20]):
+            r1, r2, r3, r4, c1, c2, x1, x2, s1, s2, s3, s4 = zip_tup
             for y in [0, 3, 6, 9]:
                 w1 = f"{r1}{c1 + y}"
                 w2 = f"{r2}{c2 + y}"
                 w3 = f"{r3}{c1 + y}"
                 w4 = f"{r4}{c2 + y}"
-                layout_dict[w1] = [x1, inducer, tet_conc_list[0]]
-                layout_dict[w2] = [x1, inducer, tet_conc_list[1]]
-                layout_dict[w3] = [x2, inducer_2, tet_conc_list[0]]
-                layout_dict[w4] = [x2, inducer_2, tet_conc_list[1]]
+                layout_dict[w1] = [x1, inducer, tet_conc_list[0], s1]
+                layout_dict[w2] = [x1, inducer, tet_conc_list[1], s2]
+                layout_dict[w3] = [x2, inducer_2, tet_conc_list[0], s3]
+                layout_dict[w4] = [x2, inducer_2, tet_conc_list[1], s4]
         for y in [0, 3, 6, 9]:
             w = f"C{2 + y}"
-            layout_dict[w] = [0, 'none', 0]
+            layout_dict[w] = [0, 'none', 0, 6]
+            
             w = f"D{2 + y}"
-            layout_dict[w] = [0, 'none', tet_conc_list[0]]
+            layout_dict[w] = [0, 'none', tet_conc_list[0], 18]
+            
             w = f"E{2 + y}"
-            layout_dict[w] = [zero_tet_inducer_conc, inducer, 0]
+            layout_dict[w] = [zero_tet_inducer_conc, inducer, 0, 7]
+            
             w = f"F{2 + y}"
-            layout_dict[w] = [zero_tet_inducer_conc_2, inducer_2, 0]
+            layout_dict[w] = [zero_tet_inducer_conc_2, inducer_2, 0, 19]
         
         with_tet = []
         plate_list = []
@@ -108,14 +131,16 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
         inducer_conc_list_in_plate = []
         inducer_2_conc_list_in_plate = []
         antibiotic_conc = []
+        sample_id = []
         for r in rows():
             for c in columns():
-                w = r + str(c)
+                w = f"{r}{c}"
                 plate_list.append( int(2+(c-1)/3) )
                 v = layout_dict[w]
                 with_tet.append(v[2]>0)
                 antibiotic_conc.append(v[2])
                 well_list.append(w)
+                sample_id.append(v[3])
                 
                 if v[1] == inducer:
                     inducer_conc_list_in_plate.append(v[0])
@@ -127,7 +152,8 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
                 else:
                     inducer_2_conc_list_in_plate.append(0)
 
-    sample_plate_map = pd.DataFrame({"well": well_list})
+    sample_plate_map = pd.DataFrame({"well": well_list}, dtype='string')
+    sample_plate_map['sample_id'] = sample_id
     
     sample_plate_map['with_tet'] = with_tet
     if tet_conc_list is not None:
