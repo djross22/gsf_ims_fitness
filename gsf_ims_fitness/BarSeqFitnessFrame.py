@@ -251,8 +251,6 @@ class BarSeqFitnessFrame:
         
             
     def fit_barcode_fitness(self,
-                            inducer_conc_list=None,
-                            inducer=None,
                             auto_save=True,
                             ignore_samples=[],
                             refit_index=None):
@@ -263,11 +261,9 @@ class BarSeqFitnessFrame:
             
         #os.chdir(self.data_directory)
     
-        if inducer_conc_list is None:
-            inducer_conc_list = self.inducer_conc_list
+        inducer_conc_list = self.inducer_conc_list
             
-        if inducer is None:
-            inducer = self.inducer
+        inducer = self.inducer
         
         if refit_index is None:
             print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
