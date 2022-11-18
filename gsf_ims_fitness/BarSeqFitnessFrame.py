@@ -37,12 +37,15 @@ sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.directi
 
 class BarSeqFitnessFrame:
         
-    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None, inducer="IPTG"):
+    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None, inducer="IPTG",
+                 inducer_2=None, inducer_conc_list_2=None, med_tet=None):
         
         self.notebook_dir = notebook_dir
         
         self.low_tet = low_tet
         self.high_tet = high_tet
+        if med_tet is not None:
+            sel.med_tet = med_tet
         
         if experiment is None:
             experiment = fitness.get_exp_id(notebook_dir)
@@ -70,7 +73,12 @@ class BarSeqFitnessFrame:
                 inducer_conc_list.append(2*inducer_conc_list[-1])
         self.inducer_conc_list = inducer_conc_list
         
+        if inducer_conc_list_2 is not None:
+            self.inducer_conc_list_2 = inducer_conc_list_2
+        
         self.inducer = inducer
+        if inducer_2 is not None:
+            self.inducer_2 = inducer_2
         
         self.fit_fitness_difference_params = None
         self.fit_fitness_difference_funct = None
