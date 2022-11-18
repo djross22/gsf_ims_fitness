@@ -69,12 +69,13 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
         layout_dict = {}
         for zip_tup in zip(['A', 'C', 'E', 'G', 'A', 'C', 'E', 'G', 'A', 'C', 'E', 'G'],
                            ['B', 'D', 'F', 'H', 'B', 'D', 'F', 'H', 'B', 'D', 'F', 'H'],
+                           [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
                            [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 
                            [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]):
-            r1, r2, s1, s2 = zip_tup
+            r1, r2, c, s1, s2 = zip_tup
             for y in [0, 3, 6, 9]:
-                w1 = f"{r1}{c1 + y}"
-                w2 = f"{r2}{c2 + y}"
+                w1 = f"{r1}{c + y}"
+                w2 = f"{r2}{c + y}"
                 layout_dict[w1] = s1
                 layout_dict[w2] = s2
         
