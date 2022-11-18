@@ -258,175 +258,174 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
         high_tet = self.high_tet
+        
+        med_tet = getattr(self, 'med_tet', None)
             
         #os.chdir(self.data_directory)
     
         inducer_conc_list = self.inducer_conc_list
-            
         inducer = self.inducer
+        inducer_2 = getattr(self, 'inducer_2', None)
+        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
         
         if refit_index is None:
             print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
             
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list)
-        
-            wells_with_high_tet = []
-            wells_with_low_tet = []
-        
-            for i in range(2,6):
-                df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
-                df = df.sort_values([inducer])
-                wells_with_high_tet.append(df["well"].values)
-                df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
-                df = df.sort_values([inducer])
-                wells_with_low_tet.append(df["well"].values)
-        
-            for i in range(2,6):
-                counts_0 = []
-                counts_tet = []
-                for index, row in barcode_frame.iterrows():
-                    row_0 = row[wells_with_low_tet[i-2]]
-                    counts_0.append(row_0.values)
-                    row_tet = row[wells_with_high_tet[i-2]]
-                    counts_tet.append(row_tet.values)
-                barcode_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
-                barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
-        
-        spike_in_fitness_0 = {"AO-B": np.array([0.9637]*12), "AO-E": np.array([0.9666]*12)}
-        if self.high_tet == 20:
-            spike_in_fitness_tet = {"AO-B": np.array([0.8972]*12), "AO-E": np.array([0.8757]*12)}
-        elif self.high_tet == 10:
-            # Preliminary estimates based on average of [tet] = zero and 20
-            spike_in_fitness_tet = {"AO-B": np.array([0.93045]*12), "AO-E": np.array([0.92115]*12)}
-        else:
-            raise ValueError(f'Unknown value for high_tet: {self.high_tet}')
+            if (med_tet is None) and (inducer_2 is None):
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list)
+            else:
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
             
-        ref_fit_str_B = str(spike_in_fitness_0["AO-B"]) + ':' + str(spike_in_fitness_tet["AO-B"])
-        ref_fit_str_E = str(spike_in_fitness_0["AO-E"]) + ':' + str(spike_in_fitness_tet["AO-E"])
+            
+            # for each sample_id, get a list of counts for each barcode at the 4 time points
+            samples_with_tet = []
+            samples_without_tet = []
+            for s in np.unique(sample_plate_map.sample_id):
+                df = sample_plate_map
+                df = df[df["sample_id"]==s]
+                
+                has_tet = df.iloc[0].with_tet
+                if has_tet:
+                    samples_with_tet.append(s)
+                else:
+                    samples_without_tet.append(s)
+                
+                df = df.sort_values('growth_plate')
+                well_list = list(df.well.values)
+                
+                count_list = []
+                for ind, row in barcode_frame.iterrows():
+                    row_by_sample = row[well_list]
+                    count_list.append(row_by_sample.values)
+                    
+                barcode_frame[f"read_count_S{s}"] = count_list
+        
+        print(f"samples_with_tet: {samples_with_tet}")
+        print(f"samples_without_tet: {samples_without_tet}")
+        print()
+        
+        # Dictionary of dictionaries
+        #     first key is tet concentration
+        #     second key is spike-in name
+        spike_in_fitness_dict = {}
+        tet_list = [0, 1.5, 10, 20]
+        # TODO: Fitness for 1.5 and 10 are preliminary estimates based on weighted average of [tet] = zero and 20
+        fitness_dicts = [{"AO-B": 0.9637, "AO-E": 0.9666}, {"AO-B": 0.9587125, "AO-E": 0.9597825}, 
+                         {"AO-B": 0.93045, "AO-E": 0.92115}, {"AO-B": 0.8972, "AO-E": 0.8757}]
+        for t, d in zip(tet_list, fitness_dicts):
+            spike_in_fitness_dict[t] = d
+        
+        if med_tet is None:
+            ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
+            ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
+        else:
+            ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[med_tet]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
+            ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[med_tet]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
+            
         print(f'Reference fitness values, AO-B: {ref_fit_str_B}, AO-E: {ref_fit_str_E}')
+        print()
     
         #ref_index_b = barcode_frame[barcode_frame["RS_name"]=="AO-B"].index[0]
         #ref_index_e = barcode_frame[barcode_frame["RS_name"]=="AO-E"].index[0]
     
-        #spike_in_row = {"AO-B": barcode_frame[ref_index_b:ref_index_b+1], "AO-E": barcode_frame[ref_index_e:ref_index_e+1]}
-        spike_in_row = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"],
-                        "AO-E": barcode_frame[barcode_frame["RS_name"]=="AO-E"]}
+        #spike_in_row_dict = {"AO-B": barcode_frame[ref_index_b:ref_index_b+1], "AO-E": barcode_frame[ref_index_e:ref_index_e+1]}
+        spike_in_row_dict = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"].iloc[0],
+                             "AO-E": barcode_frame[barcode_frame["RS_name"]=="AO-E"].iloc[0]}
         
-        sp_b = spike_in_row["AO-B"][["RS_name", "read_count_0_2"]]
-        sp_e = spike_in_row["AO-E"][["RS_name", "read_count_0_2"]]
+        sp_b = spike_in_row_dict["AO-B"][["RS_name", "read_count_S6"]]
+        sp_e = spike_in_row_dict["AO-E"][["RS_name", "read_count_S6"]]
         print(f"AO-B: {sp_b}")
         print(f"AO-E: {sp_e}")
+        print()
         
-        #Fit to barcode log(ratios) over time to get slopes = fitness
-        #Run for both AO-B and AO-E
+        # Fit to barcode log(ratios) over time to get slopes = fitness
+        #     use both AO-B and AO-E as reference (separately)
+        # Samples without tet are fit to simple linear function.
+        # Samples with tet are fit to bi-linear function, with initial slope equal to corresponding without-tet sample (or average)
+        
+        if refit_index is None:
+            fit_frame = barcode_frame
+        else:
+            fit_frame = barcode_frame.loc[refit_index:refit_index]
+        
+        x0 = np.array([2, 3, 4, 5])
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
-            f_tet_est_list = []
-            f_0_est_list = []
-            f_tet_err_list = []
-            f_0_err_list = []
-        
-            spike_in_reads_0 = [ spike_in_row[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
-            spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
-        
-            x0 = [2, 3, 4, 5]
+            no_tet_slope_lists = []
             
-            if refit_index is None:
-                fit_frame = barcode_frame
-            else:
-                fit_frame = barcode_frame.loc[refit_index:refit_index]
-        
-            for index, row in fit_frame.iterrows(): # iterate over barcodes
-                slopes = []
-                errors = []
-                n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+            for samp in samples_without_tet:
+                df = sample_plate_map
+                df = df[df["sample_id"]==samp]
+                df = df.sort_values('growth_plate')
+                well_list = list(df.well.values)
             
-                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-                    x = []
-                    y = []
-                    s = []
-                    for i in range(len(n_reads)): # iteration over time points 0-3
-                        if (n_reads[i][j]>0 and spike_in_reads_0[i][j]>0):
-                            if ("no-tet", x0[i], inducer_conc_list[j]) not in ignore_samples:
-                                x.append(x0[i])
-                                y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_0[i][j]))
-                                sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_0[i][j])
-                                s.append(sigma)
+                spike_in_reads = np.array(spike_in_row_dict[spike_in][well_list], dtype='int64')
+                spike_in_fitness = spike_in_fitness_dict[0][spike_in]
+            
+                f_est_list = []
+                f_err_list = []
+                slope_list = []
+                for index, row in fit_frame.iterrows(): # iterate over barcodes
+                    n_reads = np.array(row[well_list], dtype='int64')
+                    
+                    sel = (n_reads>0)&(spike_in_reads>0)
+                    x = x0[sel]
+                    y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
+                    s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
                                 
                     if len(x)>1:
                         popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
-                        slopes.append(popt[0])
-                        errors.append(np.sqrt(pcov[0,0]))
+                        slope_list.append(popt[0])
+                        f_est_list.append(spike_in_fitness + popt[0])
+                        f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
                     else:
-                        slopes.append(np.nan)
-                        errors.append(np.nan)
+                        slope_list.append(np.nan)
+                        f_est_list.append(np.nan)
+                        f_err_list.append(np.nan)
                 
-                    if j==0:
-                        if len(x)>1:
-                            slope_0 = popt[0]
-                        else:
-                            slope_0 = 0
+                fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
+                fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
+            
+                no_tet_slope_lists.append(slope_list)
                 
-                slopes = np.array(slopes)
-                errors = np.array(errors)
-                f_0_est = spike_in_fitness_0[spike_in] + slopes/np.log(10)
-                f_0_err = errors/np.log(10)
+            no_tet_slope_lists = np.array(no_tet_slope_lists)
+            no_tet_slope = no_tet_slope_lists.mean(axis=0)
             
-                slopes = []
-                errors = []
-                n_reads = [ row[f'read_count_{high_tet}_{plate_num}'] for plate_num in range(2,6) ]
+            for samp in samples_with_tet:
+                df = sample_plate_map
+                df = df[df["sample_id"]==samp]
+                df = df.sort_values('growth_plate')
+                well_list = list(df.well.values)
             
-                for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
-                    x = []
-                    y = []
-                    s = []
-                    for i in range(len(n_reads)): # iteration over time points 0-3
-                        if (n_reads[i][j]>0 and spike_in_reads_tet[i][j]>0):
-                            if ("tet", x0[i], inducer_conc_list[j]) not in ignore_samples:
-                                x.append(x0[i])
-                                y.append(np.log(n_reads[i][j]) - np.log(spike_in_reads_tet[i][j]))
-                                sigma = np.sqrt(1/n_reads[i][j] + 1/spike_in_reads_tet[i][j])
-                                s.append(sigma)
-                            
+                spike_in_reads = np.array(spike_in_row_dict[spike_in][well_list], dtype='int64')
+                if med_tet is None:
+                    tet_conc = high_tet
+                else:
+                    tet_conc = df.antibiotic_conc.iloc[0]
+                spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
+            
+                f_est_list = []
+                f_err_list = []
+                for (index, row), slope_0 in zip(fit_frame.iterrows(), no_tet_slope): # iterate over barcodes
+                    n_reads = np.array(row[well_list], dtype='int64')
+                    
+                    sel = (n_reads>0)&(spike_in_reads>0)
+                    x = x0[sel]
+                    y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
+                    s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
+                                
                     if len(x)>1:
                         def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=np.log(5))
-                        #bounds = ([-np.log(10), -50], [slope_0, 50])
-                        popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)#, bounds=bounds)
-                        slopes.append(popt[0])
-                        errors.append(np.sqrt(pcov[0,0]))
+                        popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
+                        f_est_list.append(spike_in_fitness + popt[0])
+                        f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
                     else:
-                        slopes.append(np.nan)
-                        errors.append(np.nan)
+                        f_est_list.append(np.nan)
+                        f_err_list.append(np.nan)
                 
-                slopes = np.asarray(slopes)
-                errors = np.asarray(errors)
-                f_tet_est = spike_in_fitness_tet[spike_in] + slopes/np.log(10)
-                f_tet_err = errors/np.log(10)
-                
-                f_tet_est_list.append(f_tet_est)
-                f_0_est_list.append(f_0_est)
-                f_tet_err_list.append(f_tet_err)
-                f_0_err_list.append(f_0_err)
+                fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
+                fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
             
-            if refit_index is None:
-                barcode_frame[f'fitness_{low_tet}_estimate_{initial}'] = f_0_est_list
-                barcode_frame[f'fitness_{low_tet}_err_{initial}'] = f_0_err_list
-                barcode_frame[f'fitness_{high_tet}_estimate_{initial}'] = f_tet_est_list
-                barcode_frame[f'fitness_{high_tet}_err_{initial}'] = f_tet_err_list
-            else:
-                fit_arr_1 = barcode_frame.loc[refit_index, f'fitness_{low_tet}_estimate_{initial}']
-                fit_arr_1 *= 0
-                fit_arr_1 += f_0_est_list[0]
-                fit_arr_2 = barcode_frame.loc[refit_index, f'fitness_{low_tet}_err_{initial}']
-                fit_arr_2 *= 0
-                fit_arr_2 += f_0_err_list[0]
-                fit_arr_3 = barcode_frame.loc[refit_index, f'fitness_{high_tet}_estimate_{initial}']
-                fit_arr_3 *= 0
-                fit_arr_3 += f_tet_est_list[0]
-                fit_arr_4 = barcode_frame.loc[refit_index, f'fitness_{high_tet}_err_{initial}']
-                fit_arr_4 *= 0
-                fit_arr_4 += f_tet_err_list[0]
-            
-
         self.barcode_frame = barcode_frame
         
         #os.chdir(self.notebook_dir)
@@ -1705,14 +1704,14 @@ class BarSeqFitnessFrame:
             barcode_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
             barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
 
-        spike_in_row = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"],
+        spike_in_row_dict = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"],
                         "AO-E": barcode_frame[barcode_frame["RS_name"]=="AO-E"]}
         
         #Run for both AO-B and AO-E
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
             if initial in show_spike_ins:
-                spike_in_reads_0 = [ spike_in_row[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
-                spike_in_reads_tet = [ spike_in_row[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
+                spike_in_reads_0 = [ spike_in_row_dict[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
+                spike_in_reads_tet = [ spike_in_row_dict[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
             
                 x0 = [2, 3, 4, 5]
             
