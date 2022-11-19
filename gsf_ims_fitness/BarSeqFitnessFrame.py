@@ -382,6 +382,7 @@ class BarSeqFitnessFrame:
                         if (samp == 1) and (initial == 'b'):
                             print(f"{row.RS_name}: S1 fit data: x: {x}; y: {y}; s: {s}")
                             print(f"    slope: {popt[0]}")
+                            print(f"    fitness: {popt[0]}")
                     else:
                         slope_list.append(np.nan)
                         f_est_list.append(np.nan)
