@@ -1083,7 +1083,17 @@ class BarSeqFitnessFrame:
         plt.rcParams["figure.figsize"] = [plot_size,6*len(f_data)*plot_size/16]
         fig, axs = plt.subplots(len(f_data), 1)
         
-        sample_plate_map = fitness.get_sample_plate_map(self.inducer, self.inducer_conc_list)
+        inducer = self.inducer
+        inducer_conc_list = self.inducer_conc_list
+        
+        med_tet = getattr(self, 'med_tet', None)
+        inducer_2 = getattr(self, 'inducer_2', None)
+        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
+        if (med_tet is None) and (inducer_2 is None):
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list)
+        else:
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
         
         if plot_fraction:
             plot_param = "fraction_"
