@@ -377,12 +377,12 @@ class BarSeqFitnessFrame:
                     if len(x)>1:
                         popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
                         slope_list.append(popt[0])
-                        f_est_list.append(spike_in_fitness + popt[0])
+                        f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                         f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
                         if (samp == 1) and (initial == 'b'):
                             print(f"{row.RS_name}: S1 fit data: x: {x}; y: {y}; s: {s}")
                             print(f"    slope: {popt[0]}")
-                            print(f"    fitness: {popt[0]}")
+                            print(f"    fitness: {spike_in_fitness + popt[0]/np.log(10)}")
                     else:
                         slope_list.append(np.nan)
                         f_est_list.append(np.nan)
