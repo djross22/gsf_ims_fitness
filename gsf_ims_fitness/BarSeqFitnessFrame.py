@@ -1102,7 +1102,7 @@ class BarSeqFitnessFrame:
             plot_param = ""
         for (index, row), ax in zip(f_data.iterrows(), axs):
             y_for_scale = []
-            for marker, with_tet in zip(['o', '^'], [False, True]):
+            for marker, with_tet in zip(['o', 'v'], [False, True]):
                 y = []
                 x = []
                 for i, t in enumerate(fitness.wells_by_column()):
@@ -1341,7 +1341,7 @@ class BarSeqFitnessFrame:
                 y_plot = y[~np.isnan(y)]
                 s_plot = s[~np.isnan(y)]
                 if len(x_plot)>0:
-                    ax.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
+                    ax.errorbar(x, y, s, marker='v', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
                 if ylim is not None:
                     ax.set_ylim(ylim);
             
@@ -1579,7 +1579,7 @@ class BarSeqFitnessFrame:
                 axl.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 y = row[f"fitness_{high_tet}_estimate_{initial}"]
                 s = row[f"fitness_{high_tet}_err_{initial}"]
-                axl.errorbar(x, y, s, marker='^', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
+                axl.errorbar(x, y, s, marker='v', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
                 
                 y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
                 s_low = row[f"fitness_{low_tet}_err_{initial}"]
@@ -1777,7 +1777,7 @@ class BarSeqFitnessFrame:
                             else:
                                 label = inducer_conc_list[j] if initial=="b" else None
                             fillstyle = "full" if initial=="b" else "none"
-                            ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle, label=label)
+                            ax.errorbar(x, y, s, c=plot_colors()[j], marker='v', ms=8, fillstyle=fillstyle, label=label)
                         
                     barcode_str = str(index) + ', '
                     barcode_str += row['RS_name'] + ": "
@@ -1908,7 +1908,7 @@ class BarSeqFitnessFrame:
                     else:
                         label = inducer_conc_list[j]
                     fillstyle = "full"
-                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='^', ms=8, fillstyle=fillstyle, label=label)
+                    ax.errorbar(x, y, s, c=plot_colors()[j], marker='v', ms=8, fillstyle=fillstyle, label=label)
                 
             barcode_str = str(index) + ', '
             barcode_str += row['RS_name'] + ": "
