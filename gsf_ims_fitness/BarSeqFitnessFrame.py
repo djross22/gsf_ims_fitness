@@ -269,20 +269,52 @@ class BarSeqFitnessFrame:
         inducer_2 = getattr(self, 'inducer_2', None)
         inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
         
+        if (med_tet is None) and (inducer_2 is None):
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
+        else:
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
+        
+        # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
+        # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
+        # For backward compatibility, check if the old version is used, and change it to the new version
+        if len(ignore_samples)>0:
+            if len(ignore_samples[0])==3:
+                new_ignore = []
+                for ig in ignore_samples:
+                    w = ig[0]=="tet"
+                    gp = ig[1]
+                    x = ig[2]
+                    df = sample_plate_map
+                    df = df[df.with_tet==w]
+                    df = df[df.growth_plate==gp]
+                    df = df[df[inducer]==x]
+                    if len(df)>1:
+                        print("problem converting ignore_samples")
+                    elif len(df)==1:
+                        row = df.iloc[0]
+                        new_ignore.append((row.sample_id, gp))
+                        
+                ignore_samples = new_ignore
+            for ig in ignore_samples:
+                print(f"ignoring sample {ig[0]}, time point {ig[1]-1}")
+            print()
+        
+        sample_list = np.unique(sample_plate_map.sample_id)
+        # dictionary where each entry is a list of 4 booleans indicating whether or not 
+        #     the sample should be ignored for each time point:
+        sample_keep_dict = {}
+        for s in sample_list:
+            v = [(s, i+2) not in ignore_samples for i in range(4)]
+            sample_keep_dict[s] = v
+        
         if refit_index is None:
             print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
-            
-            if (med_tet is None) and (inducer_2 is None):
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
-            else:
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
-            
             
             # for each sample_id, get a list of counts for each barcode at the 4 time points
             samples_with_tet = []
             samples_without_tet = []
-            for s in np.unique(sample_plate_map.sample_id):
+            for s in sample_list:
                 df = sample_plate_map
                 df = df[df["sample_id"]==s]
                 
@@ -370,7 +402,7 @@ class BarSeqFitnessFrame:
                 for index, row in fit_frame.iterrows(): # iterate over barcodes
                     n_reads = np.array(row[well_list], dtype='int64')
                     
-                    sel = (n_reads>0)&(spike_in_reads>0)
+                    sel = (n_reads>0)&(spike_in_reads>0)&sample_keep_dict[samp]
                     x = x0[sel]
                     y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
                     s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
@@ -415,7 +447,7 @@ class BarSeqFitnessFrame:
                 for (index, row), slope_0 in zip(fit_frame.iterrows(), no_tet_slope): # iterate over barcodes
                     n_reads = np.array(row[well_list], dtype='int64')
                     
-                    sel = (n_reads>0)&(spike_in_reads>0)
+                    sel = (n_reads>0)&(spike_in_reads>0)&sample_keep_dict[samp]
                     x = x0[sel]
                     y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
                     s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
