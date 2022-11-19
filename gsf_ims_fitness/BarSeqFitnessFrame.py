@@ -1311,6 +1311,7 @@ class BarSeqFitnessFrame:
         
         low_tet = self.low_tet
         high_tet = self.high_tet
+        med_tet = getattr(self, 'med_tet', None)
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -1329,6 +1330,7 @@ class BarSeqFitnessFrame:
             
         if inducer is None:
             inducer = self.inducer
+        inducer_2 = getattr(self, 'inducer_2', None)
             
         if real_fitness_units:
             fit_scale = fitness.fitness_scale()
@@ -1353,8 +1355,37 @@ class BarSeqFitnessFrame:
         axs = axs_grid.flatten()
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
-        x = np.array(inducer_conc_list)
-        linthresh = min([i for i in inducer_conc_list if i>0])
+        
+        # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{low_tet}_estimate_{initial}")
+        #     or the new style (i.e., f"fitness_S{i}_{initial}"
+        # The new style is preferred, so will be used if both are possible
+        old_style_plots = False
+        for initial in ['b', 'e']:
+            for i  in range(1, 25):
+                c = f"fitness_S{i}_{initial}"
+                old_style_plots = old_style_plots or (c not in barcode_frame.columns)
+        if old_style_plots:
+            print("Using old style column headings")
+        else:
+            print("Using new style column headings")
+        
+        if old_style_plots:
+            x = np.array(inducer_conc_list)
+            linthresh = min([i for i in inducer_conc_list if i>0])
+        else:
+            if (med_tet is None) and (inducer_2 is None):
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
+            else:
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
+            ligand_list = list(np.unique(sample_plate_map.ligand))
+            if 'none' in ligand_list:
+                ligand_list.remove('none')
+            antibiotic_conc_list = np.unique(sample_plate_map.antibiotic_conc)
+            
+            #TODO: delete next two lines after re-coding plot methods
+            x = np.array(inducer_conc_list)
+            linthresh = min([i for i in inducer_conc_list if i>0])
         
         fit_plot_colors = sns.color_palette()
         
