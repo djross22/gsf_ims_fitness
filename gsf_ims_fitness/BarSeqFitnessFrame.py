@@ -273,7 +273,7 @@ class BarSeqFitnessFrame:
             print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
             
             if (med_tet is None) and (inducer_2 is None):
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list)
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
             else:
                 sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
                                                                 inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
@@ -1085,12 +1085,13 @@ class BarSeqFitnessFrame:
         
         inducer = self.inducer
         inducer_conc_list = self.inducer_conc_list
+        high_tet = self.high_tet
         
         med_tet = getattr(self, 'med_tet', None)
         inducer_2 = getattr(self, 'inducer_2', None)
         inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
         if (med_tet is None) and (inducer_2 is None):
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list)
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
         else:
             sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
                                                             inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])

@@ -29,7 +29,7 @@ sns.set()
 #import ipywidgets as widgets
 #from ipywidgets import interact#, interact_manual
 
-def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_conc_list_2=None, tet_conc_list=None):
+def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=None, inducer_conc_list_2=None):
 
     """
     This method returns a dataframe that has the growth conditions for each well in the BarSeq output plate.
@@ -92,6 +92,8 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
                 with_tet.append(r in rows()[1::2])
                 well_list.append(f"{r}{c}")
                 sample_id.append(layout_dict[w])
+        
+        antibiotic_conc = [tet_conc_list[0] if x else 0 for x in with_tet]
     else:
         # This handles the case for the plate layout with 2 inducers and 2 antibiotic concentrations
         inducer_conc_list.sort()
@@ -162,8 +164,7 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
     sample_plate_map['ligand'] = ligand_list
     
     sample_plate_map['with_tet'] = with_tet
-    if tet_conc_list is not None:
-        sample_plate_map['antibiotic_conc'] = antibiotic_conc
+    sample_plate_map['antibiotic_conc'] = antibiotic_conc
         
     sample_plate_map[inducer] = inducer_conc_list_in_plate
     if inducer_2 is not None:
