@@ -423,7 +423,7 @@ class BarSeqFitnessFrame:
                     if len(x)>1:
                         def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=np.log(5))
                         popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
-                        f_est_list.append(spike_in_fitness + popt[0])
+                        f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                         f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
                     else:
                         f_est_list.append(np.nan)
