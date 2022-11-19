@@ -253,7 +253,8 @@ class BarSeqFitnessFrame:
     def fit_barcode_fitness(self,
                             auto_save=True,
                             ignore_samples=[],
-                            refit_index=None):
+                            refit_index=None,
+                            ref_slope_to_average=False):
         
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
@@ -379,15 +380,10 @@ class BarSeqFitnessFrame:
                         slope_list.append(popt[0])
                         f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                         f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
-                        if (samp == 1) and (initial == 'b'):
-                            print(f"{row.RS_name}: S1 fit data: x: {x}; y: {y}; s: {s}")
-                            print(f"    slope: {popt[0]}")
-                            print(f"    fitness: {spike_in_fitness + popt[0]/np.log(10)}")
                     else:
                         slope_list.append(np.nan)
                         f_est_list.append(np.nan)
                         f_err_list.append(np.nan)
-                    if (initial == 'b'): print()
                 
                 fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                 fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
@@ -395,7 +391,11 @@ class BarSeqFitnessFrame:
                 no_tet_slope_lists.append(slope_list)
                 
             no_tet_slope_lists = np.array(no_tet_slope_lists)
-            no_tet_slope = no_tet_slope_lists.mean(axis=0)
+            if ref_slope_to_average:
+                no_tet_slope = no_tet_slope_lists.mean(axis=0)
+            else:
+                # Previous version used the zero-inducer zer-tet sample as the reference slope
+                no_tet_slope = [x[0] for x in no_tet_slope_lists.transpose()]
             
             for samp in samples_with_tet:
                 df = sample_plate_map
@@ -425,9 +425,15 @@ class BarSeqFitnessFrame:
                         popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
                         f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                         f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
+                        if (samp == 13) and (initial == 'b'):
+                            print(f"{row.RS_name}: S1 fit data: x: {x}; y: {y}; s: {s}")
+                            print(f"    slope_0: {slope_0}")
+                            print(f"    slope: {popt[0]}")
+                            print(f"    fitness: {spike_in_fitness + popt[0]/np.log(10)}")
                     else:
                         f_est_list.append(np.nan)
                         f_err_list.append(np.nan)
+                    if (samp == 13) and (initial == 'b'): print()
                 
                 fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                 fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
