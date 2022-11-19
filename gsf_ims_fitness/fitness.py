@@ -66,6 +66,8 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
         
+        ligand_list = [inducer if x>0 else 'none' for x in inducer_conc_list_in_plate]
+        
         layout_dict = {}
         for zip_tup in zip(['A', 'C', 'E', 'G', 'A', 'C', 'E', 'G', 'A', 'C', 'E', 'G'],
                            ['B', 'D', 'F', 'H', 'B', 'D', 'F', 'H', 'B', 'D', 'F', 'H'],
@@ -152,9 +154,12 @@ def get_sample_plate_map(inducer, inducer_conc_list, inducer_2=None, inducer_con
                     inducer_2_conc_list_in_plate.append(v[0])
                 else:
                     inducer_2_conc_list_in_plate.append(0)
+        
+        ligand_list = [inducer if x>0 else inducer_2 if y>0 else 'none' for x, y in zip(inducer_conc_list_in_plate, inducer_2_conc_list_in_plate)]
 
     sample_plate_map = pd.DataFrame({"well": well_list}, dtype='string')
     sample_plate_map['sample_id'] = sample_id
+    sample_plate_map['ligand'] = ligand_list
     
     sample_plate_map['with_tet'] = with_tet
     if tet_conc_list is not None:
