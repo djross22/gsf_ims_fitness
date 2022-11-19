@@ -350,6 +350,7 @@ class BarSeqFitnessFrame:
             fit_frame = barcode_frame.loc[refit_index:refit_index]
         
         x0 = np.array([2, 3, 4, 5])
+        print()
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
             no_tet_slope_lists = []
             
@@ -378,10 +379,14 @@ class BarSeqFitnessFrame:
                         slope_list.append(popt[0])
                         f_est_list.append(spike_in_fitness + popt[0])
                         f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
+                        if (samp == 1) and (initial == 'b'):
+                            print(f"{row.RS_name}: S1 fit data: x: {x}; y: {y}; s: {s}")
+                            print(f"    slope: {popt[0]}")
                     else:
                         slope_list.append(np.nan)
                         f_est_list.append(np.nan)
                         f_err_list.append(np.nan)
+                    if (initial == 'b'): print()
                 
                 fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                 fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
