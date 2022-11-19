@@ -344,6 +344,7 @@ class BarSeqFitnessFrame:
         spike_in_fitness_dict = {}
         tet_list = [0, 1.5, 10, 20]
         # TODO: Fitness for 1.5 and 10 are preliminary estimates based on weighted average of [tet] = zero and 20
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
         fitness_dicts = [{"AO-B": 0.9637, "AO-E": 0.9666}, {"AO-B": 0.9587125, "AO-E": 0.9597825}, 
                          {"AO-B": 0.93045, "AO-E": 0.92115}, {"AO-B": 0.8972, "AO-E": 0.8757}]
         for t, d in zip(tet_list, fitness_dicts):
