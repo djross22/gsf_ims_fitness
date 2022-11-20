@@ -559,7 +559,6 @@ class BarSeqFitnessFrame:
             
     def stan_fitness_difference_curves(self,
                                       includeChimeras=False,
-                                      stan_fitness_difference_model='Double Hill equation fit.stan',
                                       fit_fitness_difference_params=None,
                                       control=dict(adapt_delta=0.9),
                                       iterations=1000,
@@ -572,9 +571,8 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2020-05-20")
+        print("      Version from 2022-11-20")
         #os.chdir(self.notebook_dir)
-        stan_model = stan_utility.compile_model(stan_fitness_difference_model)
         
         if fit_fitness_difference_params is None:
             fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid)
@@ -582,16 +580,22 @@ class BarSeqFitnessFrame:
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
         barcode_frame = self.barcode_frame
-        low_tet = self.low_tet
-        high_tet = self.high_tet
-            
+        
+        fitness_columns_setup = self.get_fitness_columns_setup()
+        
+        if fitness_columns_setup[0]:
+            old_style_columns, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+        else:
+            old_style_columns, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
+        
+        if len(antibiotic_conc_list[antibiotic_conc_list>0]) == 1:
+            sm_file = 'Double Hill equation fit.stan'
+        elif len(antibiotic_conc_list[antibiotic_conc_list>0]) == 2:
+            sm_file = 'Double Hill equation fit.two tet.stan'
+        stan_model = stan_utility.compile_model(sm_file)
+        
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
-            
-        inducer_conc_list = self.inducer_conc_list
-        
-        x = np.array(inducer_conc_list)
-        x_min = min([i for i in inducer_conc_list if i>0])
         
         low_fitness = fit_fitness_difference_params[0]
         mid_g = fit_fitness_difference_params[1]
@@ -613,36 +617,78 @@ class BarSeqFitnessFrame:
         if "sensor_params_cov" not in barcode_frame.columns:
             barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
         
+        if old_style_columns:
+            low_tet = antibiotic_conc_list[0]
+            high_tet = antibiotic_conc_list[1]
         
-
-        def stan_fit_row(st_row, st_index, return_fit=False):
+        def stan_fit_row(st_row, st_index, lig, return_fit=False):
             print()
-            print(f"fitting row index: {st_index}")
-            initial = "b"
-            y_low = st_row[f"fitness_{low_tet}_estimate_{initial}"]
-            s_low = st_row[f"fitness_{low_tet}_err_{initial}"]
-            y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
-            s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
-            
-            y = (y_high - y_low)/y_low
-            s = np.sqrt( s_high**2 + s_low**2 )/y_low
-            
-            if include_lactose_zero:
-                print(f"      including zero lactose data for {st_index}")
-                y = np.insert(y, 0, st_row['lactose_fitness_diff'])
-                s = np.insert(s, 0, st_row['lactose_fitness_err'])
-                x_fit = np.insert(x, 0, 0)
-            else:
-                x_fit = x
-    
-            
-            valid = ~(np.isnan(y) | np.isnan(s))
+            print(f"fitting row index: {st_index}, for ligand: {lig}")
             
             log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
             
-            stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
-                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
-                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
+            initial = "b"
+            if old_style_columns:
+                y_low = st_row[f"fitness_{low_tet}_estimate_{initial}"]
+                s_low = st_row[f"fitness_{low_tet}_err_{initial}"]
+                y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
+                s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
+                
+                y = (y_high - y_low)/y_low
+                s = np.sqrt( s_high**2 + s_low**2 )/y_low
+                
+                if include_lactose_zero:
+                    print(f"      including zero lactose data for {st_index}")
+                    y = np.insert(y, 0, st_row['lactose_fitness_diff'])
+                    s = np.insert(s, 0, st_row['lactose_fitness_err'])
+                    x_fit = np.insert(x, 0, 0)
+                else:
+                    x_fit = x
+                x_y_s_list = [[x_fit, y, s]]
+            else:
+                tet = 0
+                df = plot_df
+                df = df[(df.ligand==lig)|(df.ligand=='none')]
+                df = df[df.antibiotic_conc==tet]
+                y = [st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
+                s = [st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
+                y_ref_list = np.array(y)
+                s_ref_list = np.array(s)
+                
+                w = 1/s_ref_list**2
+                y_ref = np.average(y_ref_list, weights=w)
+                s_ref = np.average((y_ref_list-y_ref)**2, weights=w)
+                v_1 = np.sum(w)
+                v_2 = np.sum(w**2)
+                s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
+                
+                tet_list = antibiotic_conc_list[antibiotic_conc_list>0]
+                x_y_s_list = []
+                for tet in tet_list:
+                    df = plot_df
+                    df = df[(df.ligand==lig)|(df.ligand=='none')]
+                    df = df[df.antibiotic_conc==tet]
+                    x = df[lig]
+                    y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
+                    y = (y - y_ref)/y_ref
+                    s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
+                    s = np.sqrt(s**2 + s_ref**2)/y_ref
+                    
+                    x_y_s_list.append([x, y, s])
+                            
+            if len(x_y_s_list) == 1:
+                # Case for single tet concentration
+                x_fit = x_y_s_list[0][0]
+                y = x_y_s_list[0][1]
+                s = x_y_s_list[0][2]
+                
+                valid = ~(np.isnan(y) | np.isnan(s))
+                
+                stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
+                                 low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
+                                 log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
+            
+            #TODO: handle case for 2 tet concentrations
         
             try:
                 stan_init = [ init_stan_fit(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
@@ -675,35 +721,37 @@ class BarSeqFitnessFrame:
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
         
         if refit_index is None:
-            fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
-            
-            popt_list = []
-            pcov_list = []
-            residuals_list = []
-            samples_out_list = []
-            quantiles_list = []
-            invert_prob_list = []
-            on_at_zero_prob_list = []
-            
-            for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = item
+            for lig in ligand_list:
+                fit_list = [ stan_fit_row(row, index, lig) for (index, row) in barcode_frame.iterrows() ]
                 
-                popt_list.append(stan_popt)
-                pcov_list.append(stan_pcov)
-                residuals_list.append(stan_resid)
-                samples_out_list.append(stan_samples_out)
-                quantiles_list.append(stan_quantiles)
-                invert_prob_list.append(hill_invert_prob)
-                on_at_zero_prob_list.append(hill_on_at_zero_prob)
+                popt_list = []
+                pcov_list = []
+                residuals_list = []
+                samples_out_list = []
+                quantiles_list = []
+                invert_prob_list = []
+                on_at_zero_prob_list = []
+                
+                for item in fit_list: # iterate over barcodes
+                    stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = item
                     
-            barcode_frame["sensor_params"] = popt_list
-            barcode_frame["sensor_params_cov"] = pcov_list
-            barcode_frame["sensor_rms_residuals"] = residuals_list
-            barcode_frame["sensor_stan_samples"] = samples_out_list
-            barcode_frame["sensor_params_quantiles"] = quantiles_list
-            barcode_frame["hill_invert_prob"] = invert_prob_list
-            barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
+                    popt_list.append(stan_popt)
+                    pcov_list.append(stan_pcov)
+                    residuals_list.append(stan_resid)
+                    samples_out_list.append(stan_samples_out)
+                    quantiles_list.append(stan_quantiles)
+                    invert_prob_list.append(hill_invert_prob)
+                    on_at_zero_prob_list.append(hill_on_at_zero_prob)
+                        
+                barcode_frame[f"sensor_params_{lig}"] = popt_list
+                barcode_frame[f"sensor_params_cov_{lig}"] = pcov_list
+                barcode_frame[f"sensor_rms_residuals_{lig}"] = residuals_list
+                barcode_frame[f"sensor_stan_samples_{lig}"] = samples_out_list
+                barcode_frame[f"sensor_params_quantiles_{lig}"] = quantiles_list
+                barcode_frame[f"hill_invert_prob_{lig}"] = invert_prob_list
+                barcode_frame[f"hill_on_at_zero_prob_{lig}"] = on_at_zero_prob_list
         else:
+            # TODO: update refits to Nov 2022, handle multiple ligands
             row_to_fit = barcode_frame.loc[refit_index]
             if return_fit:
                 return stan_fit_row(row_to_fit, refit_index, return_fit=True)
