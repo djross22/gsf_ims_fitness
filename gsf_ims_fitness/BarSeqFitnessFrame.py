@@ -1383,20 +1383,33 @@ class BarSeqFitnessFrame:
                 ligand_list.remove('none')
             antibiotic_conc_list = np.unique(sample_plate_map.antibiotic_conc)
             
-            #TODO: delete next two lines after re-coding plot methods
-            x = np.array(inducer_conc_list)
-            linthresh = min([i for i in inducer_conc_list if i>0])
+            plot_df = sample_plate_map
+            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=ligand_list)
+            
+            x_list = np.array([np.array(plot_df[x]) for x in ligand_list]).flatten()
+            linthresh = min(x_list[x_list>0])
         
         fit_plot_colors = sns.color_palette()
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial in ["b", "e"]:
                 fill_style = "full" if initial=="b" else "none"
-                for tet, color in zip([low_tet, high_tet], [fit_plot_colors[0], fit_plot_colors[1]]):
-                    y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
-                    s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
-                    if len(y[~np.isnan(y)])>0:
+                if old_style_plots:
+                    for tet, color in zip([low_tet, high_tet], [fit_plot_colors[0], fit_plot_colors[1]]):
+                        y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
+                        s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
                         ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
+                else:
+                    color_ind = 0
+                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
+                        for lig, marker in zip(ligand_list, ['o', '<', '>']):
+                            df = plot_df
+                            df = df[(df.ligand==lig)|(df.ligand=='none')]
+                            df = df[df.antibiotic_conc==tet]
+                            x = df[lig]
+                            y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
+                            s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
+                            ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
             
                 if initial == "b":
                     barcode_str = str(index) + ': '
