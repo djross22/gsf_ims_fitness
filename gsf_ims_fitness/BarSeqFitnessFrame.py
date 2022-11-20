@@ -1391,17 +1391,12 @@ class BarSeqFitnessFrame:
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial in ["b", "e"]:
-                y = row[f"fitness_{low_tet}_estimate_{initial}"]*fit_scale
-                s = row[f"fitness_{low_tet}_err_{initial}"]*fit_scale
                 fill_style = "full" if initial=="b" else "none"
-                if len(y[~np.isnan(y)])>0:
-                    ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
-                y = row[f"fitness_{high_tet}_estimate_{initial}"]*fit_scale
-                s = row[f"fitness_{high_tet}_err_{initial}"]*fit_scale
-                if len(y[~np.isnan(y)])>0:
-                    ax.errorbar(x, y, s, marker='v', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
-                if ylim is not None:
-                    ax.set_ylim(ylim);
+                for tet, color in zip([low_tet, high_tet], [fit_plot_colors[0], fit_plot_colors[1]]):
+                    y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
+                    s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
+                    if len(y[~np.isnan(y)])>0:
+                        ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
             
                 if initial == "b":
                     barcode_str = str(index) + ': '
@@ -1417,6 +1412,8 @@ class BarSeqFitnessFrame:
                     ax.set_xlabel(f'[{inducer}] (umol/L)', size=ax_label_size)
                     ax.set_ylabel(f'Growth Rate ({fit_units})', size=ax_label_size)
                     ax.tick_params(labelsize=ax_label_size-2);
+                    if ylim is not None:
+                        ax.set_ylim(ylim);
             
         if save_plots:
             pdf.savefig()
