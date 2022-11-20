@@ -1570,11 +1570,8 @@ class BarSeqFitnessFrame:
                             show_fits=True,
                             show_GP=False,
                             log_g_scale=False,
-                            box_size=8,
-                            show_barcode_info=True):
-        
-        low_tet = self.low_tet
-        high_tet = self.high_tet
+                            box_size=6,
+                            show_bc_str=False):
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -1611,12 +1608,6 @@ class BarSeqFitnessFrame:
         if include_ref_seqs:
             RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
             barcode_frame = pd.concat([barcode_frame, RS_count_frame])
-        
-        if inducer_conc_list is None:
-            inducer_conc_list = self.inducer_conc_list
-            
-        if inducer is None:
-            inducer = self.inducer
             
         # Turn interactive plotting on or off depending on show_plots
         plt.ion()
@@ -1627,23 +1618,26 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         #plot fitness curves
+        fitness_plot_setup = self.get_fitness_plot_setup()
+        if fitness_plot_setup[0]:
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list = fitness_plot_setup
+        else:
+            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_plot_setup
         
-        x = inducer_conc_list
-        linthresh = min([i for i in inducer_conc_list if i>0])
-        
-        fit_plot_colors = sns.color_palette()
+        if show_GP:
+            plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
+        else:
+            plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/4]
         
         fig_axs_list = []
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
             if show_GP:
-                plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
                 fig, axs_grid = plt.subplots(2, 2)
                 axl = axs_grid.flatten()[0]
                 axr = axs_grid.flatten()[2]
                 axg = axs_grid.flatten()[1]
                 axdg = axs_grid.flatten()[3]
             else:
-                plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/4]
                 fig, axs_grid = plt.subplots(1, 2)
                 axl = axs_grid.flatten()[0]
                 axr = axs_grid.flatten()[1]
@@ -1653,45 +1647,78 @@ class BarSeqFitnessFrame:
             
             for ax in axs_grid.flatten():
                 ax.set_xscale('symlog', linthresh=linthresh)
-                ax.set_xlim(-linthresh/7, 1.5*max(x));
                 ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
             
             for initial in ["b", "e"]:
-                y = row[f"fitness_{low_tet}_estimate_{initial}"]
-                s = row[f"fitness_{low_tet}_err_{initial}"]
                 fill_style = "full" if initial=="b" else "none"
-                axl.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
-                y = row[f"fitness_{high_tet}_estimate_{initial}"]
-                s = row[f"fitness_{high_tet}_err_{initial}"]
-                axl.errorbar(x, y, s, marker='v', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
+                if old_style_plots:
+                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
+                        y = row[f"fitness_{tet}_estimate_{initial}"]
+                        s = row[f"fitness_{tet}_err_{initial}"]
+                        axl.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
+                    y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
+                    s_low = row[f"fitness_{low_tet}_err_{initial}"]
+                    y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
+                    s_high = row[f"fitness_{high_tet}_err_{initial}"]
+                    
+                    y = (y_high - y_low)/y_low.mean()
+                    s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
+                    fill_style = "full" if initial=="b" else "none"
+                    axr.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
+                else:
+                    y_ref_list = []
+                    s_ref_list = []
+                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
+                        for lig, marker in zip(ligand_list, ['o', '<', '>']):
+                            df = plot_df
+                            df = df[(df.ligand==lig)|(df.ligand=='none')]
+                            df = df[df.antibiotic_conc==tet]
+                            x = df[lig]
+                            y = [row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
+                            s = [row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
+                            axl.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
+                            if tet == 0:
+                                y_ref_list += list(y)
+                                s_ref_list += list(s)
+                    
+                    y_ref_list = np.array(y_ref_list)
+                    w = 1/np.array(s_ref_list)**2
+                    y_ref = np.average(y_ref_list, weights=w)
+                    s_ref = np.average((y_ref_list-y_ref)**2, weights=w)
+                    v_1 = np.sum(w)
+                    v_2 = np.sum(w**2)
+                    s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
+                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
+                        for lig, marker in zip(ligand_list, ['o', '<', '>']):
+                            df = plot_df
+                            df = df[(df.ligand==lig)|(df.ligand=='none')]
+                            df = df[df.antibiotic_conc==tet]
+                            x = df[lig]
+                            y = np.array([row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
+                            y = (y - y_ref)/y_ref
+                            s = np.array([row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
+                            s = np.sqrt(s**2 + s_ref**2)/y_ref
+                            axr.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
                 
-                y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
-                s_low = row[f"fitness_{low_tet}_err_{initial}"]
-                y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
-                s_high = row[f"fitness_{high_tet}_err_{initial}"]
-                
-                y = (y_high - y_low)/y_low.mean()
-                s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
-                fill_style = "full" if initial=="b" else "none"
-                axr.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
-            
-                
-                if ylim is not None:
-                    axl.set_ylim(ylim);
-            
                 if initial == "b":
-                    if show_barcode_info:
-                        barcode_str = str(index) + ': '
-                        barcode_str += format(row[f'total_counts'], ",") + "; "
-                        barcode_str += row['RS_name'] + ": "
-                        barcode_str += row['forward_BC'] + ", "
+                    barcode_str = str(index) + ': '
+                    barcode_str += format(row[f'total_counts'], ",") + "; "
+                    barcode_str += row['RS_name']
+                    if show_bc_str:
+                        barcode_str += ": " + row['forward_BC'] + ",\n"
                         barcode_str += row['reverse_BC'] + " "
-                        axl.text(x=1, y=1.05, s=barcode_str, horizontalalignment='center', verticalalignment='top',
-                                transform=axl.transAxes, fontsize=13, fontfamily="Courier New")
+                        fontfamily = "Courier New"
+                    else:
+                        fontfamily = None
+                    barcode_str += f"\ny_ref: {y_ref:.3f} +- {s_ref:.3f}"
+                    axl.text(x=1, y=1.025, s=barcode_str, horizontalalignment='center', verticalalignment='bottom',
+                            transform=axl.transAxes, fontsize=13, fontfamily=fontfamily)
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
                     axl.tick_params(labelsize=12);
                     axr.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
                     axr.tick_params(labelsize=12);
+                    if ylim is not None:
+                        axl.set_ylim(ylim);
                     
             if show_fits:
                 x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
