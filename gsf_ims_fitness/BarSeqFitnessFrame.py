@@ -601,10 +601,10 @@ class BarSeqFitnessFrame:
         mid_g = fit_fitness_difference_params[1]
         fitness_n = fit_fitness_difference_params[2]
         
-        params_list = ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'log_high_low_ratio',
+        params_list = ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
                        'low_fitness', 'mid_g', 'fitness_n']
-        log_low_ind = params_list.index('log_low_level')
-        log_high_low_ind = params_list.index('log_high_low_ratio')
+        log_low_ind = params_list.index('log_g0')
+        log_high_low_ind = params_list.index('log_ginf_g0_ratio')
         params_dim = len(params_list)
         
         quantile_params_list = params_list[:-len(fit_fitness_difference_params)]
@@ -1534,7 +1534,7 @@ class BarSeqFitnessFrame:
             fit_fitness_difference_params = self.fit_fitness_difference_params
             
             if len(barcode_frame["sensor_params"].iloc[0])==7:
-                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
+                # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'low_fitness', 'mid_g', 'fitness_n']
                 def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n):
                     return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
                                              low_fitness, 0, mid_g, fitness_n)
@@ -1627,15 +1627,15 @@ class BarSeqFitnessFrame:
             fit_fitness_difference_params = self.fit_fitness_difference_params
             
             if len(barcode_frame["sensor_params"].iloc[0])==7:
-                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'low_fitness', 'mid_g',
+                # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'low_fitness', 'mid_g',
                 #  'fitness_n']
                 def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n, *argv):
                     return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
                                              low_fitness, 0, mid_g, fitness_n)
             elif len(barcode_frame["sensor_params"].iloc[0])>7:
-                # ['log_low_level', 'log_high_level', 'log_IC_50', 'log_sensor_n', 'log_high_low_ratio',
+                # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
                 #  'low_fitness', 'mid_g', 'fitness_n']
-                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, log_high_low_ratio,
+                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, log_ginf_g0_ratio,
                               low_fitness, mid_g, fitness_n, *argv):
                     return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
                                              low_fitness, 0, mid_g, fitness_n)
@@ -2304,12 +2304,12 @@ def double_hill_funct(x, g_min, g_max, x_50, nx, f_min, f_max, g_50, ng):
     
 
 def init_stan_fit(x_data, y_data, fit_fitness_difference_params):
-    log_low_level = log_level(np.mean(y_data[:2]))
-    log_high_level = log_level(np.mean(y_data[-2:]))
+    log_g0 = log_level(np.mean(y_data[:2]))
+    log_ginf = log_level(np.mean(y_data[-2:]))
     
     min_ic = np.log10(min([i for i in x_data if i>0]))
     max_ic = np.log10(max(x_data))
-    log_IC_50 = np.random.uniform(min_ic, max_ic)
+    log_ec50 = np.random.uniform(min_ic, max_ic)
     
     n = np.random.uniform(1.3, 1.7)
     
@@ -2319,7 +2319,7 @@ def init_stan_fit(x_data, y_data, fit_fitness_difference_params):
     mid_g = fit_fitness_difference_params[1]
     fitness_n = fit_fitness_difference_params[2]
     
-    return dict(log_low_level=log_low_level, log_high_level=log_high_level, log_IC_50=log_IC_50,
+    return dict(log_g0=log_g0, log_ginf=log_ginf, log_ec50=log_ec50,
                 sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
     
 def init_stan_GP_fit(fit_fitness_difference_params):
