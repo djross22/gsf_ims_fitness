@@ -172,6 +172,7 @@ def compile_model(filename, model_name=None, force_recompile=False):
         else:
             cache_fn = 'cached-{}-{}.pkl'.format(model_name, code_hash)
         if force_recompile:
+            print(f"Compiling StanModel from file: {filename}")
             sm = pystan.StanModel(model_code=model_code)
             with open(cache_fn, 'wb') as f:
                 pickle.dump(sm, f)
@@ -179,6 +180,7 @@ def compile_model(filename, model_name=None, force_recompile=False):
             try:
                 sm = pickle.load(open(cache_fn, 'rb'))
             except:
+                print(f"Compiling StanModel from file: {filename}")
                 sm = pystan.StanModel(model_code=model_code)
                 with open(cache_fn, 'wb') as f:
                     pickle.dump(sm, f)
