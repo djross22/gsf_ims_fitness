@@ -1620,7 +1620,7 @@ class BarSeqFitnessFrame:
         #plot fitness curves
         fitness_plot_setup = self.get_fitness_plot_setup()
         if fitness_plot_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list = fitness_plot_setup
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_plot_setup
         else:
             old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_plot_setup
         
@@ -1647,7 +1647,8 @@ class BarSeqFitnessFrame:
             
             for ax in axs_grid.flatten():
                 ax.set_xscale('symlog', linthresh=linthresh)
-                ax.set_xlabel(f'[{inducer}] (umol/L)', size=14)
+                x_lab = '], ['.join(ligand_list)
+                ax.set_xlabel(f'[{x_lab}] (umol/L)', size=14)
             
             for initial in ["b", "e"]:
                 fill_style = "full" if initial=="b" else "none"
@@ -1656,10 +1657,11 @@ class BarSeqFitnessFrame:
                         y = row[f"fitness_{tet}_estimate_{initial}"]
                         s = row[f"fitness_{tet}_err_{initial}"]
                         axl.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
-                    y_low = row[f"fitness_{low_tet}_estimate_{initial}"]
-                    s_low = row[f"fitness_{low_tet}_err_{initial}"]
-                    y_high = row[f"fitness_{high_tet}_estimate_{initial}"]
-                    s_high = row[f"fitness_{high_tet}_err_{initial}"]
+                    
+                    y_low = row[f"fitness_{antibiotic_conc_list[0]}_estimate_{initial}"]
+                    s_low = row[f"fitness_{antibiotic_conc_list[0]}_err_{initial}"]
+                    y_high = row[f"fitness_{antibiotic_conc_list[1]}_estimate_{initial}"]
+                    s_high = row[f"fitness_{antibiotic_conc_list[1]}_err_{initial}"]
                     
                     y = (y_high - y_low)/y_low.mean()
                     s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
@@ -1710,7 +1712,8 @@ class BarSeqFitnessFrame:
                         fontfamily = "Courier New"
                     else:
                         fontfamily = None
-                    barcode_str += f"\ny_ref: {y_ref:.3f} +- {s_ref:.3f}"
+                    if not old_style_plots:
+                        barcode_str += f"\ny_ref: {y_ref:.3f} +- {s_ref:.3f}"
                     axl.text(x=1, y=1.025, s=barcode_str, horizontalalignment='center', verticalalignment='bottom',
                             transform=axl.transAxes, fontsize=13, fontfamily=fontfamily)
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
