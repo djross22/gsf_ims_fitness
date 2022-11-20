@@ -1766,11 +1766,22 @@ class BarSeqFitnessFrame:
                         axl.set_ylim(ylim);
                     
             if show_fits:
-                x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
-                x_fit = np.insert(x_fit, 0, 0)
-                params = row["sensor_params"]
-                y_fit = fit_funct(x_fit, *params)
-                axr.plot(x_fit, y_fit, color='k', zorder=1000);
+                if old_style_plots:
+                    x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                    x_fit = np.insert(x_fit, 0, 0)
+                    params = row["sensor_params"]
+                    y_fit = fit_funct(x_fit, *params)
+                    axr.plot(x_fit, y_fit, color='k', zorder=1000);
+                else:
+                    for lig in ligand_list:
+                        df = plot_df
+                        df = df[(df.ligand==lig)|(df.ligand=='none')]
+                        x = df[lig]
+                        x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                        x_fit = np.insert(x_fit, 0, 0)
+                        params = row[f"sensor_params_{lig}"]
+                        y_fit = fit_funct(x_fit, *params)
+                        axr.plot(x_fit, y_fit, color='k', zorder=1000);
                 
             if show_GP:
                 stan_g = 10**row["sensor_GP_g_quantiles"]
