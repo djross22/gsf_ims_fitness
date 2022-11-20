@@ -1343,11 +1343,11 @@ class BarSeqFitnessFrame:
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
         
-        fitness_plot_setup = self.get_fitness_plot_setup()
-        if fitness_plot_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_plot_setup
+        fitness_columns_setup = self.get_fitness_columns_setup()
+        if fitness_columns_setup[0]:
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
         else:
-            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_plot_setup
+            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial in ["b", "e"]:
@@ -1396,7 +1396,7 @@ class BarSeqFitnessFrame:
             
         return fig, axs_grid
         
-    def get_fitness_plot_setup(self):
+    def get_fitness_columns_setup(self):
         barcode_frame = self.barcode_frame
         
         low_tet = self.low_tet
@@ -1612,11 +1612,11 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         #plot fitness curves
-        fitness_plot_setup = self.get_fitness_plot_setup()
-        if fitness_plot_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_plot_setup
+        fitness_columns_setup = self.get_fitness_columns_setup()
+        if fitness_columns_setup[0]:
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
         else:
-            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_plot_setup
+            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
         
         if show_GP:
             plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
