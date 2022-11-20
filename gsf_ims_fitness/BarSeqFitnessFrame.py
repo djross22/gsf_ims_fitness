@@ -1297,9 +1297,7 @@ class BarSeqFitnessFrame:
     
     def plot_fitness_curves(self,
                             save_plots=False,
-                            inducer_conc_list=None,
                             plot_range=None,
-                            inducer=None,
                             include_ref_seqs=True,
                             includeChimeras=False,
                             ylim=None,
@@ -1308,10 +1306,6 @@ class BarSeqFitnessFrame:
                             ax_label_size=14,
                             show_bc_str=False,
                             real_fitness_units=False):
-        
-        low_tet = self.low_tet
-        high_tet = self.high_tet
-        med_tet = getattr(self, 'med_tet', None)
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -1324,13 +1318,6 @@ class BarSeqFitnessFrame:
         if include_ref_seqs:
             RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
             barcode_frame = pd.concat([barcode_frame, RS_count_frame])
-        
-        if inducer_conc_list is None:
-            inducer_conc_list = self.inducer_conc_list
-            
-        if inducer is None:
-            inducer = self.inducer
-        inducer_2 = getattr(self, 'inducer_2', None)
             
         if real_fitness_units:
             fit_scale = fitness.fitness_scale()
@@ -1356,46 +1343,17 @@ class BarSeqFitnessFrame:
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
         
-        # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{low_tet}_estimate_{initial}")
-        #     or the new style (i.e., f"fitness_S{i}_{initial}"
-        # The new style is preferred, so will be used if both are possible
-        old_style_plots = False
-        for initial in ['b', 'e']:
-            for i  in range(1, 25):
-                c = f"fitness_S{i}_{initial}"
-                old_style_plots = old_style_plots or (c not in barcode_frame.columns)
-        if old_style_plots:
-            print("Using old style column headings")
+        fitness_plot_setup = self.get_fitness_plot_setup()
+        if fitness_plot_setup[0]:
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_plot_setup
         else:
-            print("Using new style column headings")
-        
-        if old_style_plots:
-            x = np.array(inducer_conc_list)
-            linthresh = min([i for i in inducer_conc_list if i>0])
-        else:
-            if (med_tet is None) and (inducer_2 is None):
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
-            else:
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
-            ligand_list = list(np.unique(sample_plate_map.ligand))
-            if 'none' in ligand_list:
-                ligand_list.remove('none')
-            antibiotic_conc_list = np.unique(sample_plate_map.antibiotic_conc)
-            
-            plot_df = sample_plate_map
-            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=ligand_list)
-            
-            x_list = np.array([np.array(plot_df[x]) for x in ligand_list]).flatten()
-            linthresh = min(x_list[x_list>0])
-        
-        fit_plot_colors = sns.color_palette()
+            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_plot_setup
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial in ["b", "e"]:
                 fill_style = "full" if initial=="b" else "none"
                 if old_style_plots:
-                    for tet, color in zip([low_tet, high_tet], [fit_plot_colors[0], fit_plot_colors[1]]):
+                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
                         s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
                         ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
@@ -1424,7 +1382,8 @@ class BarSeqFitnessFrame:
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
                             transform=ax.transAxes, fontsize=fontsize, fontfamily=fontfamily)
                     ax.set_xscale('symlog', linthresh=linthresh)
-                    ax.set_xlabel(f'[{inducer}] (umol/L)', size=ax_label_size)
+                    x_lab = '], ['.join(ligand_list)
+                    ax.set_xlabel(f'[{x_lab}] (umol/L)', size=ax_label_size)
                     ax.set_ylabel(f'Growth Rate ({fit_units})', size=ax_label_size)
                     ax.tick_params(labelsize=ax_label_size-2);
                     if ylim is not None:
@@ -1438,6 +1397,62 @@ class BarSeqFitnessFrame:
             
         return fig, axs_grid
         
+    def get_fitness_plot_setup(self):
+        barcode_frame = self.barcode_frame
+        
+        low_tet = self.low_tet
+        high_tet = self.high_tet
+        med_tet = getattr(self, 'med_tet', None)
+        
+        inducer = self.inducer
+        inducer_2 = getattr(self, 'inducer_2', None)
+        
+        inducer_conc_list = self.inducer_conc_list
+        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
+        
+        # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{low_tet}_estimate_{initial}")
+        #     or the new style (i.e., f"fitness_S{i}_{initial}"
+        # The new style is preferred, so will be used if both are possible
+        old_style_plots = False
+        for initial in ['b', 'e']:
+            for i  in range(1, 25):
+                c = f"fitness_S{i}_{initial}"
+                old_style_plots = old_style_plots or (c not in barcode_frame.columns)
+        if old_style_plots:
+            print("Using old style column headings")
+        else:
+            print("Using new style column headings")
+        
+        fit_plot_colors = sns.color_palette()
+        
+        if old_style_plots:
+            x = np.array(self.inducer_conc_list)
+            linthresh = min(x[x>0])
+            
+            ligand_list = [inducer]
+            
+            antibiotic_conc_list = [low_tet, high_tet]
+            
+            return old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list
+        else:
+            if (med_tet is None) and (inducer_2 is None):
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
+            else:
+                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
+            ligand_list = list(np.unique(sample_plate_map.ligand))
+            if 'none' in ligand_list:
+                ligand_list.remove('none')
+            antibiotic_conc_list = np.unique(sample_plate_map.antibiotic_conc)
+            
+            plot_df = sample_plate_map
+            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=ligand_list)
+            
+            x_list = np.array([np.array(plot_df[x]) for x in ligand_list]).flatten()
+            linthresh = min(x_list[x_list>0])
+            
+            return old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list
+    
     
     def plot_fitness_difference_curves(self,
                                        save_plots=False,
