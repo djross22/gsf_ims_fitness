@@ -1394,17 +1394,11 @@ class BarSeqFitnessFrame:
                 y = row[f"fitness_{low_tet}_estimate_{initial}"]*fit_scale
                 s = row[f"fitness_{low_tet}_err_{initial}"]*fit_scale
                 fill_style = "full" if initial=="b" else "none"
-                x_plot = x[~np.isnan(y)]
-                y_plot = y[~np.isnan(y)]
-                s_plot = s[~np.isnan(y)]
-                if len(x_plot)>0:
+                if len(y[~np.isnan(y)])>0:
                     ax.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 y = row[f"fitness_{high_tet}_estimate_{initial}"]*fit_scale
                 s = row[f"fitness_{high_tet}_err_{initial}"]*fit_scale
-                x_plot = x[~np.isnan(y)]
-                y_plot = y[~np.isnan(y)]
-                s_plot = s[~np.isnan(y)]
-                if len(x_plot)>0:
+                if len(y[~np.isnan(y)])>0:
                     ax.errorbar(x, y, s, marker='v', ms=8, color=fit_plot_colors[1], fillstyle=fill_style)
                 if ylim is not None:
                     ax.set_ylim(ylim);
