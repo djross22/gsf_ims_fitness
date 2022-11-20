@@ -1430,7 +1430,7 @@ class BarSeqFitnessFrame:
             
             ligand_list = [inducer]
             
-            antibiotic_conc_list = [low_tet, high_tet]
+            antibiotic_conc_list = np.array([low_tet, high_tet])
             
             return old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list
         else:
