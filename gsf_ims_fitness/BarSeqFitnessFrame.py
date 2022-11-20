@@ -1455,9 +1455,7 @@ class BarSeqFitnessFrame:
     
     def plot_fitness_difference_curves(self,
                                        save_plots=False,
-                                       inducer_conc_list=None,
                                        plot_range=None,
-                                       inducer=None,
                                        include_ref_seqs=True,
                                        includeChimeras=False,
                                        show_fits=True):
@@ -1477,11 +1475,9 @@ class BarSeqFitnessFrame:
             RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
             barcode_frame = pd.concat([barcode_frame, RS_count_frame])
         
-        if inducer_conc_list is None:
-            inducer_conc_list = self.inducer_conc_list
+        inducer_conc_list = self.inducer_conc_list
             
-        if inducer is None:
-            inducer = self.inducer
+        inducer = self.inducer
         
         if "sensor_params" not in barcode_frame.columns:
             show_fits = False
@@ -1561,9 +1557,7 @@ class BarSeqFitnessFrame:
     
     def plot_fitness_and_difference_curves(self,
                             save_plots=False,
-                            inducer_conc_list=None,
                             plot_range=None,
-                            inducer=None,
                             include_ref_seqs=True,
                             includeChimeras=False,
                             ylim = None,
@@ -1768,8 +1762,6 @@ class BarSeqFitnessFrame:
         return fig_axs_list
     
     def plot_count_ratios_vs_time(self, plot_range,
-                                  inducer=None,
-                                  inducer_conc_list=None,
                                   with_tet=None,
                                   mark_samples=[],
                                   show_spike_ins=["b", "e"]):
@@ -1791,11 +1783,9 @@ class BarSeqFitnessFrame:
         plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
         fig, axs = plt.subplots(len(plot_count_frame), 1)
     
-        if inducer_conc_list is None:
-            inducer_conc_list = self.inducer_conc_list
+        inducer_conc_list = self.inducer_conc_list
             
-        if inducer is None:
-            inducer = self.inducer
+        inducer = self.inducer
     
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
@@ -1908,8 +1898,6 @@ class BarSeqFitnessFrame:
                     ax.plot(x_mark, y_mark, c='k', marker='o', ms=18, fillstyle="none", markeredgewidth=3, zorder=1000, linestyle="none")
         
     def plot_counts_vs_time(self, plot_range,
-                                  inducer=None,
-                                  inducer_conc_list=None,
                                   with_tet=None,
                                   mark_samples=[]):
 
@@ -1931,11 +1919,9 @@ class BarSeqFitnessFrame:
         plt.rcParams["figure.figsize"] = [10,6*(len(plot_count_frame))]
         fig, axs = plt.subplots(len(plot_count_frame), 1)
     
-        if inducer_conc_list is None:
-            inducer_conc_list = self.inducer_conc_list
+        inducer_conc_list = self.inducer_conc_list
             
-        if inducer is None:
-            inducer = self.inducer
+        inducer = self.inducer
     
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
