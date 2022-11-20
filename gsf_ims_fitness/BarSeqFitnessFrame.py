@@ -1358,7 +1358,6 @@ class BarSeqFitnessFrame:
                         s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
                         ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                 else:
-                    color_ind = 0
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         for lig, marker in zip(ligand_list, ['o', '<', '>']):
                             df = plot_df
