@@ -1424,7 +1424,6 @@ class BarSeqFitnessFrame:
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
                             transform=ax.transAxes, fontsize=fontsize, fontfamily=fontfamily)
                     ax.set_xscale('symlog', linthresh=linthresh)
-                    ax.set_xlim(-linthresh/10, 2*max(x));
                     ax.set_xlabel(f'[{inducer}] (umol/L)', size=ax_label_size)
                     ax.set_ylabel(f'Growth Rate ({fit_units})', size=ax_label_size)
                     ax.tick_params(labelsize=ax_label_size-2);
