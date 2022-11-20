@@ -1306,7 +1306,7 @@ class BarSeqFitnessFrame:
                             plot_size=[8, 6],
                             fontsize=13,
                             ax_label_size=14,
-                            show_bc_str=True,
+                            show_bc_str=False,
                             real_fitness_units=False):
         
         low_tet = self.low_tet
@@ -1405,8 +1405,11 @@ class BarSeqFitnessFrame:
                     if show_bc_str:
                         barcode_str += ": " + row['forward_BC'] + ",\n"
                         barcode_str += row['reverse_BC'] + " "
+                        fontfamily = "Courier New"
+                    else:
+                        fontfamily = None
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
-                            transform=ax.transAxes, fontsize=fontsize, fontfamily="Courier New")
+                            transform=ax.transAxes, fontsize=fontsize, fontfamily=fontfamily)
                     ax.set_xscale('symlog', linthresh=linthresh)
                     ax.set_xlim(-linthresh/10, 2*max(x));
                     ax.set_xlabel(f'[{inducer}] (umol/L)', size=ax_label_size)
