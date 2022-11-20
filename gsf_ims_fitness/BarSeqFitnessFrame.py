@@ -254,7 +254,7 @@ class BarSeqFitnessFrame:
                             auto_save=True,
                             ignore_samples=[],
                             refit_index=None,
-                            ref_slope_to_average=False):
+                            ref_slope_to_average=True):
         
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
