@@ -1177,26 +1177,30 @@ class BarSeqFitnessFrame:
             sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
                                                             inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
         
+        tet_list = np.unique(sample_plate_map.antibiotic_conc)
         if plot_fraction:
             plot_param = "fraction_"
         else:
             plot_param = ""
         for (index, row), ax in zip(f_data.iterrows(), axs):
             y_for_scale = []
-            for marker, with_tet in zip(['o', 'v'], [False, True]):
+            for marker, tet in zip(['o', '<', '>'], tet_list):
                 y = []
                 x = []
-                for i, t in enumerate(fitness.wells_by_column()):
+                c = []
+                for i, w in enumerate(fitness.wells_by_column()):
+                    col = int(w[1:])
                     df = sample_plate_map
-                    df = df[df.well==t]
-                    df = df[df.with_tet==with_tet]
+                    df = df[df.well==w]
+                    df = df[df.antibiotic_conc==tet]
                     if len(df)>0:
-                        y.append(row[plot_param + t])
+                        y.append(row[plot_param + w])
                         x.append(i+1)
-                    if (row[plot_param + t])>0:
-                        y_for_scale.append(row[plot_param + t])
+                        c.append(plot_colors()[col-1])
+                    if (row[plot_param + w])>0:
+                        y_for_scale.append(row[plot_param + w])
         
-                ax.scatter(x, y, c=plot_colors48(), s=marker_size, marker=marker);
+                ax.scatter(x, y, c=c, s=marker_size, marker=marker);
             ax.set_ylim(0.5*min(y_for_scale), 2*max(y));
             ax.set_yscale("log")
             barcode_str = str(index) + ', '
