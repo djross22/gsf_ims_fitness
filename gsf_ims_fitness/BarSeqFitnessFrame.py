@@ -45,7 +45,7 @@ class BarSeqFitnessFrame:
         self.low_tet = low_tet
         self.high_tet = high_tet
         if med_tet is not None:
-            sel.med_tet = med_tet
+            self.med_tet = med_tet
         
         if experiment is None:
             experiment = fitness.get_exp_id(notebook_dir)
