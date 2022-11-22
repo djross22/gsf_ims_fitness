@@ -591,7 +591,7 @@ class BarSeqFitnessFrame:
         if len(antibiotic_conc_list[antibiotic_conc_list>0]) == 1:
             sm_file = 'Double Hill equation fit.stan'
         elif len(antibiotic_conc_list[antibiotic_conc_list>0]) == 2:
-            sm_file = 'Double Hill equation fit.two tet.stan'
+            sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
         stan_model = stan_utility.compile_model(sm_file)
         
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
