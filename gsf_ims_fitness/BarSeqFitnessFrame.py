@@ -588,9 +588,9 @@ class BarSeqFitnessFrame:
         else:
             old_style_columns, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
         
-        if len(antibiotic_conc_list[antibiotic_conc_list>0]) == 1:
+        if len(ligand_list) == 1:
             sm_file = 'Double Hill equation fit.stan'
-        elif len(antibiotic_conc_list[antibiotic_conc_list>0]) == 2:
+        elif len(ligand_list) == 2:
             sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
         stan_model = stan_utility.compile_model(sm_file)
         
@@ -621,9 +621,9 @@ class BarSeqFitnessFrame:
             low_tet = antibiotic_conc_list[0]
             high_tet = antibiotic_conc_list[1]
         
-        def stan_fit_row(st_row, st_index, lig, return_fit=False):
+        def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
             print()
-            print(f"fitting row index: {st_index}, for ligand: {lig}")
+            print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
             log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
             
@@ -646,10 +646,8 @@ class BarSeqFitnessFrame:
                     x_fit = x
                 x_y_s_list = [[x_fit, y, s]]
             else:
-                tet = 0
                 df = plot_df
-                df = df[(df.ligand==lig)|(df.ligand=='none')]
-                df = df[df.antibiotic_conc==tet]
+                df = df[df.antibiotic_conc==0] # use all data at zero tet for reference fitness
                 y = [st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
                 s = [st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
                 y_ref_list = np.array(y)
@@ -661,26 +659,29 @@ class BarSeqFitnessFrame:
                 v_1 = np.sum(w)
                 v_2 = np.sum(w**2)
                 s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
-                
+                    
                 tet_list = antibiotic_conc_list[antibiotic_conc_list>0]
                 x_y_s_list = []
-                for tet in tet_list:
-                    df = plot_df
-                    df = df[(df.ligand==lig)|(df.ligand=='none')]
-                    df = df[df.antibiotic_conc==tet]
-                    x = df[lig]
-                    y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
-                    y = (y - y_ref)/y_ref
-                    s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
-                    s = np.sqrt(s**2 + s_ref**2)/y_ref
-                    
-                    x_y_s_list.append([x, y, s])
+                for lig in lig_list:
+                    sub_list = []
+                    for tet in tet_list:
+                        df = plot_df
+                        df = df[(df.ligand==lig)|(df.ligand=='none')]
+                        df = df[df.antibiotic_conc==tet]
+                        x = np.array(df[lig])
+                        y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
+                        y = (y - y_ref)/y_ref
+                        s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
+                        s = np.sqrt(s**2 + s_ref**2)/y_ref
+                        
+                        sub_list.append([x, y, s])
+                    x_y_s_list.append(sub_list)
                             
-            if len(x_y_s_list) == 1:
+            if len(lig_list) == 1:
                 # Case for single tet concentration
-                x_fit = x_y_s_list[0][0]
-                y = x_y_s_list[0][1]
-                s = x_y_s_list[0][2]
+                x_fit = x_y_s_list[0][0][0]
+                y = x_y_s_list[0][0][1]
+                s = x_y_s_list[0][0][2]
                 
                 valid = ~(np.isnan(y) | np.isnan(s))
                 
@@ -689,7 +690,49 @@ class BarSeqFitnessFrame:
                                  log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
             
             #TODO: handle case for 2 tet concentrations
-        
+            else:
+                # Case for two-tet, two-ligand
+                
+                stan_data = dict()
+            '''              
+            int<lower=1> N_lig;                // number of non-zero ligand concentrations for each ligand
+
+            vector[N_lig] x_1;                 // non-zero ligand 1 concentrations
+            vector[N_lig] x_2;                 // non-zero ligand 2 concentrations
+
+            real y_0_med_tet;                  // fitness difference with zero ligand and medium tet concentration
+            real y_0_med_tet_err;              // estimated error of fitness difference
+
+            vector[N_lig] y_1_med_tet;         // fitness difference with ligand 1 and medium tet concentration
+            vector[N_lig] y_1_med_tet_err;     // estimated error of fitness difference
+            vector[N_lig] y_2_med_tet;         // fitness difference with ligand 2 and medium tet concentration
+            vector[N_lig] y_2_med_tet_err;     // estimated error of fitness difference
+
+            vector[N_lig] y_1_high_tet;        // fitness difference with ligand 1 and high tet concentration
+            vector[N_lig] y_1_high_tet_err;    // estimated error of fitness difference
+            vector[N_lig] y_2_high_tet;        // fitness difference with ligand 2 and high tet concentration
+            vector[N_lig] y_2_high_tet_err;    // estimated error of fitness difference
+
+            real log_g_min;                    // lower bound on log_g0 and log_ginf
+            real log_g_max;                    // upper bound on log_g0 and log_ginf
+            real log_g_prior_scale;
+
+            real low_fitness_mu_med_tet;       // fitness difference at zero gene expression, medium tet
+            real mid_g_mu_med_tet;             // gene expression level at 1/2 max fitness difference, medium tet
+            real fitness_n_mu_med_tet;         // cooperativity coefficient of fitness difference curve, medium tet
+
+            real low_fitness_std_med_tet;       // fitness difference at zero gene expression, medium tet
+            real mid_g_std_med_tet;             // gene expression level at 1/2 max fitness difference, medium tet
+            real fitness_n_std_med_tet;         // cooperativity coefficient of fitness difference curve, medium tet
+
+            real low_fitness_mu_high_tet;      // fitness difference at zero gene expression, high tet
+            real mid_g_mu_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
+            real fitness_n_mu_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
+
+            real low_fitness_std_high_tet;      // fitness difference at zero gene expression, high tet
+            real mid_g_std_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
+            real fitness_n_std_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
+            '''      
             try:
                 stan_init = [ init_stan_fit(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
                 
@@ -721,35 +764,35 @@ class BarSeqFitnessFrame:
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
         
         if refit_index is None:
-            for lig in ligand_list:
-                fit_list = [ stan_fit_row(row, index, lig) for (index, row) in barcode_frame.iterrows() ]
+            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
+            
+            popt_list = []
+            pcov_list = []
+            residuals_list = []
+            samples_out_list = []
+            quantiles_list = []
+            invert_prob_list = []
+            on_at_zero_prob_list = []
+            
+            for item in fit_list: # iterate over barcodes
+                stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = item
                 
-                popt_list = []
-                pcov_list = []
-                residuals_list = []
-                samples_out_list = []
-                quantiles_list = []
-                invert_prob_list = []
-                on_at_zero_prob_list = []
-                
-                for item in fit_list: # iterate over barcodes
-                    stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = item
-                    
-                    popt_list.append(stan_popt)
-                    pcov_list.append(stan_pcov)
-                    residuals_list.append(stan_resid)
-                    samples_out_list.append(stan_samples_out)
-                    quantiles_list.append(stan_quantiles)
-                    invert_prob_list.append(hill_invert_prob)
-                    on_at_zero_prob_list.append(hill_on_at_zero_prob)
-                        
-                barcode_frame[f"sensor_params_{lig}"] = popt_list
-                barcode_frame[f"sensor_params_cov_{lig}"] = pcov_list
-                barcode_frame[f"sensor_rms_residuals_{lig}"] = residuals_list
-                barcode_frame[f"sensor_stan_samples_{lig}"] = samples_out_list
-                barcode_frame[f"sensor_params_quantiles_{lig}"] = quantiles_list
-                barcode_frame[f"hill_invert_prob_{lig}"] = invert_prob_list
-                barcode_frame[f"hill_on_at_zero_prob_{lig}"] = on_at_zero_prob_list
+                popt_list.append(stan_popt)
+                pcov_list.append(stan_pcov)
+                residuals_list.append(stan_resid)
+                samples_out_list.append(stan_samples_out)
+                quantiles_list.append(stan_quantiles)
+                invert_prob_list.append(hill_invert_prob)
+                on_at_zero_prob_list.append(hill_on_at_zero_prob)
+            
+            lig = ligand_list[0]
+            barcode_frame[f"sensor_params_{lig}"] = popt_list
+            barcode_frame[f"sensor_params_cov_{lig}"] = pcov_list
+            barcode_frame[f"sensor_rms_residuals_{lig}"] = residuals_list
+            barcode_frame[f"sensor_stan_samples_{lig}"] = samples_out_list
+            barcode_frame[f"sensor_params_quantiles_{lig}"] = quantiles_list
+            barcode_frame[f"hill_invert_prob_{lig}"] = invert_prob_list
+            barcode_frame[f"hill_on_at_zero_prob_{lig}"] = on_at_zero_prob_list
         else:
             # TODO: update refits to Nov 2022, handle multiple ligands
             row_to_fit = barcode_frame.loc[refit_index]
