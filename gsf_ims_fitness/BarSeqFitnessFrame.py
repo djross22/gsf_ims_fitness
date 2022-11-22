@@ -692,31 +692,46 @@ class BarSeqFitnessFrame:
             #TODO: handle case for 2 tet concentrations
             else:
                 # Case for two-tet, two-ligand
+                y_0_med = x_y_s_list[0][0][1][0]
+                s_0_med = x_y_s_list[0][0][2][0]
                 
-                stan_data = dict()
+                x_1 = x_y_s_list[0][0][0]
+                y_1_med = x_y_s_list[0][0][1]
+                s_1_med = x_y_s_list[0][0][2]
+                y_1_med = y_1_med[x_1>0]
+                s_1_med = s_1_med[x_1>0]
+                x_1 = x_1[x_1>0]
+                
+                x_1_high = x_y_s_list[0][1][0]
+                y_1_high = x_y_s_list[0][1][1]
+                s_1_high = x_y_s_list[0][1][2]
+                y_1_high = y_1_high[x_1_high>0]
+                s_1_high = s_1_high[x_1_high>0]
+                x_1_high = x_1_high[x_1_high>0]
+                
+                x_2 = x_y_s_list[1][0][0]
+                y_2_med = x_y_s_list[1][0][1]
+                s_2_med = x_y_s_list[1][0][2]
+                y_2_med = y_2_med[x_2>0]
+                s_2_med = s_2_med[x_2>0]
+                x_2 = x_2[x_2>0]
+                
+                x_2_high = x_y_s_list[0][1][0]
+                y_2_high = x_y_s_list[0][1][1]
+                s_2_high = x_y_s_list[0][1][2]
+                y_2_high = y_2_high[x_2_high>0]
+                s_2_high = s_2_high[x_2_high>0]
+                x_2_high = x_2_high[x_2_high>0]
+                
+                stan_data = dict(N_lig=len(x_1), x_1=x_1, x_2=x_2, 
+                                 y_0_med_tet=y_0_med, y_0_med_tet_err=s_0_med,
+                                 y_1_med_tet=y_1_med, y_1_med_tet_err=s_1_med,
+                                 y_2_med_tet=y_2_med, y_2_med_tet_err=s_2_med,
+                                 y_1_high_tet=y_1_high, y_1_high_tet_err=s_1_high,
+                                 y_2_high_tet=y_2_high, y_2_high_tet_err=s_2_high,
+                                 log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
+                                 )
             '''              
-            int<lower=1> N_lig;                // number of non-zero ligand concentrations for each ligand
-
-            vector[N_lig] x_1;                 // non-zero ligand 1 concentrations
-            vector[N_lig] x_2;                 // non-zero ligand 2 concentrations
-
-            real y_0_med_tet;                  // fitness difference with zero ligand and medium tet concentration
-            real y_0_med_tet_err;              // estimated error of fitness difference
-
-            vector[N_lig] y_1_med_tet;         // fitness difference with ligand 1 and medium tet concentration
-            vector[N_lig] y_1_med_tet_err;     // estimated error of fitness difference
-            vector[N_lig] y_2_med_tet;         // fitness difference with ligand 2 and medium tet concentration
-            vector[N_lig] y_2_med_tet_err;     // estimated error of fitness difference
-
-            vector[N_lig] y_1_high_tet;        // fitness difference with ligand 1 and high tet concentration
-            vector[N_lig] y_1_high_tet_err;    // estimated error of fitness difference
-            vector[N_lig] y_2_high_tet;        // fitness difference with ligand 2 and high tet concentration
-            vector[N_lig] y_2_high_tet_err;    // estimated error of fitness difference
-
-            real log_g_min;                    // lower bound on log_g0 and log_ginf
-            real log_g_max;                    // upper bound on log_g0 and log_ginf
-            real log_g_prior_scale;
-
             real low_fitness_mu_med_tet;       // fitness difference at zero gene expression, medium tet
             real mid_g_mu_med_tet;             // gene expression level at 1/2 max fitness difference, medium tet
             real fitness_n_mu_med_tet;         // cooperativity coefficient of fitness difference curve, medium tet
