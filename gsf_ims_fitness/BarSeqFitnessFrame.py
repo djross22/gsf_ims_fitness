@@ -574,11 +574,6 @@ class BarSeqFitnessFrame:
         print("      Version from 2022-11-20")
         #os.chdir(self.notebook_dir)
         
-        if fit_fitness_difference_params is None:
-            fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid)
-        
-        self.fit_fitness_difference_params = fit_fitness_difference_params
-        
         barcode_frame = self.barcode_frame
         
         fitness_columns_setup = self.get_fitness_columns_setup()
@@ -590,24 +585,41 @@ class BarSeqFitnessFrame:
         
         if len(ligand_list) == 1:
             sm_file = 'Double Hill equation fit.stan'
+        
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
+            
+            params_list = ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
+                           'low_fitness', 'mid_g', 'fitness_n']
+            log_low_ind = params_list.index('log_g0')
+            log_high_low_ind = params_list.index('log_ginf_g0_ratio')
+            params_dim = len(params_list)
+            
+            quantile_params_list = params_list[:-3]
+                
         elif len(ligand_list) == 2:
             sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
+        
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
+            
+            params_list = ['log_g0', 
+                           'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
+                           'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
+                           'low_fitness_med_tet', 'mid_g_med_tet', 'fitness_n_med_tet',
+                           'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
+            log_low_ind = params_list.index('log_g0')
+            log_high_low_ind_1 = params_list.index('log_ginf_g0_ratio_1')
+            log_high_low_ind_2 = params_list.index('log_ginf_g0_ratio_2')
+            params_dim = len(params_list)
+            
+            quantile_params_list = params_list[:-6]
+                
         stan_model = stan_utility.compile_model(sm_file)
+        self.fit_fitness_difference_params = fit_fitness_difference_params
         
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
-        
-        low_fitness = fit_fitness_difference_params[0]
-        mid_g = fit_fitness_difference_params[1]
-        fitness_n = fit_fitness_difference_params[2]
-        
-        params_list = ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
-                       'low_fitness', 'mid_g', 'fitness_n']
-        log_low_ind = params_list.index('log_g0')
-        log_high_low_ind = params_list.index('log_ginf_g0_ratio')
-        params_dim = len(params_list)
-        
-        quantile_params_list = params_list[:-len(fit_fitness_difference_params)]
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
         
@@ -684,6 +696,10 @@ class BarSeqFitnessFrame:
                 s = x_y_s_list[0][0][2]
                 
                 valid = ~(np.isnan(y) | np.isnan(s))
+        
+                low_fitness = fit_fitness_difference_params[0]
+                mid_g = fit_fitness_difference_params[1]
+                fitness_n = fit_fitness_difference_params[2]
                 
                 stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
                                  low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
@@ -812,7 +828,7 @@ class BarSeqFitnessFrame:
             # TODO: update refits to Nov 2022, handle multiple ligands
             row_to_fit = barcode_frame.loc[refit_index]
             if return_fit:
-                return stan_fit_row(row_to_fit, refit_index, return_fit=True)
+                return stan_fit_row(row_to_fit, refit_index, ligand_list, return_fit=True)
             stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = stan_fit_row(row_to_fit, refit_index)
             arr_1 = barcode_frame.loc[refit_index, "sensor_params"]
             print(f"old: {arr_1}")
