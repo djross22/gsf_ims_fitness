@@ -706,7 +706,6 @@ class BarSeqFitnessFrame:
                                  low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                                  log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
             
-            #TODO: handle case for 2 tet concentrations
             else:
                 # Case for two-tet, two-ligand
                 y_0_med = x_y_s_list[0][0][1][0]
@@ -733,9 +732,9 @@ class BarSeqFitnessFrame:
                 s_2_med = s_2_med[x_2>0]
                 x_2 = x_2[x_2>0]
                 
-                x_2_high = x_y_s_list[0][1][0]
-                y_2_high = x_y_s_list[0][1][1]
-                s_2_high = x_y_s_list[0][1][2]
+                x_2_high = x_y_s_list[1][1][0]
+                y_2_high = x_y_s_list[1][1][1]
+                s_2_high = x_y_s_list[1][1][2]
                 y_2_high = y_2_high[x_2_high>0]
                 s_2_high = s_2_high[x_2_high>0]
                 x_2_high = x_2_high[x_2_high>0]
@@ -747,26 +746,25 @@ class BarSeqFitnessFrame:
                                  y_1_high_tet=y_1_high, y_1_high_tet_err=s_1_high,
                                  y_2_high_tet=y_2_high, y_2_high_tet_err=s_2_high,
                                  log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
+                                 low_fitness_mu_med_tet=fit_fitness_difference_params[0][0],
+                                 mid_g_mu_med_tet=fit_fitness_difference_params[0][1],
+                                 fitness_n_mu_med_tet=fit_fitness_difference_params[0][2],
+                                 low_fitness_std_med_tet=fit_fitness_difference_params[0][3],
+                                 mid_g_std_med_tet=fit_fitness_difference_params[0][4],
+                                 fitness_n_std_med_tet=fit_fitness_difference_params[0][5],
+                                 low_fitness_mu_high_tet=fit_fitness_difference_params[1][0],
+                                 mid_g_mu_high_tet=fit_fitness_difference_params[1][1],
+                                 fitness_n_mu_high_tet=fit_fitness_difference_params[1][2],
+                                 low_fitness_std_high_tet=fit_fitness_difference_params[1][3],
+                                 mid_g_std_high_tet=fit_fitness_difference_params[1][4],
+                                 fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
                                  )
-            '''              
-            real low_fitness_mu_med_tet;       // fitness difference at zero gene expression, medium tet
-            real mid_g_mu_med_tet;             // gene expression level at 1/2 max fitness difference, medium tet
-            real fitness_n_mu_med_tet;         // cooperativity coefficient of fitness difference curve, medium tet
 
-            real low_fitness_std_med_tet;       // fitness difference at zero gene expression, medium tet
-            real mid_g_std_med_tet;             // gene expression level at 1/2 max fitness difference, medium tet
-            real fitness_n_std_med_tet;         // cooperativity coefficient of fitness difference curve, medium tet
-
-            real low_fitness_mu_high_tet;      // fitness difference at zero gene expression, high tet
-            real mid_g_mu_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
-            real fitness_n_mu_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
-
-            real low_fitness_std_high_tet;      // fitness difference at zero gene expression, high tet
-            real mid_g_std_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
-            real fitness_n_std_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
-            '''      
             try:
-                stan_init = [ init_stan_fit(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(4) ]
+                if len(lig_list) == 1:
+                    stan_init = [ init_stan_fit_single_ligand(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(chains) ]
+                else:
+                    stan_init = [ init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params) for i in range(chains) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 if return_fit:
@@ -2393,7 +2391,7 @@ def double_hill_funct(x, g_min, g_max, x_50, nx, f_min, f_max, g_50, ng):
     return hill_funct( hill_funct(x, g_min, g_max, x_50, nx), f_min, f_max, g_50, ng )
     
 
-def init_stan_fit(x_data, y_data, fit_fitness_difference_params):
+def init_stan_fit_single_ligand(x_data, y_data, fit_fitness_difference_params):
     log_g0 = log_level(np.mean(y_data[:2]))
     log_ginf = log_level(np.mean(y_data[-2:]))
     
@@ -2411,6 +2409,34 @@ def init_stan_fit(x_data, y_data, fit_fitness_difference_params):
     
     return dict(log_g0=log_g0, log_ginf=log_ginf, log_ec50=log_ec50,
                 sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
+                
+def init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params):
+    min_ic = np.log10(min(x_y_s_list[0][1][0]))
+    max_ic = np.log10(max(x_y_s_list[0][1][0]))
+    log_ec50_1 = np.random.uniform(min_ic, max_ic)
+    log_ec50_2 = np.random.uniform(min_ic, max_ic)
+    
+    n_1 = np.random.uniform(1.3, 1.7)
+    n_2 = np.random.uniform(1.3, 1.7)
+    
+    sig = np.random.uniform(1, 3)
+    
+    # Indices for x_y_s_list[ligand][tet][x,y,s][n]
+    return dict(log_g0=log_level(x_y_s_list[0][0][1][0]), 
+                log_ginf_1=log_level(np.mean(x_y_s_list[0][1][1][-2:])), 
+                log_ginf_2=log_level(np.mean(x_y_s_list[1][1][1][-2:])), 
+                log_ec50_1=log_ec50_1, 
+                log_ec50_2=log_ec50_2, 
+                sensor_n_1=n_1, 
+                sensor_n_2=n_2, 
+                sigma=sig, 
+                low_fitness_med_tet=fit_fitness_difference_params[0][0],
+                mid_g_med_tet=fit_fitness_difference_params[0][1],
+                fitness_n_med_tet=fit_fitness_difference_params[0][2],
+                low_fitness_high_tet=fit_fitness_difference_params[1][0],
+                mid_g_high_tet=fit_fitness_difference_params[1][1],
+                fitness_n_high_tet=fit_fitness_difference_params[1][2],
+                )
     
 def init_stan_GP_fit(fit_fitness_difference_params):
     sig = np.random.uniform(1, 3)

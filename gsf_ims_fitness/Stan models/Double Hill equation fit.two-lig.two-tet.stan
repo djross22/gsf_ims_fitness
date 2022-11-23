@@ -86,6 +86,8 @@ transformed parameters {
   real ginf_2; 
   real ec50_2;
   
+  real mean_y_0_med_tet;
+  
   vector[N_lig] mean_y_1_med_tet;
   vector[N_lig] mean_y_1_high_tet;
   vector[N_lig] g_1;                // gene expression level at each concentration of ligand 1
@@ -99,6 +101,8 @@ transformed parameters {
   ec50_1 = 10^log_ec50_1;
   ginf_2 = 10^log_ginf_2;
   ec50_2 = 10^log_ec50_2;
+  
+  mean_y_0_med_tet = low_fitness_med_tet - low_fitness_med_tet*(g0^fitness_n_med_tet)/(mid_g_med_tet^fitness_n_med_tet + g0^fitness_n_med_tet);
   
   for (i in 1:N_lig) {
     g_1[i] = g0 + (ginf_1 - g0)*(x_1[i]^sensor_n_1)/(ec50_1^sensor_n_1 + x_1[i]^sensor_n_1);
@@ -157,7 +161,7 @@ model {
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
   
-  y_0_med_tet ~ normal(g0, sigma*y_0_med_tet_err);
+  y_0_med_tet ~ normal(mean_y_0_med_tet, sigma*y_0_med_tet_err);
   
   y_1_med_tet ~ normal(mean_y_1_med_tet, sigma*y_1_med_tet_err);
   y_2_med_tet ~ normal(mean_y_2_med_tet, sigma*y_2_med_tet_err);
