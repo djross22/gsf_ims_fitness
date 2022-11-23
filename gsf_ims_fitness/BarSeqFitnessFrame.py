@@ -604,9 +604,8 @@ class BarSeqFitnessFrame:
             if fit_fitness_difference_params is None:
                 fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
             
-            params_list = ['log_g0', 
-                           'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
-                           'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
+            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
+                           'log_g0', 'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
                            'low_fitness_med_tet', 'mid_g_med_tet', 'fitness_n_med_tet',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
             log_low_ind = params_list.index('log_g0')
@@ -624,16 +623,19 @@ class BarSeqFitnessFrame:
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
         
+        ''' Not sure if these lines are actually needed???
         if "sensor_params" not in barcode_frame.columns:
             barcode_frame["sensor_params"] = [ np.full((params_dim), np.nan) for i in range(len(barcode_frame))]
         
         if "sensor_params_cov" not in barcode_frame.columns:
             barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
+        '''
         
         if old_style_columns:
             low_tet = antibiotic_conc_list[0]
             high_tet = antibiotic_conc_list[1]
         
+        rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
@@ -766,21 +768,31 @@ class BarSeqFitnessFrame:
                 else:
                     stan_init = [ init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params) for i in range(chains) ]
                 
+                #print("stan_data:")
+                #for k, v in stan_data.items():
+                #    print(f"{k}: {v}")
+                #print()
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 if return_fit:
                     return stan_fit
                 stan_samples = stan_fit.extract(permuted=False, pars=params_list)
         
-                stan_samples_arr = np.array([stan_samples[key].flatten() for key in params_list ])
+                stan_samples_arr = np.array([stan_fit[key] for key in params_list ])
                 stan_popt = np.array([np.median(s) for s in stan_samples_arr ])
                 stan_pcov = np.cov(stan_samples_arr, rowvar=True)
                 stan_resid = np.median(stan_fit["rms_resid"])
-                stan_samples_out = np.array([stan_samples[key][::71,:].flatten() for key in params_list ])
+                
+                stan_samples_out = rng.choice(stan_samples_arr, size=32, replace=False, axis=1, shuffle=False)
                 stan_quantiles = np.array([np.quantile(stan_samples[key], quantile_list) for key in quantile_params_list ])
                 low_samples = 10**stan_samples_arr[log_low_ind]
                 hill_on_at_zero_prob = len(low_samples[low_samples>wild_type_ginf/4])/len(low_samples)
-                high_low_samples = stan_samples_arr[log_high_low_ind]
-                hill_invert_prob = len(high_low_samples[high_low_samples<0])/len(high_low_samples)
+                if len(ligand_list) == 1:
+                    high_low_samples = stan_samples_arr[log_high_low_ind]
+                    hill_invert_prob = len(high_low_samples[high_low_samples<0])/len(high_low_samples)
+                else:
+                    high_low_samples = [stan_samples_arr[k] for k in [log_high_low_ind_1, log_high_low_ind_2]]
+                    hill_invert_prob = [len(s[s<0])/len(s) for s in high_low_samples]
+            
             except:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
@@ -790,6 +802,7 @@ class BarSeqFitnessFrame:
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 hill_invert_prob = np.nan
                 hill_on_at_zero_prob = np.nan
+            
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
         
@@ -815,14 +828,17 @@ class BarSeqFitnessFrame:
                 invert_prob_list.append(hill_invert_prob)
                 on_at_zero_prob_list.append(hill_on_at_zero_prob)
             
-            lig = ligand_list[0]
-            barcode_frame[f"sensor_params_{lig}"] = popt_list
-            barcode_frame[f"sensor_params_cov_{lig}"] = pcov_list
-            barcode_frame[f"sensor_rms_residuals_{lig}"] = residuals_list
-            barcode_frame[f"sensor_stan_samples_{lig}"] = samples_out_list
-            barcode_frame[f"sensor_params_quantiles_{lig}"] = quantiles_list
-            barcode_frame[f"hill_invert_prob_{lig}"] = invert_prob_list
-            barcode_frame[f"hill_on_at_zero_prob_{lig}"] = on_at_zero_prob_list
+            for i, lig in enumerate(ligand_list):
+                barcode_frame[f"sensor_params_{lig}"] = [x[i*5:5 + i*5] for x in popt_list]
+                barcode_frame[f"sensor_params_cov_{lig}"] = [x[i*5:5 + i*5, i*5:5 + i*5] for x in pcov_list]
+                barcode_frame[f"sensor_stan_samples_{lig}"] = [x[i*5:5 + i*5] for x in samples_out_list]
+                barcode_frame[f"sensor_params_quantiles_{lig}"] = [x[i*5:5 + i*5] for x in quantiles_list]
+                barcode_frame[f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
+            
+            barcode_frame["sensor_params_all"] = popt_list
+            barcode_frame["sensor_params_cov_all"] = pcov_list
+            barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
+            barcode_frame["sensor_rms_residuals"] = residuals_list
         else:
             # TODO: update refits to Nov 2022, handle multiple ligands
             row_to_fit = barcode_frame.loc[refit_index]
