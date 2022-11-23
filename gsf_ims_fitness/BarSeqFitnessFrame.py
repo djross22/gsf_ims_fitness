@@ -37,15 +37,14 @@ sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.directi
 
 class BarSeqFitnessFrame:
         
-    def __init__(self, notebook_dir, experiment=None, barcode_file=None, low_tet=0, high_tet=20, inducer_conc_list=None, inducer="IPTG",
-                 inducer_2=None, inducer_conc_list_2=None, med_tet=None):
+    def __init__(self, notebook_dir, experiment=None, barcode_file=None, high_tet=20, inducer_conc_list=None, inducer="IPTG",
+                 inducer_2=None, inducer_conc_list_2=None, low_tet=None):
         
         self.notebook_dir = notebook_dir
         
-        self.low_tet = low_tet
         self.high_tet = high_tet
-        if med_tet is not None:
-            self.med_tet = med_tet
+        if low_tet is not None:
+            self.low_tet = low_tet
         
         if experiment is None:
             experiment = fitness.get_exp_id(notebook_dir)
@@ -258,10 +257,8 @@ class BarSeqFitnessFrame:
                             bi_linear_alpha=np.log(5)):
         
         barcode_frame = self.barcode_frame
-        low_tet = self.low_tet
         high_tet = self.high_tet
-        
-        med_tet = getattr(self, 'med_tet', None)
+        low_tet = getattr(self, 'low_tet', None)
             
         #os.chdir(self.data_directory)
     
@@ -270,11 +267,11 @@ class BarSeqFitnessFrame:
         inducer_2 = getattr(self, 'inducer_2', None)
         inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
         
-        if (med_tet is None) and (inducer_2 is None):
+        if (low_tet is None) and (inducer_2 is None):
             sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
         else:
             sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
+                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
         
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
@@ -351,12 +348,12 @@ class BarSeqFitnessFrame:
         for t, d in zip(tet_list, fitness_dicts):
             spike_in_fitness_dict[t] = d
         
-        if med_tet is None:
+        if low_tet is None:
             ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
             ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
         else:
-            ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[med_tet]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
-            ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[med_tet]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
+            ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
+            ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
             
         print(f'Reference fitness values, AO-B: {ref_fit_str_B}, AO-E: {ref_fit_str_E}')
         print()
@@ -438,7 +435,7 @@ class BarSeqFitnessFrame:
                 well_list = list(df.well.values)
             
                 spike_in_reads = np.array(spike_in_row_dict[spike_in][well_list], dtype='int64')
-                if med_tet is None:
+                if low_tet is None:
                     tet_conc = high_tet
                 else:
                     tet_conc = df.antibiotic_conc.iloc[0]
@@ -525,7 +522,7 @@ class BarSeqFitnessFrame:
             
             params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
                            'log_g0', 'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
-                           'low_fitness_med_tet', 'mid_g_med_tet', 'fitness_n_med_tet',
+                           'low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
             log_g0_ind = params_list.index('log_g0')
             log_ginf_g0_ind_1 = params_list.index('log_ginf_g0_ratio_1')
@@ -551,7 +548,6 @@ class BarSeqFitnessFrame:
         '''
         
         if old_style_columns:
-            low_tet = antibiotic_conc_list[0]
             high_tet = antibiotic_conc_list[1]
         
         rng = np.random.default_rng()
@@ -563,13 +559,13 @@ class BarSeqFitnessFrame:
             
             initial = "b"
             if old_style_columns:
-                y_low = st_row[f"fitness_{low_tet}_estimate_{initial}"]
-                s_low = st_row[f"fitness_{low_tet}_err_{initial}"]
+                y_zero = st_row[f"fitness_{0}_estimate_{initial}"]
+                s_zero = st_row[f"fitness_{0}_err_{initial}"]
                 y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
                 s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
                 
-                y = (y_high - y_low)/y_low
-                s = np.sqrt( s_high**2 + s_low**2 )/y_low
+                y = (y_high - y_zero)/y_zero
+                s = np.sqrt( s_high**2 + s_zero**2 )/y_zero
                 
                 if include_lactose_zero:
                     print(f"      including zero lactose data for {st_index}")
@@ -661,18 +657,18 @@ class BarSeqFitnessFrame:
                 x_2_high = x_2_high[x_2_high>0]
                 
                 stan_data = dict(N_lig=len(x_1), x_1=x_1, x_2=x_2, 
-                                 y_0_med_tet=y_0_med, y_0_med_tet_err=s_0_med,
-                                 y_1_med_tet=y_1_med, y_1_med_tet_err=s_1_med,
-                                 y_2_med_tet=y_2_med, y_2_med_tet_err=s_2_med,
+                                 y_0_low_tet=y_0_med, y_0_low_tet_err=s_0_med,
+                                 y_1_low_tet=y_1_med, y_1_low_tet_err=s_1_med,
+                                 y_2_low_tet=y_2_med, y_2_low_tet_err=s_2_med,
                                  y_1_high_tet=y_1_high, y_1_high_tet_err=s_1_high,
                                  y_2_high_tet=y_2_high, y_2_high_tet_err=s_2_high,
                                  log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
-                                 low_fitness_mu_med_tet=fit_fitness_difference_params[0][0],
-                                 mid_g_mu_med_tet=fit_fitness_difference_params[0][1],
-                                 fitness_n_mu_med_tet=fit_fitness_difference_params[0][2],
-                                 low_fitness_std_med_tet=fit_fitness_difference_params[0][3],
-                                 mid_g_std_med_tet=fit_fitness_difference_params[0][4],
-                                 fitness_n_std_med_tet=fit_fitness_difference_params[0][5],
+                                 low_fitness_mu_low_tet=fit_fitness_difference_params[0][0],
+                                 mid_g_mu_low_tet=fit_fitness_difference_params[0][1],
+                                 fitness_n_mu_low_tet=fit_fitness_difference_params[0][2],
+                                 low_fitness_std_low_tet=fit_fitness_difference_params[0][3],
+                                 mid_g_std_low_tet=fit_fitness_difference_params[0][4],
+                                 fitness_n_std_low_tet=fit_fitness_difference_params[0][5],
                                  low_fitness_mu_high_tet=fit_fitness_difference_params[1][0],
                                  mid_g_mu_high_tet=fit_fitness_difference_params[1][1],
                                  fitness_n_mu_high_tet=fit_fitness_difference_params[1][2],
@@ -703,8 +699,8 @@ class BarSeqFitnessFrame:
                 
                 stan_samples_out = rng.choice(stan_samples_arr, size=32, replace=False, axis=1, shuffle=False)
                 stan_quantiles = np.array([np.quantile(stan_samples[key], quantile_list) for key in quantile_params_list ])
-                low_samples = 10**stan_samples_arr[log_g0_ind]
-                hill_on_at_zero_prob = len(low_samples[low_samples>wild_type_ginf/4])/len(low_samples)
+                g0_samples = 10**stan_samples_arr[log_g0_ind]
+                hill_on_at_zero_prob = len(g0_samples[g0_samples>wild_type_ginf/4])/len(g0_samples)
                 if len(ligand_list) == 1:
                     g_ratio_samples = stan_samples_arr[log_ginf_g0_ind]
                     hill_invert_prob = len(g_ratio_samples[g_ratio_samples<0])/len(g_ratio_samples)
@@ -814,7 +810,6 @@ class BarSeqFitnessFrame:
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
         barcode_frame = self.barcode_frame
-        low_tet = self.low_tet
         high_tet = self.high_tet
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
@@ -847,13 +842,13 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}")
             initial = "b"
-            y_low = st_row[f"fitness_{low_tet}_estimate_{initial}"]
-            s_low = st_row[f"fitness_{low_tet}_err_{initial}"]
+            y_zero = st_row[f"fitness_{0}_estimate_{initial}"]
+            s_zero = st_row[f"fitness_{0}_err_{initial}"]
             y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
             s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
             
-            y = (y_high - y_low)/y_low
-            s = np.sqrt( s_high**2 + s_low**2 )/y_low
+            y = (y_high - y_zero)/y_zero
+            s = np.sqrt( s_high**2 + s_zero**2 )/y_zero
             
             # if either y or s is nan, replace with values that won't affect GP model results (i.e. s=10)
             invalid = (np.isnan(y) | np.isnan(s))
@@ -1019,13 +1014,12 @@ class BarSeqFitnessFrame:
         # remove small barcode from dataframe
         
         barcode_frame = self.barcode_frame
-        low_tet = self.low_tet
         high_tet = self.high_tet
         
         columns_to_sum = fitness.wells()
         columns_to_sum += [ 'total_counts', 'fraction_total', 'total_counts_plate_2', 'fraction_total_p2' ]
         columns_to_sum += [ f'fraction_{w}' for w in fitness.wells() ]
-        columns_to_sum += [ f'read_count_{low_tet}_{plate_num}' for plate_num in range(2,6) ]
+        columns_to_sum += [ f'read_count_{0}_{plate_num}' for plate_num in range(2,6) ]
         columns_to_sum += [ f'read_count_{high_tet}_{plate_num}' for plate_num in range(2,6) ]
         
         
@@ -1176,14 +1170,14 @@ class BarSeqFitnessFrame:
         inducer_conc_list = self.inducer_conc_list
         high_tet = self.high_tet
         
-        med_tet = getattr(self, 'med_tet', None)
+        low_tet = getattr(self, 'low_tet', None)
         inducer_2 = getattr(self, 'inducer_2', None)
         inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
-        if (med_tet is None) and (inducer_2 is None):
+        if (low_tet is None) and (inducer_2 is None):
             sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
         else:
             sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
+                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
         
         tet_list = np.unique(sample_plate_map.antibiotic_conc)
         if plot_fraction:
@@ -1459,9 +1453,8 @@ class BarSeqFitnessFrame:
     def get_fitness_columns_setup(self):
         barcode_frame = self.barcode_frame
         
-        low_tet = self.low_tet
         high_tet = self.high_tet
-        med_tet = getattr(self, 'med_tet', None)
+        low_tet = getattr(self, 'low_tet', None)
         
         inducer = self.inducer
         inducer_2 = getattr(self, 'inducer_2', None)
@@ -1469,7 +1462,7 @@ class BarSeqFitnessFrame:
         inducer_conc_list = self.inducer_conc_list
         inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
         
-        # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{low_tet}_estimate_{initial}")
+        # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{high_tet}_estimate_{initial}")
         #     or the new style (i.e., f"fitness_S{i}_{initial}"
         # The new style is preferred, so will be used if both are possible
         old_style_plots = False
@@ -1490,15 +1483,15 @@ class BarSeqFitnessFrame:
             
             ligand_list = [inducer]
             
-            antibiotic_conc_list = np.array([low_tet, high_tet])
+            antibiotic_conc_list = np.array([0, high_tet])
             
             return old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list
         else:
-            if (med_tet is None) and (inducer_2 is None):
+            if (low_tet is None) and (inducer_2 is None):
                 sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
             else:
                 sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[med_tet, high_tet])
+                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
             ligand_list = list(np.unique(sample_plate_map.ligand))
             if 'none' in ligand_list:
                 ligand_list.remove('none')
@@ -1610,13 +1603,13 @@ class BarSeqFitnessFrame:
                         s = row[f"fitness_{tet}_err_{initial}"]
                         axl.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                     
-                    y_low = row[f"fitness_{antibiotic_conc_list[0]}_estimate_{initial}"]
-                    s_low = row[f"fitness_{antibiotic_conc_list[0]}_err_{initial}"]
+                    y_zero = row[f"fitness_{0}_estimate_{initial}"]
+                    s_zero = row[f"fitness_{0}_err_{initial}"]
                     y_high = row[f"fitness_{antibiotic_conc_list[1]}_estimate_{initial}"]
                     s_high = row[f"fitness_{antibiotic_conc_list[1]}_err_{initial}"]
                     
-                    y = (y_high - y_low)/y_low.mean()
-                    s = np.sqrt( s_high**2 + s_low**2 )/y_low.mean()
+                    y = (y_high - y_zero)/y_zero.mean()
+                    s = np.sqrt( s_high**2 + s_zero**2 )/y_zero.mean()
                     fill_style = "full" if initial=="b" else "none"
                     axr.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 else:
@@ -1742,7 +1735,6 @@ class BarSeqFitnessFrame:
             plot_no_tet = not with_tet
             
         barcode_frame = self.barcode_frame
-        low_tet = self.low_tet
         high_tet = self.high_tet
         
         if plot_range is None:
@@ -1773,7 +1765,7 @@ class BarSeqFitnessFrame:
         sample_plate_map.set_index('well', inplace=True, drop=False)
     
         wells_with_high_tet = []
-        wells_with_low_tet = []
+        wells_with_zero_tet = []
     
         for i in range(2,6):
             df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
@@ -1781,17 +1773,17 @@ class BarSeqFitnessFrame:
             wells_with_high_tet.append(df["well"].values)
             df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
             df = df.sort_values([inducer])
-            wells_with_low_tet.append(df["well"].values)
+            wells_with_zero_tet.append(df["well"].values)
     
         for i in range(2,6):
             counts_0 = []
             counts_tet = []
             for index, row in barcode_frame.iterrows():
-                row_0 = row[wells_with_low_tet[i-2]]
+                row_0 = row[wells_with_zero_tet[i-2]]
                 counts_0.append(row_0.values)
                 row_tet = row[wells_with_high_tet[i-2]]
                 counts_tet.append(row_tet.values)
-            barcode_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
+            barcode_frame[f"read_count_{0}_" + str(i)] = counts_0
             barcode_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
 
         spike_in_row_dict = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"],
@@ -1800,7 +1792,7 @@ class BarSeqFitnessFrame:
         #Run for both AO-B and AO-E
         for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
             if initial in show_spike_ins:
-                spike_in_reads_0 = [ spike_in_row_dict[spike_in][f'read_count_{low_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
+                spike_in_reads_0 = [ spike_in_row_dict[spike_in][f'read_count_{0}_{plate_num}'].values[0] for plate_num in range(2,6) ]
                 spike_in_reads_tet = [ spike_in_row_dict[spike_in][f'read_count_{high_tet}_{plate_num}'].values[0] for plate_num in range(2,6) ]
             
                 x0 = [2, 3, 4, 5]
@@ -1810,7 +1802,7 @@ class BarSeqFitnessFrame:
                     y_mark = []
                     
                     if plot_no_tet:
-                        n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                        n_reads = [ row[f'read_count_{0}_{plate_num}'] for plate_num in range(2,6) ]
                         for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
                             x = []
                             y = []
@@ -1878,7 +1870,6 @@ class BarSeqFitnessFrame:
             plot_no_tet = not with_tet
             
         barcode_frame = self.barcode_frame
-        low_tet = self.low_tet
         high_tet = self.high_tet
         
         if plot_range is None:
@@ -1909,7 +1900,7 @@ class BarSeqFitnessFrame:
         sample_plate_map.set_index('well', inplace=True, drop=False)
     
         wells_with_high_tet = []
-        wells_with_low_tet = []
+        wells_with_zero_tet = []
     
         for i in range(2,6):
             df = sample_plate_map[(sample_plate_map["with_tet"]) & (sample_plate_map["growth_plate"]==i)]
@@ -1917,17 +1908,17 @@ class BarSeqFitnessFrame:
             wells_with_high_tet.append(df["well"].values)
             df = sample_plate_map[(sample_plate_map["with_tet"] != True) & (sample_plate_map["growth_plate"]==i)]
             df = df.sort_values([inducer])
-            wells_with_low_tet.append(df["well"].values)
+            wells_with_zero_tet.append(df["well"].values)
     
         for i in range(2,6):
             counts_0 = []
             counts_tet = []
             for index, row in plot_count_frame.iterrows():
-                row_0 = row[wells_with_low_tet[i-2]]
+                row_0 = row[wells_with_zero_tet[i-2]]
                 counts_0.append(row_0.values)
                 row_tet = row[wells_with_high_tet[i-2]]
                 counts_tet.append(row_tet.values)
-            plot_count_frame[f"read_count_{low_tet}_" + str(i)] = counts_0
+            plot_count_frame[f"read_count_{0}_" + str(i)] = counts_0
             plot_count_frame[f"read_count_{high_tet}_" + str(i)] = counts_tet
 
         x0 = [2, 3, 4, 5]
@@ -1937,7 +1928,7 @@ class BarSeqFitnessFrame:
             y_mark = []
             
             if plot_no_tet:
-                n_reads = [ row[f'read_count_{low_tet}_{plate_num}'] for plate_num in range(2,6) ]
+                n_reads = [ row[f'read_count_{0}_{plate_num}'] for plate_num in range(2,6) ]
                 for j in range(len(n_reads[0])): # iteration over IPTG concentrations 0-11
                     x = []
                     y = []
@@ -2263,9 +2254,9 @@ def init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params):
                 sensor_n_1=n_1, 
                 sensor_n_2=n_2, 
                 sigma=sig, 
-                low_fitness_med_tet=fit_fitness_difference_params[0][0],
-                mid_g_med_tet=fit_fitness_difference_params[0][1],
-                fitness_n_med_tet=fit_fitness_difference_params[0][2],
+                low_fitness_low_tet=fit_fitness_difference_params[0][0],
+                mid_g_low_tet=fit_fitness_difference_params[0][1],
+                fitness_n_low_tet=fit_fitness_difference_params[0][2],
                 low_fitness_high_tet=fit_fitness_difference_params[1][0],
                 mid_g_high_tet=fit_fitness_difference_params[1][1],
                 fitness_n_high_tet=fit_fitness_difference_params[1][2],
