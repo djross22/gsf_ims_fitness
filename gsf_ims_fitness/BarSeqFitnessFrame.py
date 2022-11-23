@@ -254,7 +254,8 @@ class BarSeqFitnessFrame:
                             auto_save=True,
                             ignore_samples=[],
                             refit_index=None,
-                            ref_slope_to_average=True):
+                            ref_slope_to_average=True,
+                            bi_linear_alpha=np.log(5)):
         
         barcode_frame = self.barcode_frame
         low_tet = self.low_tet
@@ -454,7 +455,7 @@ class BarSeqFitnessFrame:
                     s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
                                 
                     if len(x)>1:
-                        def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=np.log(5))
+                        def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
                         popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
                         f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                         f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
