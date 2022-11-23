@@ -511,8 +511,8 @@ class BarSeqFitnessFrame:
             
             params_list = ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
                            'low_fitness', 'mid_g', 'fitness_n']
-            log_low_ind = params_list.index('log_g0')
-            log_high_low_ind = params_list.index('log_ginf_g0_ratio')
+            log_g0_ind = params_list.index('log_g0')
+            log_ginf_g0_ind = params_list.index('log_ginf_g0_ratio')
             params_dim = len(params_list)
             
             quantile_params_list = params_list[:-3]
@@ -527,9 +527,9 @@ class BarSeqFitnessFrame:
                            'log_g0', 'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
                            'low_fitness_med_tet', 'mid_g_med_tet', 'fitness_n_med_tet',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
-            log_low_ind = params_list.index('log_g0')
-            log_high_low_ind_1 = params_list.index('log_ginf_g0_ratio_1')
-            log_high_low_ind_2 = params_list.index('log_ginf_g0_ratio_2')
+            log_g0_ind = params_list.index('log_g0')
+            log_ginf_g0_ind_1 = params_list.index('log_ginf_g0_ratio_1')
+            log_ginf_g0_ind_2 = params_list.index('log_ginf_g0_ratio_2')
             params_dim = len(params_list)
             
             quantile_params_list = params_list[:-6]
@@ -703,14 +703,14 @@ class BarSeqFitnessFrame:
                 
                 stan_samples_out = rng.choice(stan_samples_arr, size=32, replace=False, axis=1, shuffle=False)
                 stan_quantiles = np.array([np.quantile(stan_samples[key], quantile_list) for key in quantile_params_list ])
-                low_samples = 10**stan_samples_arr[log_low_ind]
+                low_samples = 10**stan_samples_arr[log_g0_ind]
                 hill_on_at_zero_prob = len(low_samples[low_samples>wild_type_ginf/4])/len(low_samples)
                 if len(ligand_list) == 1:
-                    high_low_samples = stan_samples_arr[log_high_low_ind]
-                    hill_invert_prob = len(high_low_samples[high_low_samples<0])/len(high_low_samples)
+                    g_ratio_samples = stan_samples_arr[log_ginf_g0_ind]
+                    hill_invert_prob = len(g_ratio_samples[g_ratio_samples<0])/len(g_ratio_samples)
                 else:
-                    high_low_samples = [stan_samples_arr[k] for k in [log_high_low_ind_1, log_high_low_ind_2]]
-                    hill_invert_prob = [len(s[s<0])/len(s) for s in high_low_samples]
+                    g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2]]
+                    hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
             
             except:
                 stan_popt = np.full((params_dim), np.nan)
