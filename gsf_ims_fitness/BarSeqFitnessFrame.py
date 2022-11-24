@@ -511,8 +511,6 @@ class BarSeqFitnessFrame:
             log_g0_ind = params_list.index('log_g0')
             log_ginf_g0_ind = params_list.index('log_ginf_g0_ratio')
             params_dim = len(params_list)
-            
-            quantile_params_list = params_list[:-3]
                 
         elif len(ligand_list) == 2:
             sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
@@ -521,7 +519,7 @@ class BarSeqFitnessFrame:
                 fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
             
             params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
-                           'log_g0', 'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
+                           'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
                            'low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
             log_g0_ind = params_list.index('log_g0')
@@ -529,7 +527,8 @@ class BarSeqFitnessFrame:
             log_ginf_g0_ind_2 = params_list.index('log_ginf_g0_ratio_2')
             params_dim = len(params_list)
             
-            quantile_params_list = params_list[:-6]
+        quantile_params_list = [x for x in params_list if 'log_' in x]
+        quantile_params_dim = len(params_list)
                 
         stan_model = stan_utility.compile_model(sm_file)
         self.fit_fitness_difference_params = fit_fitness_difference_params
@@ -690,15 +689,18 @@ class BarSeqFitnessFrame:
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 if return_fit:
                     return stan_fit
-                stan_samples = stan_fit.extract(permuted=False, pars=params_list)
         
                 stan_samples_arr = np.array([stan_fit[key] for key in params_list ])
                 stan_popt = np.array([np.median(s) for s in stan_samples_arr ])
                 stan_pcov = np.cov(stan_samples_arr, rowvar=True)
                 stan_resid = np.median(stan_fit["rms_resid"])
                 
-                stan_samples_out = rng.choice(stan_samples_arr, size=32, replace=False, axis=1, shuffle=False)
-                stan_quantiles = np.array([np.quantile(stan_samples[key], quantile_list) for key in quantile_params_list ])
+                # Only save the quantiles and samples for the sensor params (not the fitness vs. g params)
+                stan_quant_arr = stan_samples_arr[:quantile_params_dim]
+                stan_samples_out = rng.choice(stan_quant_arr, size=32, replace=False, axis=1, shuffle=False)
+                stan_quantiles = np.array([np.quantile(x, quantile_list) for x in stan_quant_arr ])
+                
+                # Also save these posterior probabilities: the sensor is on at zero, sensor is inverted (for each ligand)
                 g0_samples = 10**stan_samples_arr[log_g0_ind]
                 hill_on_at_zero_prob = len(g0_samples[g0_samples>wild_type_ginf/4])/len(g0_samples)
                 if len(ligand_list) == 1:
@@ -743,14 +745,20 @@ class BarSeqFitnessFrame:
                 invert_prob_list.append(hill_invert_prob)
                 on_at_zero_prob_list.append(hill_on_at_zero_prob)
             
+            perr_list = [np.diagonal(x) for x in pcov_list]
+            for param, v, err, q, samp in zip(params_list, np.transpose(popt_list), np.transpose(perr_list), 
+                                              np.array(quantiles_list).transpose([1, 0, 2]), np.array(samples_out_list).transpose([1, 0, 2])):
+                for i, lig in enumerate(ligand_list):
+                    col_name = param.replace(f"_{i+1}", f"_{lig}")
+                barcode_frame[col_name] = v
+                barcode_frame[f"{col_name}_err"] = err
+                if param in quantile_params_list:
+                    barcode_frame[f"{col_name}_quantiles"] = list(q)
+                    barcode_frame[f"{col_name}_samples"] = list(samp)
+                
             for i, lig in enumerate(ligand_list):
-                barcode_frame[f"sensor_params_{lig}"] = [x[i*5:5 + i*5] for x in popt_list]
-                barcode_frame[f"sensor_params_cov_{lig}"] = [x[i*5:5 + i*5, i*5:5 + i*5] for x in pcov_list]
-                barcode_frame[f"sensor_stan_samples_{lig}"] = [x[i*5:5 + i*5] for x in samples_out_list]
-                barcode_frame[f"sensor_params_quantiles_{lig}"] = [x[i*5:5 + i*5] for x in quantiles_list]
                 barcode_frame[f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
             
-            barcode_frame["sensor_params_all"] = popt_list
             barcode_frame["sensor_params_cov_all"] = pcov_list
             barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
             barcode_frame["sensor_rms_residuals"] = residuals_list
