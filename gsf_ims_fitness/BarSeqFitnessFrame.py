@@ -837,7 +837,7 @@ class BarSeqFitnessFrame:
         mid_g = fit_fitness_difference_params[1]
         fitness_n = fit_fitness_difference_params[2]
         
-        params_list = ['low_fitness', 'mid_g', 'fitness_n', 'log_rho', 'log_alpha', 'log_sigma']
+        params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
         params_dim = len(params_list)
         
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]

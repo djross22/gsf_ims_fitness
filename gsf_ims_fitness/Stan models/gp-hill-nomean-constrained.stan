@@ -35,11 +35,12 @@ transformed data {
 }
 
 parameters {
-  real<lower=0> sigma;                     // scale factor for standard deviation of noise in y
+  real<lower=0> sigma;            // scale factor for standard deviation of noise in fitness differnce, y
   
-  real low_fitness;      // fitness difference at zero gene expression
-  real mid_g;            // gene expression level at 1/2 max fitness difference
-  real fitness_n;        // cooperativity coefficient of fitness difference curve
+  // parameters of the fitness vs. g curve
+  real low_fitness_high_tet;      // fitness difference at zero gene expression
+  real mid_g_high_tet;            // gene expression level at 1/2 max fitness difference
+  real fitness_n_high_tet;        // cooperativity coefficient of fitness difference curve
 
   // gp params
   real<lower=0> rho;
@@ -50,9 +51,9 @@ parameters {
 
 transformed parameters {
   vector[N] mean_y;
-  vector[N] g; // GP approx to gene expression
-  vector[N] log_g;
-  vector[N] constr_log_g; // log10 gene expression, constrained to be between 1 and 4
+  vector[N] g;             // GP approx to gene expression
+  vector[N] log_g;         // the GP function, analogous to y in all of the Stan examples
+  vector[N] constr_log_g;  // log10 gene expression, constrained to be between 1 and 4
 
   {
     matrix[N, N] L_K;
@@ -83,7 +84,7 @@ transformed parameters {
   }
   
   for (i in 1:N) {
-    mean_y[i] = low_fitness - low_fitness*(g[i]^fitness_n)/(mid_g^fitness_n + g[i]^fitness_n);
+    mean_y[i] = low_fitness_high_tet - low_fitness_high_tet*(g[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g[i]^fitness_n_high_tet);
   }
 
   
@@ -92,17 +93,17 @@ transformed parameters {
 model {
   real neg_low_fitness;
   
-  neg_low_fitness = -1*low_fitness;
+  neg_low_fitness = -1*low_fitness_high_tet;
   
   // fitness calibration params
-  //low_fitness ~ student_t(8, low_fitness_mu, 0.1);
+  //low_fitness_high_tet ~ student_t(8, low_fitness_mu, 0.1);
   neg_low_fitness ~ exp_mod_normal(-1*low_fitness_mu-0.04, 0.03, 14); 
   
   
-  //mid_g ~ normal(mid_g_mu, 27); // use with PTY1
-  //fitness_n ~ normal(fitness_n_mu, 0.22); // use with pTY1
-  mid_g ~ normal(mid_g_mu, 499); // use with pVER
-  fitness_n ~ normal(fitness_n_mu, 0.29); // use with pVER
+  //mid_g_high_tet ~ normal(mid_g_mu, 27); // use with PTY1
+  //fitness_n_high_tet ~ normal(fitness_n_mu, 0.22); // use with pTY1
+  mid_g_high_tet ~ normal(mid_g_mu, 499); // use with pVER
+  fitness_n_high_tet ~ normal(fitness_n_mu, 0.29); // use with pVER
   
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
