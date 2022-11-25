@@ -506,10 +506,10 @@ class BarSeqFitnessFrame:
             if fit_fitness_difference_params is None:
                 fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
             
-            params_list = ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
-                           'low_fitness', 'mid_g', 'fitness_n']
+            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
+                           'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
             log_g0_ind = params_list.index('log_g0')
-            log_ginf_g0_ind = params_list.index('log_ginf_g0_ratio')
+            log_ginf_g0_ind = params_list.index('log_ginf_g0_ratio_1')
             params_dim = len(params_list)
                 
         elif len(ligand_list) == 2:
@@ -748,8 +748,9 @@ class BarSeqFitnessFrame:
             perr_list = [np.diagonal(x) for x in pcov_list]
             for param, v, err, q, samp in zip(params_list, np.transpose(popt_list), np.transpose(perr_list), 
                                               np.array(quantiles_list).transpose([1, 0, 2]), np.array(samples_out_list).transpose([1, 0, 2])):
+                col_name = param
                 for i, lig in enumerate(ligand_list):
-                    col_name = param.replace(f"_{i+1}", f"_{lig}")
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
                 barcode_frame[col_name] = v
                 barcode_frame[f"{col_name}_err"] = err
                 if param in quantile_params_list:
