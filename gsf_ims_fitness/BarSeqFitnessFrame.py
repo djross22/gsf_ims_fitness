@@ -473,7 +473,7 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle()
         
-            
+        
     def stan_fitness_difference_curves(self,
                                       includeChimeras=False,
                                       fit_fitness_difference_params=None,
@@ -492,11 +492,15 @@ class BarSeqFitnessFrame:
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
+        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
         fitness_columns_setup = self.get_fitness_columns_setup()
         
         if fitness_columns_setup[0]:
             old_style_columns, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+            
+            plot_df = None
         else:
             old_style_columns, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
         
@@ -533,8 +537,6 @@ class BarSeqFitnessFrame:
         stan_model = stan_utility.compile_model(sm_file)
         self.fit_fitness_difference_params = fit_fitness_difference_params
         
-        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
-            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
         
@@ -546,141 +548,20 @@ class BarSeqFitnessFrame:
             barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
         '''
         
-        if old_style_columns:
-            high_tet = antibiotic_conc_list[1]
+        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
         
         rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
-            
-            initial = "b"
-            if old_style_columns:
-                y_zero = st_row[f"fitness_{0}_estimate_{initial}"]
-                s_zero = st_row[f"fitness_{0}_err_{initial}"]
-                y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
-                s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
-                
-                y = (y_high - y_zero)/y_zero
-                s = np.sqrt( s_high**2 + s_zero**2 )/y_zero
-                
-                if include_lactose_zero:
-                    print(f"      including zero lactose data for {st_index}")
-                    y = np.insert(y, 0, st_row['lactose_fitness_diff'])
-                    s = np.insert(s, 0, st_row['lactose_fitness_err'])
-                    x_fit = np.insert(x, 0, 0)
-                else:
-                    x_fit = x
-                x_y_s_list = [[x_fit, y, s]]
-            else:
-                df = plot_df
-                df = df[df.antibiotic_conc==0] # use all data at zero tet for reference fitness
-                y = [st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
-                s = [st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
-                y_ref_list = np.array(y)
-                s_ref_list = np.array(s)
-                
-                w = 1/s_ref_list**2
-                y_ref = np.average(y_ref_list, weights=w)
-                s_ref = np.average((y_ref_list-y_ref)**2, weights=w)
-                v_1 = np.sum(w)
-                v_2 = np.sum(w**2)
-                s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
-                    
-                tet_list = antibiotic_conc_list[antibiotic_conc_list>0]
-                x_y_s_list = []
-                for lig in lig_list:
-                    sub_list = []
-                    for tet in tet_list:
-                        df = plot_df
-                        df = df[(df.ligand==lig)|(df.ligand=='none')]
-                        df = df[df.antibiotic_conc==tet]
-                        x = np.array(df[lig])
-                        y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
-                        y = (y - y_ref)/y_ref
-                        s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
-                        s = np.sqrt(s**2 + s_ref**2)/y_ref
-                        
-                        sub_list.append([x, y, s])
-                    x_y_s_list.append(sub_list)
-                            
-            if len(lig_list) == 1:
-                # Case for single tet concentration
-                x_fit = x_y_s_list[0][0][0]
-                y = x_y_s_list[0][0][1]
-                s = x_y_s_list[0][0][2]
-                
-                valid = ~(np.isnan(y) | np.isnan(s))
-        
-                low_fitness = fit_fitness_difference_params[0]
-                mid_g = fit_fitness_difference_params[1]
-                fitness_n = fit_fitness_difference_params[2]
-                
-                stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
-                                 low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
-                                 log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
-            
-            else:
-                # Case for two-tet, two-ligand
-                y_0_med = x_y_s_list[0][0][1][0]
-                s_0_med = x_y_s_list[0][0][2][0]
-                
-                x_1 = x_y_s_list[0][0][0]
-                y_1_med = x_y_s_list[0][0][1]
-                s_1_med = x_y_s_list[0][0][2]
-                y_1_med = y_1_med[x_1>0]
-                s_1_med = s_1_med[x_1>0]
-                x_1 = x_1[x_1>0]
-                
-                x_1_high = x_y_s_list[0][1][0]
-                y_1_high = x_y_s_list[0][1][1]
-                s_1_high = x_y_s_list[0][1][2]
-                y_1_high = y_1_high[x_1_high>0]
-                s_1_high = s_1_high[x_1_high>0]
-                x_1_high = x_1_high[x_1_high>0]
-                
-                x_2 = x_y_s_list[1][0][0]
-                y_2_med = x_y_s_list[1][0][1]
-                s_2_med = x_y_s_list[1][0][2]
-                y_2_med = y_2_med[x_2>0]
-                s_2_med = s_2_med[x_2>0]
-                x_2 = x_2[x_2>0]
-                
-                x_2_high = x_y_s_list[1][1][0]
-                y_2_high = x_y_s_list[1][1][1]
-                s_2_high = x_y_s_list[1][1][2]
-                y_2_high = y_2_high[x_2_high>0]
-                s_2_high = s_2_high[x_2_high>0]
-                x_2_high = x_2_high[x_2_high>0]
-                
-                stan_data = dict(N_lig=len(x_1), x_1=x_1, x_2=x_2, 
-                                 y_0_low_tet=y_0_med, y_0_low_tet_err=s_0_med,
-                                 y_1_low_tet=y_1_med, y_1_low_tet_err=s_1_med,
-                                 y_2_low_tet=y_2_med, y_2_low_tet_err=s_2_med,
-                                 y_1_high_tet=y_1_high, y_1_high_tet_err=s_1_high,
-                                 y_2_high_tet=y_2_high, y_2_high_tet_err=s_2_high,
-                                 log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
-                                 low_fitness_mu_low_tet=fit_fitness_difference_params[0][0],
-                                 mid_g_mu_low_tet=fit_fitness_difference_params[0][1],
-                                 fitness_n_mu_low_tet=fit_fitness_difference_params[0][2],
-                                 low_fitness_std_low_tet=fit_fitness_difference_params[0][3],
-                                 mid_g_std_low_tet=fit_fitness_difference_params[0][4],
-                                 fitness_n_std_low_tet=fit_fitness_difference_params[0][5],
-                                 low_fitness_mu_high_tet=fit_fitness_difference_params[1][0],
-                                 mid_g_mu_high_tet=fit_fitness_difference_params[1][1],
-                                 fitness_n_mu_high_tet=fit_fitness_difference_params[1][2],
-                                 low_fitness_std_high_tet=fit_fitness_difference_params[1][3],
-                                 mid_g_std_high_tet=fit_fitness_difference_params[1][4],
-                                 fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
-                                 )
+            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid)
 
             if True:#try:
                 if len(lig_list) == 1:
-                    stan_init = [ init_stan_fit_single_ligand(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(chains) ]
+                    stan_init = [ init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params) for i in range(chains) ]
                 else:
-                    stan_init = [ init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params) for i in range(chains) ]
+                    stan_init = [ init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params) for i in range(chains) ]
                 
                 #print("stan_data:")
                 #for k, v in stan_data.items():
@@ -2244,7 +2125,9 @@ def double_hill_funct(x, g0, ginf, ec50, nx, f_min, f_max, g_50, ng):
     return hill_funct( hill_funct(x, g0, ginf, ec50, nx), f_min, f_max, g_50, ng )
     
 
-def init_stan_fit_single_ligand(x_data, y_data, fit_fitness_difference_params):
+def init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params):
+    x_data = stan_data['x']
+    y_data = stan_data['y']
     log_g0 = log_level(np.mean(y_data[:2]))
     log_ginf = log_level(np.mean(y_data[-2:]))
     
@@ -2263,9 +2146,11 @@ def init_stan_fit_single_ligand(x_data, y_data, fit_fitness_difference_params):
     return dict(log_g0=log_g0, log_ginf=log_ginf, log_ec50=log_ec50,
                 sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
                 
-def init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params):
-    min_ic = np.log10(min(x_y_s_list[0][1][0]))
-    max_ic = np.log10(max(x_y_s_list[0][1][0]))
+def init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params):
+    
+
+    min_ic = np.log10(min(stan_data['x_1']))
+    max_ic = np.log10(max(stan_data['x_1']))
     log_ec50_1 = np.random.uniform(min_ic, max_ic)
     log_ec50_2 = np.random.uniform(min_ic, max_ic)
     
@@ -2275,9 +2160,9 @@ def init_stan_fit_two_lig_two_tet(x_y_s_list, fit_fitness_difference_params):
     sig = np.random.uniform(1, 3)
     
     # Indices for x_y_s_list[ligand][tet][x,y,s][n]
-    return dict(log_g0=log_level(x_y_s_list[0][0][1][0]), 
-                log_ginf_1=log_level(np.mean(x_y_s_list[0][1][1][-2:])), 
-                log_ginf_2=log_level(np.mean(x_y_s_list[1][1][1][-2:])), 
+    return dict(log_g0=log_level(stan_data['y_0_low_tet']), 
+                log_ginf_1=log_level(np.mean(stan_data['y_1_high_tet'][-2:])), 
+                log_ginf_2=log_level(np.mean(stan_data['y_2_high_tet'][-2:])), 
                 log_ec50_1=log_ec50_1, 
                 log_ec50_2=log_ec50_2, 
                 sensor_n_1=n_1, 
@@ -2310,6 +2195,135 @@ def log_level(fitness_difference):
     if log_g>4:
         log_g = 4
     return log_g
+        
+def get_stan_data(st_row, plot_df, antibiotic_conc_list, 
+                  lig_list, fit_fitness_difference_params, 
+                  old_style_columns=False, initial="b", plasmid="pVER"):
+    
+    log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+    
+    if old_style_columns:
+        high_tet = antibiotic_conc_list[1]
+        
+        y_zero = st_row[f"fitness_{0}_estimate_{initial}"]
+        s_zero = st_row[f"fitness_{0}_err_{initial}"]
+        y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
+        s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
+        
+        y = (y_high - y_zero)/y_zero
+        s = np.sqrt( s_high**2 + s_zero**2 )/y_zero
+        
+        if include_lactose_zero:
+            print(f"      including zero lactose data for {st_index}")
+            y = np.insert(y, 0, st_row['lactose_fitness_diff'])
+            s = np.insert(s, 0, st_row['lactose_fitness_err'])
+            x_fit = np.insert(x, 0, 0)
+        else:
+            x_fit = x
+        x_y_s_list = [[x_fit, y, s]]
+    else:
+        df = plot_df
+        df = df[df.antibiotic_conc==0] # use all data at zero tet for reference fitness
+        y = [st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
+        s = [st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
+        y_ref_list = np.array(y)
+        s_ref_list = np.array(s)
+        
+        w = 1/s_ref_list**2
+        y_ref = np.average(y_ref_list, weights=w)
+        s_ref = np.average((y_ref_list-y_ref)**2, weights=w)
+        v_1 = np.sum(w)
+        v_2 = np.sum(w**2)
+        s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
+            
+        tet_list = antibiotic_conc_list[antibiotic_conc_list>0]
+        x_y_s_list = []
+        for lig in lig_list:
+            sub_list = []
+            for tet in tet_list:
+                df = plot_df
+                df = df[(df.ligand==lig)|(df.ligand=='none')]
+                df = df[df.antibiotic_conc==tet]
+                x = np.array(df[lig])
+                y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
+                y = (y - y_ref)/y_ref
+                s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
+                s = np.sqrt(s**2 + s_ref**2)/y_ref
+                
+                sub_list.append([x, y, s])
+            x_y_s_list.append(sub_list)
+            
+        if len(lig_list) == 1:
+            # Case for single tet concentration
+            x_fit = x_y_s_list[0][0][0]
+            y = x_y_s_list[0][0][1]
+            s = x_y_s_list[0][0][2]
+            
+            valid = ~(np.isnan(y) | np.isnan(s))
+    
+            low_fitness = fit_fitness_difference_params[0]
+            mid_g = fit_fitness_difference_params[1]
+            fitness_n = fit_fitness_difference_params[2]
+            
+            stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
+                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
+                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
+        
+        else:
+            # Case for two-tet, two-ligand
+            y_0_med = x_y_s_list[0][0][1][0]
+            s_0_med = x_y_s_list[0][0][2][0]
+            
+            x_1 = x_y_s_list[0][0][0]
+            y_1_med = x_y_s_list[0][0][1]
+            s_1_med = x_y_s_list[0][0][2]
+            y_1_med = y_1_med[x_1>0]
+            s_1_med = s_1_med[x_1>0]
+            x_1 = x_1[x_1>0]
+            
+            x_1_high = x_y_s_list[0][1][0]
+            y_1_high = x_y_s_list[0][1][1]
+            s_1_high = x_y_s_list[0][1][2]
+            y_1_high = y_1_high[x_1_high>0]
+            s_1_high = s_1_high[x_1_high>0]
+            x_1_high = x_1_high[x_1_high>0]
+            
+            x_2 = x_y_s_list[1][0][0]
+            y_2_med = x_y_s_list[1][0][1]
+            s_2_med = x_y_s_list[1][0][2]
+            y_2_med = y_2_med[x_2>0]
+            s_2_med = s_2_med[x_2>0]
+            x_2 = x_2[x_2>0]
+            
+            x_2_high = x_y_s_list[1][1][0]
+            y_2_high = x_y_s_list[1][1][1]
+            s_2_high = x_y_s_list[1][1][2]
+            y_2_high = y_2_high[x_2_high>0]
+            s_2_high = s_2_high[x_2_high>0]
+            x_2_high = x_2_high[x_2_high>0]
+            
+            stan_data = dict(N_lig=len(x_1), x_1=x_1, x_2=x_2, 
+                             y_0_low_tet=y_0_med, y_0_low_tet_err=s_0_med,
+                             y_1_low_tet=y_1_med, y_1_low_tet_err=s_1_med,
+                             y_2_low_tet=y_2_med, y_2_low_tet_err=s_2_med,
+                             y_1_high_tet=y_1_high, y_1_high_tet_err=s_1_high,
+                             y_2_high_tet=y_2_high, y_2_high_tet_err=s_2_high,
+                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
+                             low_fitness_mu_low_tet=fit_fitness_difference_params[0][0],
+                             mid_g_mu_low_tet=fit_fitness_difference_params[0][1],
+                             fitness_n_mu_low_tet=fit_fitness_difference_params[0][2],
+                             low_fitness_std_low_tet=fit_fitness_difference_params[0][3],
+                             mid_g_std_low_tet=fit_fitness_difference_params[0][4],
+                             fitness_n_std_low_tet=fit_fitness_difference_params[0][5],
+                             low_fitness_mu_high_tet=fit_fitness_difference_params[1][0],
+                             mid_g_mu_high_tet=fit_fitness_difference_params[1][1],
+                             fitness_n_mu_high_tet=fit_fitness_difference_params[1][2],
+                             low_fitness_std_high_tet=fit_fitness_difference_params[1][3],
+                             mid_g_std_high_tet=fit_fitness_difference_params[1][4],
+                             fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
+                             )
+    
+    return stan_data
 
 
     
