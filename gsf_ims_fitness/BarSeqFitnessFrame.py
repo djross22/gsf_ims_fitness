@@ -684,68 +684,61 @@ class BarSeqFitnessFrame:
                        refit_index=None,
                        plasmid="pVER",
                        return_fit=False):
-                       plasmid="pVER"):
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
         print("      Version from 2022-11-25")
         
-        stan_model = stan_utility.compile_model(stan_GP_model)
-        
-        if fit_fitness_difference_params is None:
-            fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid)
-        
-        self.fit_fitness_difference_params = fit_fitness_difference_params
-        
         barcode_frame = self.barcode_frame
-        high_tet = self.high_tet
-            
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
+        
+        fitness_columns_setup = self.get_fitness_columns_setup()
+        
+        if fitness_columns_setup[0]:
+            old_style_columns, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
             
-        inducer_conc_list = self.inducer_conc_list
+            low_fitness = fit_fitness_difference_params[0]
+            mid_g = fit_fitness_difference_params[1]
+            fitness_n = fit_fitness_difference_params[2]
+        else:
+            old_style_columns, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
+            
+        if len(ligand_list) == 1:
+            stan_GP_model = 'gp-hill-nomean-constrained.stan'
         
-        x = np.array(inducer_conc_list)
-        x_min = min([i for i in inducer_conc_list if i>0])
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
+            
+            params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
+                
+        elif len(ligand_list) == 2:
+            stan_GP_model = 'gp-hill-nomean-constrained.two-lig.two-tet.stan'
         
-        low_fitness = fit_fitness_difference_params[0]
-        mid_g = fit_fitness_difference_params[1]
-        fitness_n = fit_fitness_difference_params[2]
-        
-        params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
+            
+            params_list = ['low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet', 
+                           'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 
+                           'log_rho', 'log_alpha', 'log_sigma']
         params_dim = len(params_list)
         
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
         
-        if "sensor_GP_params" not in barcode_frame.columns:
-            barcode_frame["sensor_GP_params"] = [ np.full((params_dim), np.nan) for i in range(len(barcode_frame))]
+        stan_model = stan_utility.compile_model(stan_GP_model)
         
-        if "sensor_GP_cov" not in barcode_frame.columns:
-            barcode_frame["sensor_GP_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
+        if old_style_columns:
+            high_tet = antibiotic_conc_list[1]
         
         log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
-
-        def stan_fit_row(st_row, st_index):
+        
+        rng = np.random.default_rng()
+        def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
             print()
-            print(f"fitting row index: {st_index}")
-            initial = "b"
-            y_zero = st_row[f"fitness_{0}_estimate_{initial}"]
-            s_zero = st_row[f"fitness_{0}_err_{initial}"]
-            y_high = st_row[f"fitness_{high_tet}_estimate_{initial}"]
-            s_high = st_row[f"fitness_{high_tet}_err_{initial}"]
+            print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            y = (y_high - y_zero)/y_zero
-            s = np.sqrt( s_high**2 + s_zero**2 )/y_zero
-            
-            # if either y or s is nan, replace with values that won't affect GP model results (i.e. s=10)
-            invalid = (np.isnan(y) | np.isnan(s))
-            y[invalid] = low_fitness/2
-            s[invalid] = 10
-            
-            stan_data = dict(x=x, y=y, N=len(y), y_err=s,
-                             low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
-                             log_g_min=log_g_min, log_g_max=log_g_max)
+            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid, is_gp_model=True)
         
             try:
                 stan_init = [ init_stan_GP_fit(fit_fitness_difference_params) for i in range(chains) ]
@@ -2197,7 +2190,8 @@ def log_level(fitness_difference):
         
 def get_stan_data(st_row, plot_df, antibiotic_conc_list, 
                   lig_list, fit_fitness_difference_params, 
-                  old_style_columns=False, initial="b", plasmid="pVER"):
+                  old_style_columns=False, initial="b", plasmid="pVER",
+                  is_gp_model=False):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
     
@@ -2254,17 +2248,29 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             
         if len(lig_list) == 1:
             # Case for single tet concentration
-            x_fit = x_y_s_list[0][0][0]
-            y = x_y_s_list[0][0][1]
-            s = x_y_s_list[0][0][2]
-            
-            valid = ~(np.isnan(y) | np.isnan(s))
     
             low_fitness = fit_fitness_difference_params[0]
             mid_g = fit_fitness_difference_params[1]
             fitness_n = fit_fitness_difference_params[2]
             
-            stan_data = dict(x=x_fit[valid], y=y[valid], N=len(y[valid]), y_err=s[valid],
+            x_fit = x_y_s_list[0][0][0]
+            y = x_y_s_list[0][0][1]
+            s = x_y_s_list[0][0][2]
+            
+            if is_gp_model:
+                # For GP model, can't have missing data. So, if either y or s is nan, replace with values that won't affect GP model results (i.e. s=100)
+                invalid = (np.isnan(y) | np.isnan(s))
+                y[invalid] = low_fitness/2
+                s[invalid] = 100
+                x = x_fit
+                y_err = s
+            else:
+                valid = ~(np.isnan(y) | np.isnan(s))
+                x = x_fit[valid]
+                y = y[valid]
+                y_err = s[valid]
+            
+            stan_data = dict(x=x, y=y, N=len(y), y_err=y_err,
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
         
