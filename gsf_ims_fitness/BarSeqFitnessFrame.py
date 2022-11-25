@@ -528,7 +528,7 @@ class BarSeqFitnessFrame:
             params_dim = len(params_list)
             
         quantile_params_list = [x for x in params_list if 'log_' in x]
-        quantile_params_dim = len(params_list)
+        quantile_params_dim = len(quantile_params_list)
                 
         stan_model = stan_utility.compile_model(sm_file)
         self.fit_fitness_difference_params = fit_fitness_difference_params
@@ -676,7 +676,7 @@ class BarSeqFitnessFrame:
                                  fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
                                  )
 
-            try:
+            if True:#try:
                 if len(lig_list) == 1:
                     stan_init = [ init_stan_fit_single_ligand(x_fit[valid], y[valid], fit_fitness_difference_params) for i in range(chains) ]
                 else:
@@ -709,17 +709,17 @@ class BarSeqFitnessFrame:
                 else:
                     g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2]]
                     hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
-            
+            '''
             except:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 stan_resid = np.nan
-                stan_samples_out = np.full((params_dim, 32), np.nan)
-                stan_quantiles = np.full((len(quantile_params_list), quantile_dim), np.nan)
+                stan_samples_out = np.full((quantile_params_dim, 32), np.nan)
+                stan_quantiles = np.full((quantile_params_dim, quantile_dim), np.nan)
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 hill_invert_prob = np.nan
                 hill_on_at_zero_prob = np.nan
-            
+            '''
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
         
@@ -746,16 +746,20 @@ class BarSeqFitnessFrame:
                 on_at_zero_prob_list.append(hill_on_at_zero_prob)
             
             perr_list = [np.diagonal(x) for x in pcov_list]
-            for param, v, err, q, samp in zip(params_list, np.transpose(popt_list), np.transpose(perr_list), 
-                                              np.array(quantiles_list).transpose([1, 0, 2]), np.array(samples_out_list).transpose([1, 0, 2])):
+            
+            for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
                 col_name = param
                 for i, lig in enumerate(ligand_list):
                     col_name = col_name.replace(f"_{i+1}", f"_{lig}")
                 barcode_frame[col_name] = v
                 barcode_frame[f"{col_name}_err"] = err
-                if param in quantile_params_list:
-                    barcode_frame[f"{col_name}_quantiles"] = list(q)
-                    barcode_frame[f"{col_name}_samples"] = list(samp)
+                
+            for param, q, samp in zip(quantile_params_list, np.array(quantiles_list).transpose([1, 0, 2]), np.array(samples_out_list).transpose([1, 0, 2])):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                barcode_frame[f"{col_name}_quantiles"] = list(q)
+                barcode_frame[f"{col_name}_samples"] = list(samp)
                 
             for i, lig in enumerate(ligand_list):
                 barcode_frame[f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
@@ -1531,30 +1535,6 @@ class BarSeqFitnessFrame:
             barcode_frame = self.barcode_frame
         else:
             barcode_frame = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
-        
-        if "sensor_params" not in barcode_frame.columns:
-            show_fits = False
-            
-        if show_fits:
-            fit_fitness_difference_params = self.fit_fitness_difference_params
-            
-            if len(barcode_frame["sensor_params"].iloc[0])==7:
-                # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'low_fitness', 'mid_g',
-                #  'fitness_n']
-                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n, *argv):
-                    return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
-                                             low_fitness, 0, mid_g, fitness_n)
-            elif len(barcode_frame["sensor_params"].iloc[0])>7:
-                # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
-                #  'low_fitness', 'mid_g', 'fitness_n']
-                def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, log_ginf_g0_ratio,
-                              low_fitness, mid_g, fitness_n, *argv):
-                    return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
-                                             low_fitness, 0, mid_g, fitness_n)
-            else:
-                def fit_funct(x, g_min, g_max, x_50, nx):
-                    return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
-                                             fit_fitness_difference_params[1], fit_fitness_difference_params[2])
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
@@ -1575,13 +1555,44 @@ class BarSeqFitnessFrame:
         fitness_columns_setup = self.get_fitness_columns_setup()
         if fitness_columns_setup[0]:
             old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+            if "sensor_params" not in barcode_frame.columns:
+                show_fits = False
         else:
             old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
+            if "log_g0" not in barcode_frame.columns:
+                show_fits = False
         
         if show_GP:
             plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
         else:
             plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/4]
+        
+        if show_fits:
+            fit_fitness_difference_params = self.fit_fitness_difference_params
+            
+            if old_style_plots:
+                if len(barcode_frame["sensor_params"].iloc[0])==7:
+                    # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'low_fitness', 'mid_g',
+                    #  'fitness_n']
+                    def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, low_fitness, mid_g, fitness_n, *argv):
+                        return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
+                                                 low_fitness, 0, mid_g, fitness_n)
+                elif len(barcode_frame["sensor_params"].iloc[0])>7:
+                    # ['log_g0', 'log_ginf', 'log_ec50', 'log_sensor_n', 'log_ginf_g0_ratio',
+                    #  'low_fitness', 'mid_g', 'fitness_n']
+                    def fit_funct(x, log_g_min, log_g_max, log_x_50, log_nx, log_ginf_g0_ratio,
+                                  low_fitness, mid_g, fitness_n, *argv):
+                        return double_hill_funct(x, 10**log_g_min, 10**log_g_max, 10**log_x_50, 10**log_nx,
+                                                 low_fitness, 0, mid_g, fitness_n)
+                else:
+                    def fit_funct(x, g_min, g_max, x_50, nx):
+                        return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
+                                                 fit_fitness_difference_params[1], fit_fitness_difference_params[2])
+            else:
+                def fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n):
+                    return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, 10**log_nx,
+                                             low_fitness, 0, mid_g, fitness_n)
+        
         
         fig_axs_list = []
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
@@ -1654,7 +1665,8 @@ class BarSeqFitnessFrame:
                             y = (y - y_ref)/y_ref
                             s = np.array([row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
                             s = np.sqrt(s**2 + s_ref**2)/y_ref
-                            axr.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
+                            marker = marker if show_fits else '-' + marker
+                            axr.errorbar(x, y, s, fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
                 if initial == "b":
                     barcode_str = str(index) + ': '
@@ -1685,15 +1697,23 @@ class BarSeqFitnessFrame:
                     y_fit = fit_funct(x_fit, *params)
                     axr.plot(x_fit, y_fit, color='k', zorder=1000);
                 else:
-                    for lig in ligand_list:
-                        df = plot_df
-                        df = df[(df.ligand==lig)|(df.ligand=='none')]
-                        x = df[lig]
-                        x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
-                        x_fit = np.insert(x_fit, 0, 0)
-                        params = row[f"sensor_params_{lig}"]
-                        y_fit = fit_funct(x_fit, *params)
-                        axr.plot(x_fit, y_fit, color='k', zorder=1000);
+                    tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
+                    for tet, color in zip(tet_level_list, fit_plot_colors[1:]):
+                        for lig in ligand_list:
+                            df = plot_df
+                            df = df[df.ligand==lig]
+                            x = df[lig]
+                            x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                            x_fit = np.insert(x_fit, 0, 0)
+                            
+                            # fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n)
+                            params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'log_sensor_n_{lig}', 
+                                           f'low_fitness_{tet}_tet', f'mid_g_{tet}_tet', f'fitness_n_{tet}_tet']
+                            
+                            params = [row[p] for p in params_list]
+                            y_fit = fit_funct(x_fit, *params)
+                            
+                            axr.plot(x_fit, y_fit, color=color, zorder=1000);
                 
             if show_GP:
                 stan_g = 10**row["sensor_GP_g_quantiles"]
