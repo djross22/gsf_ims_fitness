@@ -682,6 +682,8 @@ class BarSeqFitnessFrame:
                        chains=4,
                        auto_save=True,
                        refit_index=None,
+                       plasmid="pVER",
+                       return_fit=False):
                        plasmid="pVER"):
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
@@ -749,6 +751,8 @@ class BarSeqFitnessFrame:
                 stan_init = [ init_stan_GP_fit(fit_fitness_difference_params) for i in range(chains) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
+                if return_fit:
+                    return stan_fit
                 stan_samples = stan_fit.extract(permuted=True)
                 
                 g_arr = stan_samples['constr_log_g']
@@ -842,7 +846,10 @@ class BarSeqFitnessFrame:
             barcode_frame["sensor_GP_g_samples"] = stan_g_samples_list
             barcode_frame["sensor_GP_dg_samples"] = stan_dg_samples_list
         else:
+            # TODO: update refits to Nov 2022, handle multiple ligands
             row_to_fit = barcode_frame.loc[refit_index]
+            if return_fit:
+                return stan_fit_row(row_to_fit, refit_index, ligand_list, return_fit=True)
             stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples = stan_fit_row(row_to_fit, refit_index)
             
             arr_1 = barcode_frame.loc[refit_index, "sensor_GP_params"]
