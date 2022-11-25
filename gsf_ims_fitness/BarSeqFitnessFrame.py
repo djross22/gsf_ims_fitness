@@ -488,7 +488,7 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2022-11-20")
+        print("      Version from 2022-11-25")
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
@@ -813,7 +813,7 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2020-03-02")
+        print("      Version from 2022-11-25")
         
         stan_model = stan_utility.compile_model(stan_GP_model)
         
