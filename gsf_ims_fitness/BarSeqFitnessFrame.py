@@ -540,14 +540,6 @@ class BarSeqFitnessFrame:
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
         
-        ''' Not sure if these lines are actually needed???
-        if "sensor_params" not in barcode_frame.columns:
-            barcode_frame["sensor_params"] = [ np.full((params_dim), np.nan) for i in range(len(barcode_frame))]
-        
-        if "sensor_params_cov" not in barcode_frame.columns:
-            barcode_frame["sensor_params_cov"] = [ np.full((params_dim, params_dim), np.nan) for i in range(len(barcode_frame))]
-        '''
-        
         log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
         
         rng = np.random.default_rng()
