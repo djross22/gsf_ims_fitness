@@ -687,7 +687,7 @@ class BarSeqFitnessFrame:
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2022-11-25")
+        print("      Method version from 2022-11-25")
         
         barcode_frame = self.barcode_frame
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
@@ -741,17 +741,17 @@ class BarSeqFitnessFrame:
             stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid, is_gp_model=True)
         
             try:
-                stan_init = [ init_stan_GP_fit(fit_fitness_difference_params) for i in range(chains) ]
+                single_tet = len(antibiotic_conc_list)==2
+                stan_init = [ init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet) for i in range(chains) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 if return_fit:
                     return stan_fit
-                stan_samples = stan_fit.extract(permuted=True)
                 
-                g_arr = stan_samples['constr_log_g']
-                dg_arr = stan_samples['dlog_g']
-                f_arr = stan_samples['mean_y']
-                params_arr = np.array([stan_samples[x] for x in params_list])
+                g_arr = stan_fit['constr_log_g']
+                dg_arr = stan_fit['dlog_g']
+                f_arr = stan_fit['mean_y']
+                params_arr = np.array([stan_fit[x] for x in params_list])
         
                 stan_popt = np.array([np.median(s) for s in params_arr ])
                 stan_pcov = np.cov(params_arr, rowvar=True)
@@ -763,10 +763,8 @@ class BarSeqFitnessFrame:
                 stan_g_var = np.var(g_arr, axis=0)
                 stan_dg_var = np.var(dg_arr, axis=0)
                 
-                temp_arr = stan_fit.extract(permuted=False, pars=["constr_log_g"])["constr_log_g"][::71,:,:]
-                stan_g_samples = np.array([ a.flatten() for a in temp_arr.transpose() ])
-                temp_arr = stan_fit.extract(permuted=False, pars=["dlog_g"])["dlog_g"][::71,:,:]
-                stan_dg_samples = np.array([ a.flatten() for a in temp_arr.transpose() ])
+                stan_g_samples = rng.choice(g_arr, size=32, replace=False, axis=0, shuffle=False).transpose()
+                stan_dg_samples = rng.choice(dg_arr, size=32, replace=False, axis=0, shuffle=False).transpose()
                 
                 stan_resid = np.median(stan_fit["rms_resid"])
             except:
@@ -789,7 +787,7 @@ class BarSeqFitnessFrame:
             return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples)
         
         if refit_index is None:
-            fit_list = [ stan_fit_row(row, index) for (index, row) in barcode_frame.iterrows() ]
+            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
             
             popt_list = []
             pcov_list = []
@@ -2168,16 +2166,27 @@ def init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params):
                 fitness_n_high_tet=fit_fitness_difference_params[1][2],
                 )
     
-def init_stan_GP_fit(fit_fitness_difference_params):
+def init_stan_GP_fit(fit_fitness_difference_params, single_tet):
     sig = np.random.uniform(1, 3)
     rho = np.random.uniform(0.9, 1.1)
     alpha = np.random.uniform(0.009, 0.011)
     
-    low_fitness = fit_fitness_difference_params[0]
-    mid_g = fit_fitness_difference_params[1]
-    fitness_n = fit_fitness_difference_params[2]
+    if single_tet:
+        low_fitness = fit_fitness_difference_params[0]
+        mid_g = fit_fitness_difference_params[1]
+        fitness_n = fit_fitness_difference_params[2]
+        
+        return dict(sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n, rho=rho, alpha=alpha)
+    else:
+        return dict(sigma=sig, rho=rho, alpha=alpha,
+                    low_fitness_low_tet=fit_fitness_difference_params[0][0],
+                    mid_g_low_tet=fit_fitness_difference_params[0][1],
+                    fitness_n_low_tet=fit_fitness_difference_params[0][2],
+                    low_fitness_high_tet=fit_fitness_difference_params[1][0],
+                    mid_g_high_tet=fit_fitness_difference_params[1][1],
+                    fitness_n_high_tet=fit_fitness_difference_params[1][2],
+                    )
     
-    return dict(sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n, rho=rho, alpha=alpha)
     
 def log_level(fitness_difference):
     log_g = 1.439*fitness_difference + 3.32
