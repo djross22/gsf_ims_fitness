@@ -1587,31 +1587,66 @@ class BarSeqFitnessFrame:
                             axr.plot(x_fit, y_fit, color=color, zorder=1000);
                 
             if show_GP:
-                stan_g = 10**row["sensor_GP_g_quantiles"]
-                stan_dg = row["sensor_GP_Dg_quantiles"]
-                stan_f = row["sensor_GP_Df_quantiles"]
-                
-                axr.plot(x, stan_f[2], color=fit_plot_colors[2])
-                
-                axg.plot(x, stan_g[2], color=fit_plot_colors[2])
-                axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
-                axg.tick_params(labelsize=12);
-                if log_g_scale: axg.set_yscale("log")
-                
-                axdg.plot([x[0],x[-1]], [0,0], c='k');
-                axdg.plot(x, stan_dg[2], color=fit_plot_colors[3])
-                axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
-                axdg.tick_params(labelsize=12);
-                for i in range(1,3):
-                    axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=fit_plot_colors[2]);
-                    axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=fit_plot_colors[2]);
-                    axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=fit_plot_colors[3]);
+                if old_style_plots:
+                    stan_g = 10**row["sensor_GP_g_quantiles"]
+                    stan_dg = row["sensor_GP_Dg_quantiles"]
+                    stan_f = row["sensor_GP_Df_quantiles"]
                     
-                # Also plot Hill fit result for g
-                x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
-                x_fit = np.insert(x_fit, 0, 0)
-                hill_params = 10**row["sensor_params"][:4]
-                axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
+                    axr.plot(x, stan_f[2], color=fit_plot_colors[2])
+                    
+                    axg.plot(x, stan_g[2], color=fit_plot_colors[2])
+                    axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
+                    axg.tick_params(labelsize=12);
+                    if log_g_scale: axg.set_yscale("log")
+                    
+                    axdg.plot([x[0],x[-1]], [0,0], c='k');
+                    axdg.plot(x, stan_dg[2], color=fit_plot_colors[3])
+                    axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
+                    axdg.tick_params(labelsize=12);
+                    for i in range(1,3):
+                        axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=fit_plot_colors[2]);
+                        axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=fit_plot_colors[2]);
+                        axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=fit_plot_colors[3]);
+                        
+                    # Also plot Hill fit result for g
+                    x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                    x_fit = np.insert(x_fit, 0, 0)
+                    hill_params = 10**row["sensor_params"][:4]
+                    axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
+                else:
+                    gp_color = fit_plot_colors[4]
+                    slope_color = fit_plot_colors[5]
+                    
+                    stan_g = 10**row["sensor_GP_g_quantiles"]
+                    stan_dg = row["sensor_GP_Dg_quantiles"]
+                    stan_f = row["sensor_GP_Df_quantiles"]
+                    
+                    tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
+                    for lig in ligand_list:
+                        df = plot_df
+                        df = df[(df.ligand==lig)|(df.ligand=='none')]
+                        x = np.unique(df[lig])
+                    
+                        axg.plot(x, stan_g[2], color=gp_color)
+                        
+                        for tet in tet_level_list:
+                            axr.plot(x, stan_f[2], color=gp_color)
+                            
+                        axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
+                        axg.tick_params(labelsize=12);
+                        if log_g_scale: axg.set_yscale("log")
+                        
+                        axdg.plot([x[0],x[-1]], [0,0], c='k');
+                        axdg.plot(x, stan_dg[2], color=gp_color)
+                        axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
+                        axdg.tick_params(labelsize=12);
+                        for i in range(1,3):
+                            axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=gp_color);
+                            axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=slope_color);
+                            for tet in tet_level_list:
+                                axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=gp_color);
+                        
+                    
                 
             fig_axs_list.append((fig, axs_grid))
             
