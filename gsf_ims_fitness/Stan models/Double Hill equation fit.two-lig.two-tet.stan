@@ -90,11 +90,11 @@ transformed parameters {
   
   vector[N_lig] mean_y_1_low_tet;
   vector[N_lig] mean_y_1_high_tet;
-  vector[N_lig] g_1;                // gene expression level at each concentration of ligand 1
+  vector[N_lig] g_1;                // gene expression level at each non-zero concentration of ligand 1
   
   vector[N_lig] mean_y_2_low_tet;
   vector[N_lig] mean_y_2_high_tet;
-  vector[N_lig] g_2;                // gene expression level at each concentration of ligand 1
+  vector[N_lig] g_2;                // gene expression level at each non-zero concentration of ligand 2
   
   g0 = 10^log_g0;
   ginf_1 = 10^log_ginf_1;
