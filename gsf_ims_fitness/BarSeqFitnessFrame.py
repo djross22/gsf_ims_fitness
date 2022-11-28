@@ -790,8 +790,8 @@ class BarSeqFitnessFrame:
                 stan_g_var = [np.full(x_dim, np.nan) for i in range(len(g_arr_list))]
                 stan_dg_var = [np.full(x_dim, np.nan) for i in range(len(dg_arr_list))]
                 
-                stan_g_samples = [np.full(x_dim, 32), np.nan) for i in range(len(g_arr_list))]
-                stan_dg_samples = [np.full(x_dim, 32), np.nan) for i in range(len(dg_arr_list))]
+                stan_g_samples = [np.full((x_dim, 32), np.nan) for i in range(len(g_arr_list))]
+                stan_dg_samples = [np.full((x_dim, 32), np.nan) for i in range(len(dg_arr_list))]
                 
                 stan_popt = np.full(params_dim, np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
@@ -1342,8 +1342,8 @@ class BarSeqFitnessFrame:
                         s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
                         ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                 else:
-                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
-                        for lig, marker in zip(ligand_list, ['o', '<', '>']):
+                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
+                        for lig, color in zip(ligand_list, fit_plot_colors):
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
@@ -1552,8 +1552,8 @@ class BarSeqFitnessFrame:
                 else:
                     y_ref_list = []
                     s_ref_list = []
-                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
-                        for lig, marker in zip(ligand_list, ['o', '<', '>']):
+                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
+                        for lig, color in zip(ligand_list, fit_plot_colors):
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
@@ -1572,8 +1572,8 @@ class BarSeqFitnessFrame:
                     v_1 = np.sum(w)
                     v_2 = np.sum(w**2)
                     s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
-                    for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
-                        for lig, marker in zip(ligand_list, ['o', '<', '>']):
+                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
+                        for lig, color in zip(ligand_list, fit_plot_colors):
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
@@ -1615,8 +1615,8 @@ class BarSeqFitnessFrame:
                     axr.plot(x_fit, y_fit, color='k', zorder=1000);
                 else:
                     tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
-                    for tet, color in zip(tet_level_list, fit_plot_colors[1:]):
-                        for lig in ligand_list:
+                    for tet, marker in zip(tet_level_list, ['<', '>']):
+                        for lig, color in zip(ligand_list, fit_plot_colors):
                             df = plot_df
                             df = df[df.ligand==lig]
                             x = df[lig]
@@ -1660,11 +1660,10 @@ class BarSeqFitnessFrame:
                     hill_params = 10**row["sensor_params"][:4]
                     axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
                 else:
-                    gp_color = fit_plot_colors[4]
-                    slope_color = fit_plot_colors[5]
+                    fill_alpha = 0.2
                     
                     tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
-                    for lig in ligand_list:
+                    for lig, color in zip(ligand_list, fit_plot_colors):
                         stan_g = 10**row[f"GP_log_g_{lig}"]
                         stan_dg = row[f"GP_dlog_g_{lig}"]
                         
@@ -1672,13 +1671,12 @@ class BarSeqFitnessFrame:
                         df = df[(df.ligand==lig)|(df.ligand=='none')]
                         x = np.unique(df[lig])
                     
-                        axg.plot(x, stan_g[2], color=gp_color)
-                        axdg.plot(x, stan_dg[2], color=gp_color)
+                        axg.plot(x, stan_g[2], '--', color=color, lw=3, label=lig)
+                        axdg.plot(x, stan_dg[2], '--', color=color, lw=3)
                         
                         for tet in tet_level_list:
-                            
                             stan_f = row[f"GP_y_{lig}_{tet}_tet"]
-                            axr.plot(x, stan_f[2], color=gp_color)
+                            axr.plot(x, stan_f[2], '--', color=color, lw=3)
                             
                         axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
                         axg.tick_params(labelsize=12);
@@ -1688,10 +1686,11 @@ class BarSeqFitnessFrame:
                         axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
                         axdg.tick_params(labelsize=12);
                         for i in range(1,3):
-                            axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=gp_color);
-                            axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=slope_color);
+                            axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=fill_alpha, color=color);
+                            axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=fill_alpha, color=color);
                             for tet in tet_level_list:
-                                axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=gp_color);
+                                axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=fill_alpha, color=color);
+                        axg.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=10)
                         
             fig_axs_list.append((fig, axs_grid))
             
