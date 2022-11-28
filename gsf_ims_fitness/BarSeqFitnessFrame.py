@@ -549,7 +549,7 @@ class BarSeqFitnessFrame:
             
             stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid)
 
-            if True:#try:
+            try:
                 if len(lig_list) == 1:
                     stan_init = [ init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params) for i in range(chains) ]
                 else:
@@ -582,7 +582,7 @@ class BarSeqFitnessFrame:
                 else:
                     g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2]]
                     hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
-            '''
+            
             except:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
@@ -592,7 +592,7 @@ class BarSeqFitnessFrame:
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 hill_invert_prob = np.nan
                 hill_on_at_zero_prob = np.nan
-            '''
+            
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
         
@@ -752,9 +752,9 @@ class BarSeqFitnessFrame:
             
             stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid, is_gp_model=True)
         
-            try:
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
+            try:
                 stan_init = [ init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand) for i in range(chains) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
