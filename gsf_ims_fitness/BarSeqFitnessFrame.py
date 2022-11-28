@@ -576,7 +576,7 @@ class BarSeqFitnessFrame:
                 # Also save these posterior probabilities: the sensor is on at zero, sensor is inverted (for each ligand)
                 g0_samples = 10**stan_samples_arr[log_g0_ind]
                 hill_on_at_zero_prob = len(g0_samples[g0_samples>wild_type_ginf/4])/len(g0_samples)
-                if len(ligand_list) == 1:
+                if len(lig_list) == 1:
                     g_ratio_samples = stan_samples_arr[log_ginf_g0_ind]
                     hill_invert_prob = len(g_ratio_samples[g_ratio_samples<0])/len(g_ratio_samples)
                 else:
