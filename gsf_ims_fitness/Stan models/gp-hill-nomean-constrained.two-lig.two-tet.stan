@@ -20,8 +20,8 @@ data {
   vector[N_lig] y_2_high_tet;        // fitness difference with ligand 2 and high tet concentration
   vector[N_lig] y_2_high_tet_err;    // estimated error of fitness difference
   
-  real log_g_min;        // lower bound on log_low_level and log_high_level
-  real log_g_max;        // upper bound on log_low_level and log_high_level
+  real log_g_min;                    // lower bound on log_low_level and log_high_level
+  real log_g_max;                    // upper bound on log_low_level and log_high_level
   
   real low_fitness_mu_low_tet;       // fitness difference at zero gene expression, medium tet
   real mid_g_mu_low_tet;             // gene expression level at 1/2 max fitness difference, medium tet
@@ -42,13 +42,18 @@ data {
 }
 
 transformed data {
+  int N;                       // number of grid points for GP
   vector[2] x_gp[2*N_lig+1];   // array of 2D coordinates of the log(ligand concentrations)
   real sqrt_pi = sqrt(pi());
   real low_constr;
   real high_constr;
   real sig_constr;
   real center_log_g;
+  real log_spacing;
+  real zero_spacing_factor;
   vector[2] log_x_zero;
+  
+  N = 2*N_lig+1;
   
   low_constr = log_g_min + 0.5;
   high_constr = log_g_max - 0.5;
@@ -57,16 +62,21 @@ transformed data {
   center_log_g = (log_g_min + log_g_max)/2;
   
   // this sets the zero-ligand coordinates on the log(x) scale at a distance of 1.5x the dilution spacing of the non=zero-ligands 
-  log_x_zero[1] = log10(x_1[1]) - 1.5*(log10(x_1[2]) - log10(x_1[1]));
-  log_x_zero[2] = log10(x_2[1]) - 1.5*(log10(x_2[2]) - log10(x_2[1]));
+  log_spacing = log10(x_1[2]) - log10(x_1[1]);
+  zero_spacing_factor = 1.5;
+  log_x_zero[1] = log10(x_1[1]) - zero_spacing_factor*log_spacing;
+  log_x_zero[2] = log10(x_2[1]) - zero_spacing_factor*log_spacing;
   
+  // First grid point is zero-ligand
   x_gp[1][1] = log_x_zero[1];
   x_gp[1][2] = log_x_zero[2];
   
   for (i in 1:N_lig){
+    // Grid points 2:N_lig+1 are the samples with non-zero ligand 1
     x_gp[i+1][1] = log10(x_1[i]);
     x_gp[i+1][2] = log_x_zero[2];
 	
+	// Grid points 2+N_lig:2*N_lig+1 are the samples with non-zero ligand 2
     x_gp[i+1+N_lig][1] = log_x_zero[1];
     x_gp[i+1+N_lig][2] = log10(x_2[i]);
   }
@@ -92,10 +102,21 @@ parameters {
 }
 
 transformed parameters {
-  vector[N] mean_y;
+  real mean_y_0_low_tet;
+  
+  vector[N_lig] mean_y_1_low_tet;
+  vector[N_lig] mean_y_1_high_tet;
+  vector[N_lig] mean_y_2_low_tet;
+  vector[N_lig] mean_y_2_high_tet;
+  
   vector[N] g;             // GP approx to gene expression
+  
+  real g0;
+  vector[N_lig] g_1;                // gene expression level at each non-zero concentration of ligand 1
+  vector[N_lig] g_2;                // gene expression level at each non-zero concentration of ligand 2
+  
   vector[N] log_g;         // the GP function, analogous to y in all of the Stan examples
-  vector[N] constr_log_g;  // log10 gene expression, constrained to be between 1 and 4
+  vector[N] constr_log_g;  // log10 gene expression, constrained to be between log_g_min and log_g_max
 
   {
     matrix[N, N] L_K;
@@ -119,14 +140,27 @@ transformed parameters {
       term3 = (low_constr - log_g[i])*erf((low_constr - log_g[i])/sig_constr);
       
       constr_log_g[i] = (high_constr + low_constr + term1 + term2 + term3)/2;
-      
-      g[i] = 10^constr_log_g[i];
     }
 
   }
   
-  for (i in 1:N) {
-    mean_y[i] = low_fitness_high_tet - low_fitness_high_tet*(g[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g[i]^fitness_n_high_tet);
+  // First grid point is zero-ligand
+  g0 = 10^constr_log_g[1];
+  
+  mean_y_0_low_tet = low_fitness_low_tet - low_fitness_low_tet*(g0^fitness_n_low_tet)/(mid_g_low_tet^fitness_n_low_tet + g0^fitness_n_low_tet);
+  
+  for (i in 1:N_lig) {
+    // Grid points 2:N_lig+1 are the samples with non-zero ligand 1
+	g_1[i] = 10^constr_log_g[i+1];
+	
+	// Grid points 2+N_lig:2*N_lig+1 are the samples with non-zero ligand 2
+	g_2[i] = 10^constr_log_g[i+1+N_lig];
+	
+    mean_y_1_low_tet[i] = low_fitness_low_tet - low_fitness_low_tet*(g_1[i]^fitness_n_low_tet)/(mid_g_low_tet^fitness_n_low_tet + g_1[i]^fitness_n_low_tet);
+    mean_y_2_low_tet[i] = low_fitness_low_tet - low_fitness_low_tet*(g_2[i]^fitness_n_low_tet)/(mid_g_low_tet^fitness_n_low_tet + g_2[i]^fitness_n_low_tet);
+	
+    mean_y_1_high_tet[i] = low_fitness_high_tet - low_fitness_high_tet*(g_1[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g_1[i]^fitness_n_high_tet);
+    mean_y_2_high_tet[i] = low_fitness_high_tet - low_fitness_high_tet*(g_2[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g_2[i]^fitness_n_high_tet);
   }
 
   
@@ -149,9 +183,14 @@ model {
   rho ~ inv_gamma(5, 5);
   alpha ~ normal(1, 1);
   eta ~ std_normal();
-
-  // observations
-  y ~ normal(mean_y, sigma*y_err);
+  
+  y_0_low_tet ~ normal(mean_y_0_low_tet, sigma*y_0_low_tet_err);
+  
+  y_1_low_tet ~ normal(mean_y_1_low_tet, sigma*y_1_low_tet_err);
+  y_2_low_tet ~ normal(mean_y_2_low_tet, sigma*y_2_low_tet_err);
+  
+  y_1_high_tet ~ normal(mean_y_1_high_tet, sigma*y_1_high_tet_err);
+  y_2_high_tet ~ normal(mean_y_2_high_tet, sigma*y_2_high_tet_err);
 
 }
 
@@ -160,54 +199,58 @@ generated quantities {
   real log_rho;
   real log_alpha;
   real log_sigma;
-  vector[N] dlog_g; // derivative of the gp
   
-  rms_resid = distance(y, mean_y)/sqrt(N);
+  vector[N_lig+1] log_g_1;    // log-gene expression level at each concentration of ligand 1, including zero
+  vector[N_lig+1] log_g_2;    // log-gene expression level at each concentration of ligand 2, including zero
+
+  vector[N_lig+1] dlog_g_1; // derivative of the gp along the ligand-1 direction
+  vector[N_lig+1] dlog_g_2; // derivative of the gp along the ligand-2 direction
+  
+  real mean_y_0_high_tet;
+  
+  vector[N_lig+1] y_1_out_low_tet;
+  vector[N_lig+1] y_1_out_high_tet;
+  vector[N_lig+1] y_2_out_low_tet;
+  vector[N_lig+1] y_2_out_high_tet;
+  
+  mean_y_0_high_tet = low_fitness_high_tet - low_fitness_high_tet*(g0^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g0^fitness_n_high_tet);
+  
+  y_1_out_low_tet[1] = mean_y_0_low_tet;
+  y_2_out_low_tet[1] = mean_y_0_low_tet;
+  y_1_out_high_tet[1] = mean_y_0_high_tet;
+  y_2_out_high_tet[1] = mean_y_0_high_tet;
+  
+  rms_resid = sqrt(distance(y_1_low_tet, mean_y_1_low_tet)^2 + distance(y_2_low_tet, mean_y_2_low_tet)^2 + distance(y_1_high_tet, mean_y_1_high_tet)^2 + distance(y_2_high_tet, mean_y_2_high_tet)^2)/sqrt(4*N_lig + 1);
   
   log_rho = log10(rho);
   log_alpha = log10(alpha);
   log_sigma = log10(sigma);
+  
+  log_g_1[1] = log10(g0);
+  log_g_2[1] = log10(g0);
+  for (i in 1:N_lig) {
+    log_g_1[i+1] = log10(g_1[i]);
+    log_g_2[i+1] = log10(g_2[i]);
+	
+	y_1_out_low_tet[i+1] = mean_y_1_low_tet[i];
+    y_2_out_low_tet[i+1] = mean_y_2_low_tet[i];
+    y_1_out_high_tet[i+1] = mean_y_1_high_tet[i];
+    y_2_out_high_tet[i+1] = mean_y_2_high_tet[i];
+  }
 
-  // derivative calculation
-  {
-    matrix[N, N] dK;
-    matrix[N, N] ddK;
-    vector[N] df_pred_mu;
-    vector[N] K_div_f;
-    matrix[N, N] cov_df_pred;
-    matrix[N, N] nug_pred;
-    matrix[N, N] v_pred;
-    real lsInv = 1./rho/rho;
-    real diff;
-    matrix[N, N] L_K;
-    matrix[N, N] K = cov_exp_quad(x_gp, alpha, rho);
-
-    nug_pred = diag_matrix(rep_vector(1e-8, N));
-    // diagonal elements
-    for (n in 1:N)
-      K[n, n] = K[n, n] + 1e-9;
-
-    L_K = cholesky_decompose(K);
-
-    dK = cov_exp_quad(x_gp, alpha, rho);
-    ddK = cov_exp_quad(x_gp, alpha, rho);
-    for (i in 1:N){
-      for (j in 1:N){
-        diff = x_gp[i] - x_gp[j];
-        dK[i,j] = dK[i,j] * (-lsInv * diff);
-        ddK[i,j] = ddK[i,j] * (1.-lsInv*diff*diff) * lsInv;
-      }
-    }
-
-    K_div_f = mdivide_left_tri_low(L_K, constr_log_g);
-    K_div_f = mdivide_right_tri_low(K_div_f', L_K)';
-
-    df_pred_mu = (dK * K_div_f);
-
-    v_pred = mdivide_left_tri_low(L_K, dK');
-    cov_df_pred = ddK - v_pred' * v_pred;
-
-    dlog_g = multi_normal_rng(df_pred_mu, cov_df_pred + nug_pred);
-
+  // derivative calculation: end points based on difference with next point toward the middle
+  //     non-end points are averaaged
+  dlog_g_1[1] = (log_g_1[2] - log_g_1[1]) / (zero_spacing_factor*log_spacing);
+  dlog_g_2[1] = (log_g_2[2] - log_g_2[1]) / (zero_spacing_factor*log_spacing);
+  
+  dlog_g_1[2] = (log_g_1[3] - log_g_1[1]) / ((1+zero_spacing_factor)*log_spacing);
+  dlog_g_2[2] = (log_g_2[3] - log_g_2[1]) / ((1+zero_spacing_factor)*log_spacing);
+  
+  for (i in 3:N_lig) {
+    dlog_g_1[i] = (log_g_1[i+1] - log_g_1[i-1]) / (2*log_spacing);
+    dlog_g_2[i] = (log_g_2[i+1] - log_g_2[i-1]) / (2*log_spacing);
+  
+  dlog_g_1[N_lig+1] = (log_g_1[N_lig+1] - log_g_1[N_lig]) / (log_spacing);
+  dlog_g_2[N_lig+1] = (log_g_2[N_lig+1] - log_g_2[N_lig]) / (log_spacing);
   }
 }

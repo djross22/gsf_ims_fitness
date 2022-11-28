@@ -711,6 +711,12 @@ class BarSeqFitnessFrame:
                 fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
             
             params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
+            
+            g_arr_list = ['constr_log_g']
+            dg_arr_list = ['dlog_g']
+            f_arr_list = ['mean_y']
+            
+            x_dim = 12 # number of concentrations for each ligand, including zero
                 
         elif len(ligand_list) == 2:
             stan_GP_model = 'gp-hill-nomean-constrained.two-lig.two-tet.stan'
@@ -721,6 +727,12 @@ class BarSeqFitnessFrame:
             params_list = ['low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet', 
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 
                            'log_rho', 'log_alpha', 'log_sigma']
+            g_arr_list = [f'log_g_{i}' for i in [1, 2]]
+            dg_arr_list = [f'dlog_g_{i}' for i in [1, 2]]
+            f_arr_list = ['y_1_out_low_tet',  'y_1_out_high_tet',  'y_2_out_low_tet', 'y_2_out_high_tet']
+            
+            x_dim = 6 # number of concentrations for each ligand, including zero
+            
         params_dim = len(params_list)
         
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
@@ -741,45 +753,48 @@ class BarSeqFitnessFrame:
             stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid, is_gp_model=True)
         
             try:
-                single_tet = len(antibiotic_conc_list)==2
-                stan_init = [ init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet) for i in range(chains) ]
+            single_tet = len(antibiotic_conc_list)==2
+            single_ligand = len(lig_list) == 1
+                stan_init = [ init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand) for i in range(chains) ]
                 
                 stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
                 if return_fit:
                     return stan_fit
+                    
+                g_arr = [stan_fit[x] for x in g_arr_list]
+                dg_arr = [stan_fit[x] for x in dg_arr_list]
+                f_arr = [stan_fit[x] for x in f_arr_list]
                 
-                g_arr = stan_fit['constr_log_g']
-                dg_arr = stan_fit['dlog_g']
-                f_arr = stan_fit['mean_y']
+                stan_g = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in g_arr]
+                stan_dg = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in dg_arr]
+                stan_f = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in f_arr]
+                
+                stan_g_var = [np.var(a, axis=0) for a in g_arr]
+                stan_dg_var = [np.var(a, axis=0) for a in dg_arr]
+                
+                stan_g_samples = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in g_arr]
+                stan_dg_samples = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in dg_arr]
+                    
                 params_arr = np.array([stan_fit[x] for x in params_list])
         
                 stan_popt = np.array([np.median(s) for s in params_arr ])
                 stan_pcov = np.cov(params_arr, rowvar=True)
                 
-                stan_g = np.array([ np.quantile(g_arr, q, axis=0) for q in quantile_list ])
-                stan_dg = np.array([ np.quantile(dg_arr, q, axis=0) for q in quantile_list ])
-                stan_f = np.array([ np.quantile(f_arr, q, axis=0) for q in quantile_list ])
-                
-                stan_g_var = np.var(g_arr, axis=0)
-                stan_dg_var = np.var(dg_arr, axis=0)
-                
-                stan_g_samples = rng.choice(g_arr, size=32, replace=False, axis=0, shuffle=False).transpose()
-                stan_dg_samples = rng.choice(dg_arr, size=32, replace=False, axis=0, shuffle=False).transpose()
                 
                 stan_resid = np.median(stan_fit["rms_resid"])
             except:
-                stan_popt = np.full((params_dim), np.nan)
+                stan_g = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
+                stan_dg = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
+                stan_f = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(f_arr_list))]
+                
+                stan_g_var = [np.full(x_dim, np.nan) for i in range(len(g_arr_list))]
+                stan_dg_var = [np.full(x_dim, np.nan) for i in range(len(dg_arr_list))]
+                
+                stan_g_samples = [np.full(x_dim, 32), np.nan) for i in range(len(g_arr_list))]
+                stan_dg_samples = [np.full(x_dim, 32), np.nan) for i in range(len(dg_arr_list))]
+                
+                stan_popt = np.full(params_dim, np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
-                
-                stan_g = np.full((quantile_dim, len(x)), np.nan)
-                stan_dg = np.full((quantile_dim, len(x)), np.nan)
-                stan_f = np.full((quantile_dim, len(x)), np.nan)
-                
-                stan_g_var = np.full((params_dim), np.nan)
-                stan_dg_var = np.full((params_dim), np.nan)
-                
-                stan_g_samples = np.full((len(x), 32), np.nan)
-                stan_dg_samples = np.full((len(x), 32), np.nan)
                 
                 stan_resid = np.nan
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
@@ -821,21 +836,52 @@ class BarSeqFitnessFrame:
                 
                 stan_g_samples_list.append(stan_g_samples)
                 stan_dg_samples_list.append(stan_dg_samples)
-                    
-            barcode_frame["sensor_GP_params"] = popt_list
-            barcode_frame["sensor_GP_cov"] = pcov_list
             
-            barcode_frame["sensor_GP_g_quantiles"] = stan_g_list
-            barcode_frame["sensor_GP_Dg_quantiles"] = stan_dg_list
-            barcode_frame["sensor_GP_Df_quantiles"] = stan_f_list
+            stan_g_list = np.array(stan_g_list).transpose([1,0,2,3])
+            stan_g_var_list = np.array(stan_g_var_list).transpose([1,0,2])
+            stan_g_samples_list = np.array(stan_g_samples_list).transpose([1,0,2,3])
             
-            barcode_frame["sensor_GP_residuals"] = residuals_list
+            stan_dg_list = np.array(stan_dg_list).transpose([1,0,2,3])
+            stan_dg_var_list = np.array(stan_dg_var_list).transpose([1,0,2])
+            stan_dg_samples_list = np.array(stan_dg_samples_list).transpose([1,0,2,3])
             
-            barcode_frame["sensor_GP_g_var"] = stan_g_var_list
-            barcode_frame["sensor_GP_dg_var"] = stan_dg_var_list
+            stan_f_list = np.array(stan_f_list).transpose([1,0,2,3])
             
-            barcode_frame["sensor_GP_g_samples"] = stan_g_samples_list
-            barcode_frame["sensor_GP_dg_samples"] = stan_dg_samples_list
+            barcode_frame["GP_params"] = popt_list
+            barcode_frame["GP_cov"] = pcov_list
+            
+            for g_list, param, g_var, g_samp in zip(stan_g_list, g_arr_list, stan_g_var_list, stan_g_samples_list):
+                col_name = param
+                if col_name == 'constr_log_g':
+                    col_name = 'log_g_1'
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                col_name = f"GP_{col_name}"
+                barcode_frame[col_name] = list(g_list)
+                barcode_frame[f"{col_name}_var"] = list(g_var)
+                barcode_frame[f"{col_name}_samp"] = list(g_samp)
+            
+            for dg_list, param, dg_var, dg_samp in zip(stan_dg_list, dg_arr_list, stan_dg_var_list, stan_dg_samples_list):
+                col_name = param
+                if col_name == 'dlog_g':
+                    col_name = 'dlog_g_1'
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                col_name = f"GP_{col_name}"
+                barcode_frame[col_name] = list(dg_list)
+                barcode_frame[f"{col_name}_var"] = list(dg_var)
+                barcode_frame[f"{col_name}_samp"] = list(dg_samp)
+            
+            for f_list, param in zip(stan_f_list, f_arr_list):
+                col_name = param
+                if col_name == 'mean_y':
+                    col_name = 'y_1_out_high_tet'
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}_out", f"_{lig}")
+                col_name = f"GP_{col_name}"
+                barcode_frame[col_name] = list(f_list)
+            
+            barcode_frame["GP_residuals"] = residuals_list
         else:
             # TODO: update refits to Nov 2022, handle multiple ligands
             row_to_fit = barcode_frame.loc[refit_index]
@@ -1617,19 +1663,21 @@ class BarSeqFitnessFrame:
                     gp_color = fit_plot_colors[4]
                     slope_color = fit_plot_colors[5]
                     
-                    stan_g = 10**row["sensor_GP_g_quantiles"]
-                    stan_dg = row["sensor_GP_Dg_quantiles"]
-                    stan_f = row["sensor_GP_Df_quantiles"]
-                    
                     tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
                     for lig in ligand_list:
+                        stan_g = 10**row[f"GP_log_g_{lig}"]
+                        stan_dg = row[f"GP_dlog_g_{lig}"]
+                        
                         df = plot_df
                         df = df[(df.ligand==lig)|(df.ligand=='none')]
                         x = np.unique(df[lig])
                     
                         axg.plot(x, stan_g[2], color=gp_color)
+                        axdg.plot(x, stan_dg[2], color=gp_color)
                         
                         for tet in tet_level_list:
+                            
+                            stan_f = row[f"GP_y_{lig}_{tet}_tet"]
                             axr.plot(x, stan_f[2], color=gp_color)
                             
                         axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
@@ -1637,7 +1685,6 @@ class BarSeqFitnessFrame:
                         if log_g_scale: axg.set_yscale("log")
                         
                         axdg.plot([x[0],x[-1]], [0,0], c='k');
-                        axdg.plot(x, stan_dg[2], color=gp_color)
                         axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
                         axdg.tick_params(labelsize=12);
                         for i in range(1,3):
@@ -1646,8 +1693,6 @@ class BarSeqFitnessFrame:
                             for tet in tet_level_list:
                                 axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=gp_color);
                         
-                    
-                
             fig_axs_list.append((fig, axs_grid))
             
         if save_plots:
@@ -2201,7 +2246,7 @@ def init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params):
                 fitness_n_high_tet=fit_fitness_difference_params[1][2],
                 )
     
-def init_stan_GP_fit(fit_fitness_difference_params, single_tet):
+def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand):
     sig = np.random.uniform(1, 3)
     rho = np.random.uniform(0.9, 1.1)
     alpha = np.random.uniform(0.009, 0.011)
