@@ -275,7 +275,7 @@ class BarSeqFitnessFrame:
         
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
-        # For backward compatibility, check if the old version is used, and change it to the new version
+        # For backward compatibility, check if the old version is used, and convert it to the new version
         if len(ignore_samples)>0:
             if len(ignore_samples[0])==3:
                 new_ignore = []
