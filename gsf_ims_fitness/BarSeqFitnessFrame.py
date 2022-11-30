@@ -341,10 +341,34 @@ class BarSeqFitnessFrame:
         #     second key is spike-in name
         spike_in_fitness_dict = {}
         tet_list = [0, 1.25, 10, 20]
-        # TODO: Fitness for 1.25 and 10 are preliminary estimates based on weighted average of [tet] = zero and 20
+        # Fitness for 0, 1.25 and 10 are from 2022-11-22_two-lig_two-sel_OD-test-5-plates, 
+        # Fitness for 20 is from 2019 data, rescaled to match older zero-tet from 2022-11-22
         # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
-        fitness_dicts = [{"AO-B": 0.9637, "AO-E": 0.9666}, {"AO-B": 0.9587125, "AO-E": 0.9597825}, 
-                         {"AO-B": 0.93045, "AO-E": 0.92115}, {"AO-B": 0.8972, "AO-E": 0.8757}]
+        # old: fitness_dicts = [{"AO-B": 0.9637, "AO-E": 0.9666}, {"AO-B": 0.9587125, "AO-E": 0.9597825}, 
+        # old:                  {"AO-B": 0.93045, "AO-E": 0.92115}, {"AO-B": 0.8972, "AO-E": 0.8757}]
+                         
+        fitness_dicts = [{"AO-B": 0.9288, "AO-E": 0.9282}, {"AO-B": 0.9199, "AO-E": 0.9244}, 
+                         {"AO-B": 0.9063, "AO-E": 0.9014}, {"AO-B": 0.8972*0.9288/0.9637, "AO-E": 0.8757*0.9282/0.9666}]
+        '''
+            pTY1-AO-B, tet: 0.0
+                0.9288 +- 0.0026
+
+            pTY1-AO-B, tet: 1.25
+                0.9199 +- 0.0036
+
+            pTY1-AO-B, tet: 10.0
+                0.9063 +- 0.0055
+
+            pTY1-AO-E, tet: 0.0
+                0.9282 +- 0.0045
+
+            pTY1-AO-E, tet: 1.25
+                0.9244 +- 0.0030
+
+            pTY1-AO-E, tet: 10.0
+                0.9014 +- 0.0040
+        '''
+        
         for t, d in zip(tet_list, fitness_dicts):
             spike_in_fitness_dict[t] = d
         
