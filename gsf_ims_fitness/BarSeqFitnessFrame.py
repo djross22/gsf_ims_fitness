@@ -1208,12 +1208,20 @@ class BarSeqFitnessFrame:
         wells_to_plot = fitness.wells_by_column()[:24]
         if reverse_well_order:
             wells_to_plot = wells_to_plot[::-1]
+        per_well_log_std = []
+        per_well_log_mu = []
         for i, w in enumerate(wells_to_plot):
             c = [(plot_colors()*8)[i]]*len(f_data)
+            f_y = f_data['fraction_' + w]
             for ax in axs.flatten()[:2]:
-                ax.scatter(f_x, f_data['fraction_' + w], c=c)
+                ax.scatter(f_x, f_y, c=c)
+            
+            x = f_x[(~np.isnan(f_y))&(f_y>0)]
+            y = f_y[(~np.isnan(f_y))&(f_y>0)]
+            per_well_log_std.append(np.std(np.log(y/x)))
+            per_well_log_mu.append(np.mean(np.log(y/x)))
             for ax in axs.flatten()[2:4]:
-                ax.scatter(f_x, (f_data['fraction_' + w] - f_x)*100, c=c)
+                ax.scatter(f_x, (f_y - f_x)*100, c=c)
                 
         for ax in axs.flatten()[:2]:
             x_lim_0 = ax.get_xlim()
@@ -1242,7 +1250,13 @@ class BarSeqFitnessFrame:
             ax.tick_params(labelsize=16);
         if save_plots:
             pdf.savefig()
-    
+        #Plot mean and std of log ratio for each well
+        plt.rcParams["figure.figsize"] = [16,6]
+        fig, axs = plt.subplots(2, 1)
+        for ax, y, lab in zip(axs, [per_well_log_mu, per_well_log_std], ['mean', 'std']):
+            df_plot = pd.DataFrame({'well':wells_to_plot, lab:y})
+            sns.barplot(ax=ax, data=df_plot, x="well", y=lab)
+        
         # data from 2019-10-02: #################################################################################
         x_test = np.asarray([0.23776345382258504, 0.21428834768303265, 0.14955568743012018, 0.10527042635253019, 0.08814193520270863,
                              0.07140559171457407, 0.032268913991628186, 0.02486533840744069, 0.009370452839984682, 0.0021539027931815613,
