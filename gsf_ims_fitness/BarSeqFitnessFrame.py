@@ -1157,7 +1157,8 @@ class BarSeqFitnessFrame:
                    save_plots=False,
                    count_cutoff=500,
                    experiment=None,
-                   includeChimeras=False):
+                   includeChimeras=False,
+                   reverse_well_order=False):
         
         if experiment is None:
             experiment = self.experiment
@@ -1180,7 +1181,10 @@ class BarSeqFitnessFrame:
             
         f_x = f_data['fraction_total_p2']
         f_x_min = f_data[f_data['fraction_total_p2']>0]['fraction_total_p2'].min()
-        for i, w in enumerate(fitness.wells_by_column()[:24]):
+        wells_to_plot = fitness.wells_by_column()[:24]
+        if reverse_well_order:
+            wells_to_plot = wells_to_plot[::-1]
+        for i, w in enumerate(wells_to_plot):
             c = [(plot_colors()*8)[i]]*len(f_data)
             for ax in axs.flatten()[:2]:
                 ax.scatter(f_x, f_data['fraction_' + w], c=c)
