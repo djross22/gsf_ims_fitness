@@ -456,6 +456,7 @@ class BarSeqFitnessFrame:
                 f_est_list = []
                 f_err_list = []
                 slope_list = []
+                resids_list = []
                 for (index, row), ax in zip(fit_frame.iterrows(), axs): # iterate over barcodes
                     n_reads = np.array(row[well_list], dtype='int64')
                     
@@ -472,6 +473,8 @@ class BarSeqFitnessFrame:
                     else:
                         if len(x)>1:
                             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
+                            resids = y - fitness.line_funct(x, *popt)
+                            resids_list.append(resids)
                             slope_list.append(popt[0])
                             f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                             f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
@@ -479,10 +482,12 @@ class BarSeqFitnessFrame:
                             slope_list.append(np.nan)
                             f_est_list.append(np.nan)
                             f_err_list.append(np.nan)
+                            resids_list.append(np.full(4, np.nan))
                 
                 if not plots_not_fits:
                     fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                     fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
+                    fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
             
                 no_tet_slope_lists.append(slope_list)
                 
@@ -508,6 +513,7 @@ class BarSeqFitnessFrame:
             
                 f_est_list = []
                 f_err_list = []
+                resids_list = []
                 for (index, row), slope_0, ax in zip(fit_frame.iterrows(), no_tet_slope, axs): # iterate over barcodes
                     if plots_not_fits and (initial=='b') and (samp == samples_with_tet[0]):
                         barcode_str = str(index) + ': '
@@ -537,11 +543,14 @@ class BarSeqFitnessFrame:
                     else:
                         if len(x)>1:
                             popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
+                            resids = y - fit_funct(x, *popt)
+                            resids_list.append(resids)
                             f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                             f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
                         else:
                             f_est_list.append(np.nan)
                             f_err_list.append(np.nan)
+                            resids_list.append(np.full(4, np.nan))
                 
                 if plots_not_fits:
                     for ax in axs:
@@ -551,6 +560,7 @@ class BarSeqFitnessFrame:
                 else:
                     fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                     fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
+                    fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
             
         if not plots_not_fits:
             self.barcode_frame = barcode_frame
