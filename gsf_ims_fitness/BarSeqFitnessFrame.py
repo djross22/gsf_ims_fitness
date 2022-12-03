@@ -155,6 +155,9 @@ class BarSeqFitnessFrame:
                 display_frame = barcode_frame[barcode_frame["forward_BC"].str.contains(row["forward_lin_tag"])]
                 display_frame = display_frame[display_frame["reverse_BC"].str.contains(row["reverse_lin_tag"])]
                 display_frame = display_frame[["RS_name", "forward_BC", "reverse_BC", "total_counts"]]
+                if len(display_frame)>1:
+                    n = row["RS_name"]
+                    print(f"found more than one possible match for {n}")
                 if len(display_frame)>0:
                     display_frame["RS_name"].iloc[0] = row["RS_name"]
                     barcode_frame.loc[display_frame.index[0], "RS_name"] = row["RS_name"]
