@@ -571,7 +571,85 @@ class BarSeqFitnessFrame:
             if auto_save:
                 self.save_as_pickle()
         
+    
+    def plot_fit_residuals(self, initial='b'):
         
+        barcode_frame = self.barcode_frame
+        high_tet = self.high_tet
+        low_tet = getattr(self, 'low_tet', None)
+    
+        inducer_conc_list = self.inducer_conc_list
+        inducer = self.inducer
+        inducer_2 = getattr(self, 'inducer_2', None)
+        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
+        
+        if (low_tet is None) and (inducer_2 is None):
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
+        else:
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
+        
+        plt.rcParams["figure.figsize"] = [16, 3]
+        sample_list = np.unique(sample_plate_map.sample_id)
+        mean_resid_lists = []
+        rms_resid_lists = []
+        tet_list = []
+        for samp in sample_list:
+            mean_sub_list = []
+            rms_sub_list = []
+            df = sample_plate_map
+            df = df[df.sample_id==samp]
+            tet = df.antibiotic_conc.iloc[0]
+            tet_list.append(tet)
+            iptg = df.IPTG.iloc[0]
+            onpf = df.ONPF.iloc[0]
+            
+            resid_array = barcode_frame[f'fitness_S{samp}_resid_{initial}']
+            sel = [len(x)==4 for x in resid_array]
+            resid_array = np.array(list(resid_array[sel]))
+            x_list = [barcode_frame[sel][x] for x in df.well]
+            w_list = df.well
+            y_list = resid_array.transpose()
+            
+            fig, axs = plt.subplots(1, 4)
+            fig.suptitle(f'Sample {samp}: {tet} Tet, {iptg} IPTG, {onpf} ONPF', size=20, y=1.1)
+            for x, y, w, ax in zip(x_list, y_list, w_list, axs):
+                ax.set_title(w, size=16)
+                #ax.plot(x, y, 'o', alpha=0.2);
+                s = (x>10)&(~np.isnan(y))
+                y = y[s]
+                x = x[s]
+                ax.hist2d(np.log10(x), y, bins=50, norm=colors.LogNorm())
+                #ax.set_xscale('log')
+                mean_sub_list.append(np.mean(y))
+                rms_sub_list.append(np.sqrt(np.mean(y**2)))
+            mean_resid_lists.append(mean_sub_list)
+            rms_resid_lists.append(rms_sub_list)
+    
+        plt.rcParams["figure.figsize"] = [12, 3]
+        fig, axs = plt.subplots(1, 2)
+        fig.suptitle('Residuals vs. time for each sample', size=20)
+        marker_list = ['-o']*8 + ['-^']*8 + ['-v']*8
+        x = [i for i in range(1, 5)]
+        for samp, mean_list, rms_list, marker, tet in zip(sample_list, mean_resid_lists, rms_resid_lists, marker_list, tet_list):
+            if tet == 0:
+                fillstyle = 'none'
+            elif tet == low_tet:
+                fillstyle = 'left'
+            else:
+                fillstyle = 'full'
+                
+            for ax, y in zip(axs, [mean_list, rms_list]):
+                ax.plot(x, y, marker, label=f'S{samp}', fillstyle=fillstyle, ms=12);
+        ax.legend(loc='upper left', bbox_to_anchor= (1.05, 1.05), ncol=3);
+        axs[0].set_xlabel('time point')
+        axs[1].set_xlabel('time point')
+        axs[0].set_ylabel('mean residuals')
+        axs[1].set_ylabel('rms residuals');
+        
+        return (sample_list, mean_resid_lists, rms_resid_lists)
+    
+    
     def stan_fitness_difference_curves(self,
                                       includeChimeras=False,
                                       fit_fitness_difference_params=None,
