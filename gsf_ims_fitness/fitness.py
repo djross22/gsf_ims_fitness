@@ -935,10 +935,11 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20):
             params = np.array([-0.72246,  13328,  3.2374])
         elif tet_conc==10:
             #params = np.array([-0.8102, 4955, 1.817])
-            params = np.array([-0.818, 4.96e+03, 1.812, 0.009651, 133.5, 0.05171]) # from fit to 5 RSs using barseq data from 2021-12-12_IPTG_Select-DNA-5-plates
+            #params = np.array([-0.818, 4.96e+03, 1.812, 0.009651, 133.5, 0.05171]) # from fit to 5 RSs using barseq data from 2021-12-12_IPTG_Select-DNA-5-plates
+            params = np.array([-0.7473, 4.538e+03, 1.849, 0.008271, 93.44, 0.03828]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
+            [-0.7473, 4.538e+03, 1.849]
         elif tet_conc==1.25:
-            #place-holder numbers used to simulate data, based on 2022-06-18_IPTG_Tet_Tet_2DGrad-5-plates
-            params = np.array([-0.48779, 574.1,  1.5, 0.005, 15, 0.05])
+            params = np.array([-0.7949, 239.3, 0.9777, 0.05126, 35.01, 0.04737]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
