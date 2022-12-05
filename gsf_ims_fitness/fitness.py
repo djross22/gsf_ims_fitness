@@ -947,8 +947,8 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20):
 
 def log_g_limits(plasmid="pVER"):
     if plasmid == "pVER":
-        log_g_min = 1.2
-        log_g_max = 5.4
+        log_g_min = 0.4
+        log_g_max = 4.7
         log_g_prior_scale = 0.15
         wild_type_ginf = 2.44697108e+04
     else:
