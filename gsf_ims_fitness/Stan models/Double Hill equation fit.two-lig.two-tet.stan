@@ -137,9 +137,9 @@ model {
   fitness_n_high_tet ~ normal(fitness_n_mu_high_tet, fitness_n_std_high_tet);
   
   
-  // Prior on sensor_n; <gamma> = alpha/beta = 1.2; std = sqrt(alpha)/beta = 0.6
-  sensor_n_1 ~ gamma(4.0, 10.0/3.0);
-  sensor_n_2 ~ gamma(4.0, 10.0/3.0);
+  // Prior on sensor_n; <gamma> = alpha/beta = 1.5; std = sqrt(alpha)/beta = 0.5
+  sensor_n_1 ~ gamma(9.0, 6.0);
+  sensor_n_2 ~ gamma(9.0, 6.0);
   
   // Prior on log_ec50; flat prior with erf boundaries
   target += log1m(erf((log_x_min + 0.7 - log_ec50_1)/0.5));
