@@ -151,19 +151,26 @@ class BarSeqFitnessFrame:
         barcode_frame["RS_name"] = name_list
     
         if ref_seq_frame is not None:
+            no_match_list = []
             for index, row in ref_seq_frame.iterrows():
                 display_frame = barcode_frame[barcode_frame["forward_BC"].str.contains(row["forward_lin_tag"])]
                 display_frame = display_frame[display_frame["reverse_BC"].str.contains(row["reverse_lin_tag"])]
                 display_frame = display_frame[["RS_name", "forward_BC", "reverse_BC", "total_counts"]]
+                if len(display_frame)==0:
+                    n = row["RS_name"]
+                    no_match_list.append(n)
                 if len(display_frame)>1:
                     n = row["RS_name"]
                     print(f"found more than one possible match for {n}")
                 if len(display_frame)>0:
                     display_frame["RS_name"].iloc[0] = row["RS_name"]
                     barcode_frame.loc[display_frame.index[0], "RS_name"] = row["RS_name"]
-                if show_output:
-                    display(display_frame)
-        
+                    if show_output:
+                        display(display_frame)
+            print(f'no matches found for:')
+            for n in np.unique(no_match_list):
+                print(f'    {n}')
+            print()
             total_reads = barcode_frame["total_counts"].sum()
             print(f"total reads: {total_reads}")
             total_RS_reads = barcode_frame[barcode_frame["RS_name"]!=""]["total_counts"].sum()
