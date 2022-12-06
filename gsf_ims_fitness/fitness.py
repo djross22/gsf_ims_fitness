@@ -947,6 +947,8 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
                 [-0.7473, 4.538e+03, 1.849]
             elif tet_conc==1.25:
                 params = np.array([-0.9812, 186.4, 0.9386, 0.1216, 45.1, 0.05396]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
+            elif tet_conc==20:
+                params = np.array([-0.72246,  13328,  3.2374]) #place-holder values, for testing
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
