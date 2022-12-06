@@ -693,7 +693,7 @@ class BarSeqFitnessFrame:
             if fit_fitness_difference_params is None:
                 fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
             
-            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
+            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
             log_g0_ind = params_list.index('log_g0')
             log_ginf_g0_ind = params_list.index('log_ginf_g0_ratio_1')
@@ -705,8 +705,8 @@ class BarSeqFitnessFrame:
             if fit_fitness_difference_params is None:
                 fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
             
-            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'log_sensor_n_1', 'log_ginf_g0_ratio_1',
-                           'log_ginf_2', 'log_ec50_2', 'log_sensor_n_2', 'log_ginf_g0_ratio_2',
+            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
+                           'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2',
                            'low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
             log_g0_ind = params_list.index('log_g0')
@@ -1710,8 +1710,8 @@ class BarSeqFitnessFrame:
                         return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
                                                  fit_fitness_difference_params[1], fit_fitness_difference_params[2])
             else:
-                def fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n):
-                    return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, 10**log_nx,
+                def fit_funct(x, log_g0, log_ginf, log_ec50, nx, low_fitness, mid_g, fitness_n):
+                    return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
                                              low_fitness, 0, mid_g, fitness_n)
         
         
@@ -1828,7 +1828,7 @@ class BarSeqFitnessFrame:
                             x_fit = np.insert(x_fit, 0, 0)
                             
                             # fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n)
-                            params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'log_sensor_n_{lig}', 
+                            params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
                                            f'low_fitness_{tet}_tet', f'mid_g_{tet}_tet', f'fitness_n_{tet}_tet']
                             
                             params = [row[p] for p in params_list]
@@ -1899,8 +1899,8 @@ class BarSeqFitnessFrame:
                         # Also plot Hill fit result for g
                         x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
                         x_fit = np.insert(x_fit, 0, 0)
-                        params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'log_sensor_n_{lig}']
-                        hill_params = [10**row[p] for p in params_list]
+                        params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}']
+                        hill_params = [10**row[p] for p in params_list[:-1]] + [row[params_list[-1]]]
                         y_fit = hill_funct(x_fit, *hill_params)
                         axg.plot(x_fit, y_fit, c=color, zorder=1000)
                         
