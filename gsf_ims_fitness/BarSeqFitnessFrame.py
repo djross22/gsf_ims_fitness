@@ -773,8 +773,11 @@ class BarSeqFitnessFrame:
                 stan_samples_out = np.full((quantile_params_dim, 32), np.nan)
                 stan_quantiles = np.full((quantile_params_dim, quantile_dim), np.nan)
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
-                hill_invert_prob = np.nan
                 hill_on_at_zero_prob = np.nan
+                if len(lig_list) == 1:
+                    hill_invert_prob = np.nan
+                else:
+                    hill_invert_prob = [np.nan, np.nan]
             
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
