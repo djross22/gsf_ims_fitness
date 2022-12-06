@@ -102,8 +102,6 @@ transformed parameters {
   vector[N_lig] mean_y_2_low_tet;
   vector[N_lig] mean_y_2_high_tet;
   
-  vector[N] g;             // GP approx to gene expression
-  
   real g0;
   vector[N_lig] g_1;                // gene expression level at each non-zero concentration of ligand 1
   vector[N_lig] g_2;                // gene expression level at each non-zero concentration of ligand 2
