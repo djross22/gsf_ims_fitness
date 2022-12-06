@@ -148,16 +148,6 @@ model {
   target += log1m(erf((log_x_min + 0.7 - log_ec50_2)/0.5));
   target += log1m(erf((log_ec50_2 - log_x_max + 0.8)/0.3));
   
-  // Prior on log_g0; flat prior with erf boundaries
-  target += log1m(erf((log_g_min + 0.9 - log_g0)/log_g_prior_scale));
-  target += log1m(erf((log_g0 - log_g_max + 0.9)/log_g_prior_scale));
-  
-  // Prior on log_ginf; flat prior with erf boundaries
-  target += log1m(erf((log_g_min + 0.9 - log_ginf_1)/log_g_prior_scale));
-  target += log1m(erf((log_ginf_1 - log_g_max + 0.9)/log_g_prior_scale));
-  target += log1m(erf((log_g_min + 0.9 - log_ginf_2)/log_g_prior_scale));
-  target += log1m(erf((log_ginf_2 - log_g_max + 0.9)/log_g_prior_scale));
-  
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
   

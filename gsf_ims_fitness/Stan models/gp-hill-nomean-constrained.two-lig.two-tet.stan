@@ -45,19 +45,12 @@ transformed data {
   int N;                       // number of grid points for GP
   vector[2] x_gp[2*N_lig+1];   // array of 2D coordinates of the log(ligand concentrations)
   real sqrt_pi = sqrt(pi());
-  real low_constr;
-  real high_constr;
-  real sig_constr;
   real center_log_g;
   real log_spacing;
   real zero_spacing_factor;
   vector[2] log_x_zero;
   
   N = 2*N_lig+1;
-  
-  low_constr = log_g_min + 0.5;
-  high_constr = log_g_max - 0.5;
-  sig_constr = 0.9;
   
   center_log_g = (log_g_min + log_g_max)/2;
   
@@ -132,15 +125,8 @@ transformed parameters {
     L_K = cholesky_decompose(K);
 
     log_g = center_log_g + L_K * eta;
-    for (i in 1:N){
-      //constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
-      
-      term1 = sig_constr/sqrt_pi*(exp(-((low_constr - log_g[i])^2/sig_constr^2)) - exp(-((high_constr - log_g[i])^2/sig_constr^2)));
-      term2 = (log_g[i] - high_constr)*erf((high_constr - log_g[i])/sig_constr);
-      term3 = (low_constr - log_g[i])*erf((low_constr - log_g[i])/sig_constr);
-      
-      constr_log_g[i] = (high_constr + low_constr + term1 + term2 + term3)/2;
-    }
+	
+    constr_log_g = log_g_min + (log_g_max - log_g_min)*inv_logit(log_g);
 
   }
   
