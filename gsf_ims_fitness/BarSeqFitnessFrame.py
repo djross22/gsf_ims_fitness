@@ -1886,6 +1886,14 @@ class BarSeqFitnessFrame:
                                 axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=fill_alpha, color=color);
                         axg.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=10)
                         
+                        # Also plot Hill fit result for g
+                        x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                        x_fit = np.insert(x_fit, 0, 0)
+                        params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'log_sensor_n_{lig}']
+                        hill_params = [10**row[p] for p in params_list]
+                        y_fit = hill_funct(x_fit, *hill_params)
+                        axg.plot(x_fit, y_fit, c=color, zorder=1000)
+                        
             fig_axs_list.append((fig, axs_grid))
             
         if save_plots:
