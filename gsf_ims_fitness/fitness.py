@@ -928,18 +928,25 @@ def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
     return colors.hsv_to_rgb(hsv_color)
 
-def fit_fitness_difference_params(plasmid="pVER", tet_conc=20):
+def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=False):
     # params are: low_fitness, mid_g, fitness_n, low_fitness_err, mid_g_err, fitness_n_err, 
     if plasmid == "pVER":
-        if tet_conc==20:
-            params = np.array([-0.72246,  13328,  3.2374])
-        elif tet_conc==10:
-            #params = np.array([-0.8102, 4955, 1.817])
-            #params = np.array([-0.818, 4.96e+03, 1.812, 0.009651, 133.5, 0.05171]) # from fit to 5 RSs using barseq data from 2021-12-12_IPTG_Select-DNA-5-plates
-            params = np.array([-0.7473, 4.538e+03, 1.849, 0.008271, 93.44, 0.03828]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
-            [-0.7473, 4.538e+03, 1.849]
-        elif tet_conc==1.25:
-            params = np.array([-0.7949, 239.3, 0.9777, 0.05126, 35.01, 0.04737]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
+        if use_geo_mean:
+            if tet_conc==20:
+                params = np.array([-0.72246,  13328,  3.2374])
+            elif tet_conc==10:
+                #params = np.array([-0.8102, 4955, 1.817])
+                #params = np.array([-0.818, 4.96e+03, 1.812, 0.009651, 133.5, 0.05171]) # from fit to 5 RSs using barseq data from 2021-12-12_IPTG_Select-DNA-5-plates
+                params = np.array([-0.7473, 4.538e+03, 1.849, 0.008271, 93.44, 0.03828]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
+                [-0.7473, 4.538e+03, 1.849]
+            elif tet_conc==1.25:
+                params = np.array([-0.7949, 239.3, 0.9777, 0.05126, 35.01, 0.04737]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
+        else:
+            if tet_conc==10:
+                params = np.array([-0.7445, 4.967e+03, 1.891, 0.008442, 104.2, 0.04059]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
+                [-0.7473, 4.538e+03, 1.849]
+            elif tet_conc==1.25:
+                params = np.array([-0.9812, 186.4, 0.9386, 0.1216, 45.1, 0.05396]) # from fit to 8 RSs and several other numbered variants using 4-lane barseq data from 2022-11-08_two-lig_two-sel_DNA-5-plates
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
@@ -947,7 +954,7 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20):
 
 def log_g_limits(plasmid="pVER"):
     if plasmid == "pVER":
-        log_g_min = 0.4
+        log_g_min = 0
         log_g_max = 4.7
         log_g_prior_scale = 0.15
         wild_type_ginf = 2.44697108e+04
