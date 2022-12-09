@@ -1606,8 +1606,8 @@ class BarSeqFitnessFrame:
                 old_style_plots = old_style_plots or (c not in barcode_frame.columns)
         if old_style_plots:
             print("Using old style column headings")
-        else:
-            print("Using new style column headings")
+        #else:
+        #    print("Using new style column headings")
         
         fit_plot_colors = sns.color_palette()
         
