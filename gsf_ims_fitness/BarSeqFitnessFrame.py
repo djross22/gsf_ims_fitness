@@ -804,7 +804,7 @@ class BarSeqFitnessFrame:
                 invert_prob_list.append(hill_invert_prob)
                 on_at_zero_prob_list.append(hill_on_at_zero_prob)
             
-            perr_list = [np.diagonal(x) for x in pcov_list]
+            perr_list = [np.sqrt(np.diagonal(x)) for x in pcov_list]
             
             for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
                 col_name = param
