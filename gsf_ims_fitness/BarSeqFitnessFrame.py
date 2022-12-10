@@ -780,7 +780,7 @@ class BarSeqFitnessFrame:
                     hill_invert_prob = [np.nan, np.nan]
             
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob)
+            return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, st_index)
         
         if refit_index is None:
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
@@ -792,9 +792,10 @@ class BarSeqFitnessFrame:
             quantiles_list = []
             invert_prob_list = []
             on_at_zero_prob_list = []
+            index_list = []
             
             for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = item
+                stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, ind = item
                 
                 popt_list.append(stan_popt)
                 pcov_list.append(stan_pcov)
@@ -803,6 +804,12 @@ class BarSeqFitnessFrame:
                 quantiles_list.append(stan_quantiles)
                 invert_prob_list.append(hill_invert_prob)
                 on_at_zero_prob_list.append(hill_on_at_zero_prob)
+                index_list.append(ind)
+            
+            if index_list == list(barcode_frame.index):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
             
             perr_list = [np.sqrt(np.diagonal(x)) for x in pcov_list]
             
@@ -985,7 +992,7 @@ class BarSeqFitnessFrame:
                 stan_resid = np.nan
                 print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples)
+            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, st_index)
         
         if refit_index is None:
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
@@ -1005,8 +1012,10 @@ class BarSeqFitnessFrame:
             stan_g_samples_list = []
             stan_dg_samples_list = []
             
+            index_list = []
+            
             for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples = item
+                stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, ind = item
                 
                 popt_list.append(stan_popt)
                 pcov_list.append(stan_pcov)
@@ -1022,6 +1031,13 @@ class BarSeqFitnessFrame:
                 
                 stan_g_samples_list.append(stan_g_samples)
                 stan_dg_samples_list.append(stan_dg_samples)
+                
+                index_list.append(ind)
+            
+            if index_list == list(barcode_frame.index):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
             
             stan_g_list = np.array(stan_g_list).transpose([1,0,2,3])
             stan_g_var_list = np.array(stan_g_var_list).transpose([1,0,2])
