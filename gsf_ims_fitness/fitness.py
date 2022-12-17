@@ -15,6 +15,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
+from scipy.interpolate import interpn
 #from scipy import special
 #from scipy import misc
 
@@ -23,6 +24,8 @@ import pickle
 
 import seaborn as sns
 sns.set()
+import palettable
+import cmocean
 
 #from IPython.display import display
 
@@ -1015,4 +1018,30 @@ def density_scatter_plot(x , y, ax=None, sort=True, bins=50, log_x=True, log_y=F
         norm = None
     sc = ax.scatter( x, y, c=z, norm=norm, **kwargs )
     return ax, sc
+
+
+def density_scatter_cmap():
+    # Diverging colormap from darkened sns.color_palette()[0] (blue) to sns.color_palette()[1] (orange),
+    #     with yellow/off-white in the middle (taken from palettable.lightbartlein.diverging.BlueDarkOrange12_3)
+    color_0 = colors.to_rgb((sns.color_palette()[0]))
+    color_1 = colors.to_rgb((sns.color_palette()[1]))
+
+    cmap = palettable.lightbartlein.diverging.BlueDarkOrange12_3.mpl_colormap
+    c_arr = np.array(cmap(range(cmap.N)))
+    new_c_arr = np.array([ c_arr[0], c_arr[127], c_arr[-20] ])
+    for i, c in enumerate(new_c_arr):
+        if i<1:
+            #c[0] = c[0] * 0
+            #c[1] = c[1] * 0
+            #c[2] = c[2] * 0.75
+            c[0] = color_0[0] * 0.75 #0.75 factor darkens the starting color
+            c[1] = color_0[1] * 0.75
+            c[2] = color_0[2] * 0.75
+        if i>1:
+            c[0] = color_1[0]
+            c[1] = color_1[1]
+            c[2] = color_1[2]
+    new_cmap = colors.LinearSegmentedColormap.from_list("test_map", new_c_arr)
+    
+    return new_cmap
 
