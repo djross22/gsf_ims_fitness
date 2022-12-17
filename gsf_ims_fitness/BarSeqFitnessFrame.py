@@ -2129,8 +2129,8 @@ class BarSeqFitnessFrame:
             
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None, in_alpha=0.7,
-                         error_bars=True, log_high_err_cutoff=0.71, legend=True,
-                         everything_color=None, box_size=8):
+                         error_bars=True, log_ginf_err_cutoff=0.71, legend=True,
+                         everything_color=None, box_size=6, ligand=None):
         
         if in_labels is None:
             in_labels = [""] * len (input_frames)
@@ -2146,10 +2146,14 @@ class BarSeqFitnessFrame:
         axs = axs_grid.flatten()
     
         y_label_list = ["G0", "Ginf", "Ginf/G0", "n"]
+        if ligand is None:
+            lig_str = ''
+        else:
+            lig_str = f'_{ligand}'
         if 'log_g0' in self.barcode_frame.columns.values:
-            param_names = ["log_g0", "log_ginf", "log_ginf_g0_ratio", "log_n"]
-            x_param = f'log_ec50'
-            x_err_label = f'log_ec50 error'
+            param_names = ["log_g0", f"log_ginf{lig_str}", f"log_ginf_g0_ratio{lig_str}", f"sensor_n{lig_str}"]
+            x_param = f"log_ec50{lig_str}"
+            x_err_label = f"log_ec50{lig_str}_err"
         else:
             param_names = ["log_low_level", "log_high_level", "log_high_low_ratio", "log_n"]
             x_param = f'log_ic50'
@@ -2160,43 +2164,52 @@ class BarSeqFitnessFrame:
         # This part plots the input input_frames
         for input_frame, c, lab in zip(input_frames, in_colors, in_labels):
             for ax, name in zip(axs, param_names):
-                y_err_label = f'{name} error'
+                y_err_label = f"{name}_err"
         
                 params_x = input_frame[x_param]
                 params_y = input_frame[name]
                 err_x = input_frame[x_err_label]
                 err_y = input_frame[y_err_label]
                 
-                if error_bars:
-                    yerr = err_y
-                    xerr = err_x
-                    xerr = log_plot_errorbars(params_x, xerr)
-                    yerr = log_plot_errorbars(params_y, yerr)
-                    #xerr = np.array([xerr]).transpose()
-                    #yerr = np.array([yerr]).transpose()
+                yerr = err_y
+                xerr = err_x
+                xerr = fitness.log_plot_errorbars(params_x, xerr)
+                x = 10**params_x
+                if ax is not axs[-1]:
+                    yerr = fitness.log_plot_errorbars(params_y, yerr)
+                    y = 10**params_y
+                else:
+                    y = params_y
                 
-                    ax.errorbar(10**params_x, 10**params_y, yerr=yerr, xerr=xerr, fmt="o", ms=4, color=c,
+                if error_bars:
+                    ax.errorbar(x, y, yerr=yerr, xerr=xerr, fmt="o", ms=4, color=c,
                                 label=lab, alpha=in_alpha);
                 else:
-                    ax.plot(10**params_x, 10**params_y, "o", ms=4, color=c,
+                    ax.plot(x, y, "o", ms=4, color=c,
                             label=lab, alpha=in_alpha);
     
         # This part plots all the rest
         plot_frame = self.barcode_frame[3:]
         plot_frame = plot_frame[plot_frame["total_counts"]>3000]
         if 'log_g0' in self.barcode_frame.columns.values:
-            plot_frame = plot_frame[plot_frame["log_ginf error"]<log_high_err_cutoff]
+            plot_frame = plot_frame[plot_frame[f"log_ginf{lig_str}_err"]<log_ginf_err_cutoff]
         else:
-            plot_frame = plot_frame[plot_frame["log_high_level error"]<log_high_err_cutoff]
+            plot_frame = plot_frame[plot_frame["log_high_level error"]<log_ginf_err_cutoff]
         for ax, name, y_label in zip(axs, param_names, y_label_list):
             
-            params_x = 10**plot_frame[x_param]
-            params_y = 10**plot_frame[name]
+            params_x = plot_frame[x_param]
+            params_y = plot_frame[name]
+            
+            x = 10**params_x
+            if ax is not axs[-1]:
+                y = 10**params_y
+            else:
+                y = params_y
             
             ax.set_xscale("log");
             xlim = ax.get_xlim()
             ylim = ax.get_ylim()
-            ax.plot(params_x, params_y, "o", ms=3, color=everything_color, zorder=0, alpha=0.3, label="everything");
+            ax.plot(x, y, "o", ms=3, color=everything_color, zorder=0, alpha=0.3, label="everything");
             #ax.set_xlim(xlim);
             #ax.set_ylim(ylim);
             ax.set_xlabel(x_label, size=20)
@@ -2268,14 +2281,6 @@ def plot_colors48():
         for i in range(4):
             p_c12.append(c)
     return p_c12
-
-def log_plot_errorbars(log_mu, log_sig):
-    mu = np.array(10**log_mu)
-    mu_low = np.array(10**(log_mu - log_sig))
-    mu_high = np.array(10**(log_mu + log_sig))
-    sig_low = mu - mu_low
-    sig_high = mu_high - mu
-    return np.array([sig_low, sig_high])
                 
 def hill_funct(x, low, high, mid, n):
     return low + (high-low)*( x**n )/( mid**n + x**n )
