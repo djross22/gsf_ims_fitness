@@ -972,4 +972,47 @@ def log_g_limits(plasmid="pVER"):
         wild_type_ginf = 1839
     
     return (log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf)
+
+def log_plot_errorbars(log_mu, log_sig):
+    mu = np.array(10**log_mu)
+    mu_low = np.array(10**(log_mu - log_sig))
+    mu_high = np.array(10**(log_mu + log_sig))
+    sig_low = mu - mu_low
+    sig_high = mu_high - mu
+    return np.array([sig_low, sig_high])
+
+
+def density_scatter_plot(x , y, ax=None, sort=True, bins=50, log_x=True, log_y=False, log_z=True, z_cutoff=None, **kwargs)   :
+    """
+    Scatter plot colored by 2d histogram
+    """
+    if ax is None :
+        fig , ax = plt.subplots()
         
+    x_data = x
+    y_data = y
+    if log_x:
+        x_data = np.log10(x)
+    if log_y:
+        y_data = np.log10(y)
+        
+    data, x_e, y_e = np.histogram2d( x_data, y_data, bins=bins)
+    z = interpn( ( 0.5*(x_e[1:] + x_e[:-1]), 0.5*(y_e[1:]+y_e[:-1]) ), data, np.vstack([x_data,y_data]).T,
+                method = "splinef2d", bounds_error = False )
+
+    # Sort the points by density, so that the densest points are plotted last
+    if sort :
+        idx = z.argsort()
+        x, y, z = x[idx], y[idx], z[idx]
+    
+    if z_cutoff is not None:
+        z[z<z_cutoff] = z_cutoff/10
+
+    if log_z:
+        #z = np.log(z)
+        norm = colors.LogNorm()
+    else:
+        norm = None
+    sc = ax.scatter( x, y, c=z, norm=norm, **kwargs )
+    return ax, sc
+
