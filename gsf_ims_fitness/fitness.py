@@ -931,6 +931,46 @@ def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
     return colors.hsv_to_rgb(hsv_color)
 
+def fitness_calibration_dict(plasmid="pVER"):
+    # Dictionary of dictionaries
+    #     first key is tet concentration
+    #     second key is spike-in name
+    spike_in_fitness_dict = {}
+    tet_list = [0, 1.25, 10, 20]
+    # Fitness for 0, 1.25 and 10 are from 2022-11-22_two-lig_two-sel_OD-test-5-plates, 
+    # Fitness for 20 is from 2019 data, rescaled to match older zero-tet from 2022-11-22
+    # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
+    # old: fitness_dicts = [{"AO-B": 0.9637, "AO-E": 0.9666}, {"AO-B": 0.9587125, "AO-E": 0.9597825}, 
+    # old:                  {"AO-B": 0.93045, "AO-E": 0.92115}, {"AO-B": 0.8972, "AO-E": 0.8757}]
+                     
+    fitness_dicts = [{"AO-B": 0.9288, "AO-E": 0.9282}, {"AO-B": 0.9199, "AO-E": 0.9244}, 
+                     {"AO-B": 0.9063, "AO-E": 0.9014}, {"AO-B": 0.8972*0.9288/0.9637, "AO-E": 0.8757*0.9282/0.9666}]
+    '''
+        pTY1-AO-B, tet: 0.0
+            0.9288 +- 0.0026
+
+        pTY1-AO-B, tet: 1.25
+            0.9199 +- 0.0036
+
+        pTY1-AO-B, tet: 10.0
+            0.9063 +- 0.0055
+
+        pTY1-AO-E, tet: 0.0
+            0.9282 +- 0.0045
+
+        pTY1-AO-E, tet: 1.25
+            0.9244 +- 0.0030
+
+        pTY1-AO-E, tet: 10.0
+            0.9014 +- 0.0040
+    '''
+    
+    for t, d in zip(tet_list, fitness_dicts):
+        spike_in_fitness_dict[t] = d
+    
+    return spike_in_fitness_dict
+    
+
 def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=False):
     # params are: low_fitness, mid_g, fitness_n, low_fitness_err, mid_g_err, fitness_n_err, 
     if plasmid == "pVER":
