@@ -259,6 +259,67 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
         
             
+    def stan_barcode_fitness(self,
+                             index,
+                             spike_in_name="AO-B",
+                             ignore_samples=[],
+                             plasmid="pVER",
+                             iterations=100,
+                             chains=4,
+                             control=None):
+        
+        barcode_frame = self.barcode_frame
+        
+        # get lists of samples with and without tet
+        sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples)
+        
+        # Dictionary of dictionaries
+        #     first key is tet concentration
+        #     second key is spike-in name
+        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
+        
+        antibiotic_concentration_list = np.unique(sample_plate_map.antibiotic_conc)
+        high_tet = antibiotic_concentration_list[-1]
+        if len(antibiotic_concentration_list)>2:
+            low_tet = antibiotic_concentration_list[1]
+        
+        row = barcode_frame.loc[index]
+        
+        spike_in_row = barcode_frame[barcode_frame["RS_name"]==spike_in_name].iloc[0]
+        
+        x0 = np.array([i for i in range(4)])
+        
+        sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
+        stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file)
+            
+        for samp in samples_without_tet:
+            df = sample_plate_map
+            df = df[df["sample_id"]==samp]
+            df = df.sort_values('growth_plate')
+            well_list = list(df.well.values)
+        
+            spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
+            spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
+            
+            n_reads = np.array(row[well_list], dtype='int64')
+                    
+            sel = sample_keep_dict[samp]
+            x = x0[sel]
+            y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
+            s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
+            
+            popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
+            print(popt)
+            
+            stan_data = dict(N=len(x), x=x, n_reads=n_reads[sel], spike_in_reads=spike_in_reads[sel])
+            
+            print(stan_data)
+            
+            stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+            
+            return stan_fit
+        
+    
     def fit_barcode_fitness(self,
                             auto_save=True,
                             ignore_samples=[],
