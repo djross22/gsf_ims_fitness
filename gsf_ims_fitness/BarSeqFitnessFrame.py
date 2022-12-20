@@ -274,22 +274,13 @@ class BarSeqFitnessFrame:
                                                plots_not_fits=False)
         
         
-    def plot_or_fit_barcode_ratios(self,
-                                   auto_save=True,
-                                   ignore_samples=[],
-                                   refit_index=None,
-                                   ref_slope_to_average=True,
-                                   bi_linear_alpha=np.log(5),
-                                   plots_not_fits=False,
-                                   plot_range=None,
-                                   show_spike_ins=["b"],
-                                   show_bc_str=False):
+    def get_sample_layout_info(self,
+                               ignore_samples=[],
+                               verbose=True):
         
         barcode_frame = self.barcode_frame
         high_tet = self.high_tet
         low_tet = getattr(self, 'low_tet', None)
-            
-        #os.chdir(self.data_directory)
     
         inducer_conc_list = self.inducer_conc_list
         inducer = self.inducer
@@ -335,6 +326,51 @@ class BarSeqFitnessFrame:
             v = [(s, i+2) not in ignore_samples for i in range(4)]
             sample_keep_dict[s] = v
         
+        
+        samples_with_tet = []
+        samples_without_tet = []
+        for s in sample_list:
+            df = sample_plate_map
+            df = df[df["sample_id"]==s]
+            
+            has_tet = df.iloc[0].with_tet
+            if has_tet:
+                samples_with_tet.append(s)
+            else:
+                samples_without_tet.append(s)
+            
+            df = df.sort_values('growth_plate')
+            well_list = list(df.well.values)
+            
+            count_list = []
+            for ind, row in barcode_frame.iterrows():
+                row_by_sample = row[well_list]
+                count_list.append(row_by_sample.values)
+            
+            # for each sample_id, get a list of counts for each barcode at the 4 time points
+            barcode_frame[f"read_count_S{s}"] = count_list
+        
+        if verbose:
+            print(f"samples_with_tet: {samples_with_tet}")
+            print(f"samples_without_tet: {samples_without_tet}")
+            print()
+        
+        return sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict
+        
+    
+    def plot_or_fit_barcode_ratios(self,
+                                   auto_save=True,
+                                   ignore_samples=[],
+                                   refit_index=None,
+                                   ref_slope_to_average=True,
+                                   bi_linear_alpha=np.log(5),
+                                   plots_not_fits=False,
+                                   plot_range=None,
+                                   show_spike_ins=["b"],
+                                   show_bc_str=False):
+        
+        barcode_frame = self.barcode_frame
+        
         if refit_index is None:
             if plots_not_fits:
                 pass
@@ -342,32 +378,7 @@ class BarSeqFitnessFrame:
                 print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
             
             # get lists of samples with and without tet
-            samples_with_tet = []
-            samples_without_tet = []
-            for s in sample_list:
-                df = sample_plate_map
-                df = df[df["sample_id"]==s]
-                
-                has_tet = df.iloc[0].with_tet
-                if has_tet:
-                    samples_with_tet.append(s)
-                else:
-                    samples_without_tet.append(s)
-                
-                df = df.sort_values('growth_plate')
-                well_list = list(df.well.values)
-                
-                count_list = []
-                for ind, row in barcode_frame.iterrows():
-                    row_by_sample = row[well_list]
-                    count_list.append(row_by_sample.values)
-                
-                # for each sample_id, get a list of counts for each barcode at the 4 time points
-                barcode_frame[f"read_count_S{s}"] = count_list
-            
-            print(f"samples_with_tet: {samples_with_tet}")
-            print(f"samples_without_tet: {samples_without_tet}")
-            print()
+            sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples)
         
         # Dictionary of dictionaries
         #     first key is tet concentration
@@ -405,10 +416,13 @@ class BarSeqFitnessFrame:
         for t, d in zip(tet_list, fitness_dicts):
             spike_in_fitness_dict[t] = d
         
-        if low_tet is None:
+        antibiotic_concentration_list = np.unique(sample_plate_map.antibiotic_conc)
+        high_tet = antibiotic_concentration_list[-1]
+        if len(antibiotic_concentration_list)==2:
             ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
             ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
         else:
+            low_tet = antibiotic_concentration_list[1]
             ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
             ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
             
