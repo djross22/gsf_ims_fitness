@@ -264,7 +264,7 @@ class BarSeqFitnessFrame:
                              spike_in_name="AO-B",
                              ignore_samples=[],
                              plasmid="pVER",
-                             iterations=100,
+                             iterations=1000,
                              chains=4,
                              control=None):
         
@@ -291,7 +291,12 @@ class BarSeqFitnessFrame:
         
         sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
         stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file)
-            
+        
+        x_no_tet = []
+        n_reads_no_tet = []
+        spike_ins_no_tet = []
+        sel_no_tet = []
+        stan_fit_list = []
         for samp in samples_without_tet:
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
@@ -304,6 +309,12 @@ class BarSeqFitnessFrame:
             n_reads = np.array(row[well_list], dtype='int64')
                     
             sel = sample_keep_dict[samp]
+            
+            x_no_tet.append(x0)
+            n_reads_no_tet.append(n_reads)
+            sel_no_tet.append(sel)
+            spike_ins_no_tet.append(spike_in_reads)
+            
             x = x0[sel]
             y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
             s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
@@ -311,13 +322,23 @@ class BarSeqFitnessFrame:
             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
             print(popt)
             
-            stan_data = dict(N=len(x), x=x, n_reads=n_reads[sel], spike_in_reads=spike_in_reads[sel])
-            
-            print(stan_data)
+            stan_data = dict(N=len(x), x=x, n_reads=n_reads[sel], spike_in_reads=spike_in_reads[sel], tau=0.01, nu=20)
             
             stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-            
-            return stan_fit
+            stan_fit_list.append(stan_fit)
+        
+        '''
+        # Run fit again, with summed counts from all zero-tet samples
+        x = x0
+        n_reads = [np.sum(a[s]) for a, s in zip(np.array(n_reads_no_tet).transpose(), np.array(sel_no_tet).transpose())]
+        spike_in_reads = [np.sum(a[s]) for a, s in zip(np.array(spike_ins_no_tet).transpose(), np.array(sel_no_tet).transpose())]
+        
+        stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads)
+        stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+        stan_fit_list.append(stan_fit)
+        '''
+        
+        return stan_fit_list
         
     
     def fit_barcode_fitness(self,
