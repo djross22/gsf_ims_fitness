@@ -266,7 +266,9 @@ class BarSeqFitnessFrame:
                              plasmid="pVER",
                              iterations=1000,
                              chains=4,
-                             control=None):
+                             control=None,
+                             tau_default=0.01,
+                             tau_de_weight=0.1):
         
         barcode_frame = self.barcode_frame
         
@@ -295,7 +297,7 @@ class BarSeqFitnessFrame:
         x_no_tet = []
         n_reads_no_tet = []
         spike_ins_no_tet = []
-        sel_no_tet = []
+        tau_no_tet = []
         stan_fit_list = []
         for samp in samples_without_tet:
             df = sample_plate_map
@@ -313,6 +315,8 @@ class BarSeqFitnessFrame:
             x_no_tet.append(x0)
             n_reads_no_tet.append(n_reads)
             sel_no_tet.append(sel)
+            tau = np.array([tau_default if s else tau_de_weight for s in sel])
+            tau_no_tet.append(tau)
             spike_ins_no_tet.append(spike_in_reads)
             
             x = x0[sel]
@@ -322,7 +326,7 @@ class BarSeqFitnessFrame:
             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
             print(popt)
             
-            stan_data = dict(N=len(x), x=x, n_reads=n_reads[sel], spike_in_reads=spike_in_reads[sel], tau=0.01, nu=20)
+            stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
             
             stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
             stan_fit_list.append(stan_fit)
@@ -397,7 +401,7 @@ class BarSeqFitnessFrame:
                         
                 ignore_samples = new_ignore
             for ig in ignore_samples:
-                print(f"ignoring sample {ig[0]}, time point {ig[1]-1}")
+                print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
             print()
         
         sample_list = np.unique(sample_plate_map.sample_id)

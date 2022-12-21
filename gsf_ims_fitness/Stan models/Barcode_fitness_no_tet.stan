@@ -7,7 +7,7 @@ data {
   int n_reads[N];        // barcode read count for each time point
   int spike_in_reads[N]; // spike-in read count for each time point
   
-  real<lower=0> tau;
+  real<lower=0> tau[N];
   
 }
 
@@ -29,7 +29,7 @@ transformed parameters {
   real log_err[N];         // additional error term
   
   for (i in 1:N) {
-    log_err[i] = tau*log_err_tilda[i];
+    log_err[i] = tau[i]*log_err_tilda[i];
     n_mean[i] = spike_in_reads[i]*exp(log_starting_ratio + log_intercept + log_slope*x[i] + log_err[i]);
   }
   
