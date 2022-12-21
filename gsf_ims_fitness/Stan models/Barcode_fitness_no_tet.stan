@@ -36,5 +36,11 @@ model {
 }
 
 generated quantities {
+  real log_ratio_out[N];
+  real ratio_out[N];
   
+  for (i in 1:N) {
+    log_ratio_out[i] = log(n_mean[i]) - log(spike_in_reads[i]);
+    ratio_out[i] = exp(log_ratio_out[i]);
+  }
 }
