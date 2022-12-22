@@ -20,16 +20,16 @@ data {
 
 transformed data {
   real log_starting_ratio;
-  real min_log_slope;
+  real min_delta_slope;
   
-  min_log_slope = -1*log(dilution_factor);
+  min_delta_slope = -1*log(dilution_factor);
   
   log_starting_ratio = log(n_reads[1]) - log(spike_in_reads[1]);
 }
 
 parameters {
-  real<lower=min_log_slope> log_slope;       // slope of log(n_reads) - log(spike_in_reads)
-  real log_intercept;   // intercept of (log(n_reads) - log(spike_in_reads)) - log(starting_ratio)
+  real<lower=min_delta_slope> delta_slope;   // log_slope - slope_0
+  real log_intercept;                        // intercept of (log(n_reads) - log(spike_in_reads)) - log(starting_ratio)
   
   real slope_0_tilda;         // initial slope (before addition of antibiotic), normalized
   
@@ -40,9 +40,11 @@ parameters {
 transformed parameters {
   real n_mean[N];          // mean expected value for n_reads
   real log_err[N];         // additional error term
-  real slope_0;         // initial slope (before addition of antibiotic)
+  real slope_0;            // initial slope (before addition of antibiotic)
+  real log_slope;          // final slope ((after addition of antibiotic)
   
   slope_0 = slope_0_mu + slope_0_sig*slope_0_tilda;
+  log_slope = slope_0 + delta_slope;
   
   for (i in 1:N) {
     log_err[i] = tau[i]*log_err_tilda[i];
