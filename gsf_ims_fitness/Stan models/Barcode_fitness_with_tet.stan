@@ -15,6 +15,7 @@ data {
   real<lower=0> alpha;
   
   real dilution_factor;
+  real lower_bound_width;
   
 }
 
@@ -28,7 +29,7 @@ transformed data {
 }
 
 parameters {
-  real<lower=min_delta_slope> delta_slope;   // log_slope - slope_0
+  real delta_slope;   // log_slope - slope_0
   real log_intercept;                        // intercept of (log(n_reads) - log(spike_in_reads)) - log(starting_ratio)
   
   real slope_0_tilda;         // initial slope (before addition of antibiotic), normalized
@@ -59,6 +60,9 @@ model {
   log_err_tilda ~ normal(0, 1);
   
   slope_0_tilda ~ normal(0, 1);
+  
+  // soft lower bound prior on delta_slope
+  target += log1m(erf((min_delta_slope - delta_slope)/lower_bound_width));
 
 }
 
