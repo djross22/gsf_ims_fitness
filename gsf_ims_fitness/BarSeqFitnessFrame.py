@@ -340,6 +340,34 @@ class BarSeqFitnessFrame:
         stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
         stan_fit_list.append(stan_fit)
         
+        # Run fits for samples with antibiotic
+        sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
+        stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file)
+        
+        slope_0_mu = np.mean(stan_fit['log_slope'])
+        slope_0_sig = np.std(stan_fit['log_slope'])
+        
+        print(samples_with_tet[5:10])
+        for samp in samples_with_tet[5:10]:
+            df = sample_plate_map
+            df = df[df["sample_id"]==samp]
+            df = df.sort_values('growth_plate')
+            well_list = list(df.well.values)
+        
+            spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
+            spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
+            
+            n_reads = np.array(row[well_list], dtype='int64')
+                    
+            sel = sample_keep_dict[samp]
+            tau = np.array([tau_default if s else tau_de_weight for s in sel])
+            
+            stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau,
+                             slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, alpha=np.log(5))
+            
+            stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+            stan_fit_list.append(stan_fit)
+        
         
         return stan_fit_list
         
