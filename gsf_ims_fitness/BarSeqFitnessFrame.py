@@ -347,8 +347,7 @@ class BarSeqFitnessFrame:
         slope_0_mu = np.mean(stan_fit['log_slope'])
         slope_0_sig = np.std(stan_fit['log_slope'])
         
-        print(samples_with_tet[5:10])
-        for samp in samples_with_tet[5:10]:
+        for samp in samples_with_tet:
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
             df = df.sort_values('growth_plate')
@@ -363,7 +362,8 @@ class BarSeqFitnessFrame:
             tau = np.array([tau_default if s else tau_de_weight for s in sel])
             
             stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau,
-                             slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, alpha_mu=np.log(5), alpha_sig=0.3)
+                             slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, 
+                             alpha=np.log(5), dilution_factor=10)
             
             stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
             stan_fit_list.append(stan_fit)
