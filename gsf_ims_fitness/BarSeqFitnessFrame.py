@@ -257,10 +257,10 @@ class BarSeqFitnessFrame:
         
         if auto_save:
             self.save_as_pickle()
-        
-            
+    
+    
     def stan_barcode_fitness(self,
-                             index,
+                             index=None,
                              spike_in_name="AO-B",
                              ignore_samples=[],
                              plasmid="pVER",
@@ -270,12 +270,89 @@ class BarSeqFitnessFrame:
                              tau_default=0.01,
                              tau_de_weight=0.1,
                              ref_samples=None,
-                             ref_tau_factor=1):
+                             ref_tau_factor=1,
+                             return_fits=True):
+        
+        arg_dict = dict(spike_in_name=spike_in_name,
+                        ignore_samples=ignore_samples,
+                        plasmid=plasmid,
+                        iterations=iterations,
+                        chains=chains,
+                        control=control,
+                        tau_default=tau_default,
+                        tau_de_weight=tau_de_weight,
+                        ref_samples=ref_samples,
+                        ref_tau_factor=ref_tau_factor,
+                        return_fits=return_fits)
+                             
+        if index is None:
+            # run Stan fits for all barcodes in barcode_frame
+            print("Using Stan model to ditirmine fitness estimate for all barcodes in dataset")
+            arg_dict['return_fits'] = False
+            arg_dict['verbose'] = False
+            
+            if spike_in_name == "AO-B":
+                initial = 'b'
+            elif spike_in_name == "AO-E":
+                initial = 'e'
+            
+            fit_frame = self.barcode_frame
+            
+            fitness_list_dict = {}
+            err_list_dict = {}
+            resid_list_dict = {}
+            
+            ind = fit_frame.index[0]
+            print(ind)
+            ret_dict = self.stan_barcode_fitness_index(index=ind, **arg_dict)
+            key_list = [k for k in ret_dict.keys()]
+            for key in key_list:
+                params = ret_dict[key]
+                fitness_list_dict[key] = [params[0]]
+                err_list_dict[key] = [params[1]]
+                resid_list_dict[key] = [params[2]]
+            
+            print_interval = 10**(np.round(np.log10(len(fit_frame))) - 1)
+            for ind in fit_frame.iloc[1:].index:
+                if ind%print_interval == 0:
+                    print(ind)
+                ret_dict = self.stan_barcode_fitness_index(index=ind, **arg_dict)
+                for key in key_list:
+                    params = ret_dict[key]
+                    fitness_list_dict[key] += [params[0]]
+                    err_list_dict[key] += [params[1]]
+                    resid_list_dict[key] += [params[2]]
+            
+            for samp in fitness_list_dict.keys():
+                fit_frame[f'stan_fitness_S{samp}_{initial}'] = fitness_list_dict[samp]
+                fit_frame[f'stan_fitness_S{samp}_err_{initial}'] = err_list_dict[samp]
+                fit_frame[f'stan_fitness_S{samp}_resid_{initial}'] = list(resid_list_dict[samp])
+            
+        else:
+            # run Stan fit for a single barcode/index
+            arg_dict['index'] = index
+            single_ret = self.stan_barcode_fitness_index(**arg_dict)
+            return single_ret
+            
+    def stan_barcode_fitness_index(self,
+                                   index,
+                                   spike_in_name="AO-B",
+                                   ignore_samples=[],
+                                   plasmid="pVER",
+                                   iterations=1000,
+                                   chains=4,
+                                   control=None,
+                                   tau_default=0.01,
+                                   tau_de_weight=0.1,
+                                   ref_samples=None,
+                                   ref_tau_factor=1,
+                                   return_fits=False,
+                                   verbose=True):
         
         barcode_frame = self.barcode_frame
         
         # get lists of samples with and without tet
-        sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples)
+        sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples, verbose=verbose)
         
         if ref_samples is None:
             ref_samples = samples_without_tet
@@ -297,13 +374,14 @@ class BarSeqFitnessFrame:
         x0 = np.array([i for i in range(4)])
         
         sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
-        stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file)
+        stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file, verbose=verbose)
         
         x_no_tet = []
         n_reads_no_tet = []
         spike_ins_no_tet = []
         tau_no_tet = []
         stan_fit_list = []
+        fitness_out_dict = {}
         for samp in samples_without_tet:
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
@@ -321,13 +399,20 @@ class BarSeqFitnessFrame:
             stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
             
             stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-            stan_fit_list.append(stan_fit)
+            if return_fits:
+                stan_fit_list.append(stan_fit)
             
             if samp in ref_samples:
                 x_no_tet += list(x0)
                 n_reads_no_tet += list(n_reads)
                 tau_no_tet += list(tau)
                 spike_ins_no_tet += list(spike_in_reads)
+                
+            fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
+            fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
+            fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
+            
+            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid]
         
         # Run fit again, with counts from all zero-tet samples
         x = np.array(x_no_tet)
@@ -338,11 +423,12 @@ class BarSeqFitnessFrame:
         stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
         
         stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-        stan_fit_list.append(stan_fit)
+        if return_fits:
+            stan_fit_list.append(stan_fit)
         
         # Run fits for samples with antibiotic
         sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
-        stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file)
+        stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
         
         slope_0_mu = np.mean(stan_fit['log_slope'])
         slope_0_sig = np.std(stan_fit['log_slope'])
@@ -366,10 +452,19 @@ class BarSeqFitnessFrame:
                              alpha=np.log(5), dilution_factor=10, lower_bound_width=0.3)
             
             stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-            stan_fit_list.append(stan_fit)
+            if return_fits:
+                stan_fit_list.append(stan_fit)
+                
+            fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
+            fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
+            fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
+            
+            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid]
         
-        
-        return stan_fit_list
+        if return_fits:
+            return stan_fit_list
+        else:
+            return fitness_out_dict
         
     
     def fit_barcode_fitness(self,
