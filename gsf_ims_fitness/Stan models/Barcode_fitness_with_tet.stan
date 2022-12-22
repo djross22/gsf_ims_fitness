@@ -12,7 +12,8 @@ data {
   real slope_0_mu;
   real slope_0_sig;
   
-  real alpha;
+  real alpha_mu;
+  real alpha_sig;
   
 }
 
@@ -29,6 +30,8 @@ parameters {
   real slope_0_tilda;         // initial slope (before addition of antibiotic), normalized
   
   real log_err_tilda[N];      // additional error term, normalized
+  
+  real<lower=0> alpha;
 }
 
 transformed parameters {
@@ -51,6 +54,8 @@ model {
   log_err_tilda ~ normal(0, 1);
   
   slope_0_tilda ~ normal(0, 1);
+  
+  alpha ~ normal(alpha_mu, alpha_sig);
 
 }
 
