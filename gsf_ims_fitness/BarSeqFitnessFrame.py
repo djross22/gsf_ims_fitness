@@ -301,6 +301,7 @@ class BarSeqFitnessFrame:
             fitness_list_dict = {}
             err_list_dict = {}
             resid_list_dict = {}
+            log_ratio_q_dict = {}
             
             ind = fit_frame.index[0]
             print(ind)
@@ -311,6 +312,7 @@ class BarSeqFitnessFrame:
                 fitness_list_dict[key] = [params[0]]
                 err_list_dict[key] = [params[1]]
                 resid_list_dict[key] = [params[2]]
+                log_ratio_q_dict[key] = [params[3]]
             
             print_interval = 10**(np.round(np.log10(len(fit_frame))) - 1)
             for ind in fit_frame.iloc[1:].index:
@@ -322,11 +324,13 @@ class BarSeqFitnessFrame:
                     fitness_list_dict[key] += [params[0]]
                     err_list_dict[key] += [params[1]]
                     resid_list_dict[key] += [params[2]]
+                    log_ratio_q_dict[key] += [params[3]]
             
             for samp in fitness_list_dict.keys():
                 fit_frame[f'fitness_S{samp}_s{initial}'] = fitness_list_dict[samp]
                 fit_frame[f'fitness_S{samp}_err_s{initial}'] = err_list_dict[samp]
                 fit_frame[f'fitness_S{samp}_resid_s{initial}'] = list(resid_list_dict[samp])
+                fit_frame[f'fitness_S{samp}_log_ratio_out_s{initial}'] = list(log_ratio_q_dict[samp])
             
         else:
             # run Stan fit for a single barcode/index
@@ -411,8 +415,9 @@ class BarSeqFitnessFrame:
             fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
             fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
             fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
+            log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
             
-            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid]
+            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
         
         # Run fit again, with counts from all zero-tet samples
         x = np.array(x_no_tet)
@@ -458,8 +463,9 @@ class BarSeqFitnessFrame:
             fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
             fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
             fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
+            log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
             
-            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid]
+            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
         
         if return_fits:
             return stan_fit_list
@@ -662,6 +668,7 @@ class BarSeqFitnessFrame:
                 f_err_list = []
                 slope_list = []
                 resids_list = []
+                log_ratio_out_list = []
                 for (index, row), ax in zip(fit_frame.iterrows(), axs): # iterate over barcodes
                     n_reads = np.array(row[well_list], dtype='int64')
                     
@@ -678,8 +685,10 @@ class BarSeqFitnessFrame:
                     else:
                         if len(x)>1:
                             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
-                            resids = y - fitness.line_funct(x, *popt)
+                            log_ratio_out = fitness.line_funct(x, *popt)
+                            resids = y - log_ratio_out
                             resids_list.append(resids)
+                            log_ratio_out_list.append(log_ratio_out)
                             slope_list.append(popt[0])
                             f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                             f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
@@ -688,11 +697,13 @@ class BarSeqFitnessFrame:
                             f_est_list.append(np.nan)
                             f_err_list.append(np.nan)
                             resids_list.append(np.full(4, np.nan))
+                            log_ratio_out_list.append(np.full(4, np.nan))
                 
                 if not plots_not_fits:
                     fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                     fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
                     fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
+                    fit_frame[f'fitness_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
             
                 no_tet_slope_lists.append(slope_list)
                 
@@ -719,6 +730,7 @@ class BarSeqFitnessFrame:
                 f_est_list = []
                 f_err_list = []
                 resids_list = []
+                log_ratio_out_list = []
                 for (index, row), slope_0, ax in zip(fit_frame.iterrows(), no_tet_slope, axs): # iterate over barcodes
                     if plots_not_fits and (initial=='b') and (samp == samples_with_tet[0]):
                         barcode_str = str(index) + ': '
@@ -748,20 +760,24 @@ class BarSeqFitnessFrame:
                     else:
                         if len(x)>1:
                             popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
-                            resids = y - fit_funct(x, *popt)
+                            log_ratio_out = fit_funct(x, *popt)
+                            resids = y - log_ratio_out
                             resids_list.append(resids)
+                            log_ratio_out_list.append(log_ratio_out)
                             f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
                             f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
                         else:
                             f_est_list.append(np.nan)
                             f_err_list.append(np.nan)
                             resids_list.append(np.full(4, np.nan))
+                            log_ratio_out_list.append(np.full(4, np.nan))
                         
                         
                 if not plots_not_fits:
                     fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                     fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
                     fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
+                    fit_frame[f'fitness_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
         
         if plots_not_fits:
             for ax in axs:
