@@ -287,7 +287,7 @@ class BarSeqFitnessFrame:
                              
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
-            print("Using Stan model to ditirmine fitness estimate for all barcodes in dataset")
+            print("Using Stan model to detirmine fitness estimate for all barcodes in dataset")
             arg_dict['return_fits'] = False
             arg_dict['verbose'] = False
             
