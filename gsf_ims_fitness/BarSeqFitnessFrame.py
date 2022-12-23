@@ -462,7 +462,7 @@ class BarSeqFitnessFrame:
                 
             fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
             fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
-            fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
+            fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
             log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
             
             fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
