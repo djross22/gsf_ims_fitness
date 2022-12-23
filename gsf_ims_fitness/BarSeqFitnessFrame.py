@@ -324,9 +324,9 @@ class BarSeqFitnessFrame:
                     resid_list_dict[key] += [params[2]]
             
             for samp in fitness_list_dict.keys():
-                fit_frame[f'stan_fitness_S{samp}_{initial}'] = fitness_list_dict[samp]
-                fit_frame[f'stan_fitness_S{samp}_err_{initial}'] = err_list_dict[samp]
-                fit_frame[f'stan_fitness_S{samp}_resid_{initial}'] = list(resid_list_dict[samp])
+                fit_frame[f'fitness_S{samp}_s{initial}'] = fitness_list_dict[samp]
+                fit_frame[f'fitness_S{samp}_err_s{initial}'] = err_list_dict[samp]
+                fit_frame[f'fitness_S{samp}_resid_s{initial}'] = list(resid_list_dict[samp])
             
         else:
             # run Stan fit for a single barcode/index
@@ -576,7 +576,8 @@ class BarSeqFitnessFrame:
                                    plot_range=None,
                                    show_spike_ins=["b"],
                                    show_bc_str=False,
-                                   plasmid="pVER"):
+                                   plasmid="pVER",
+                                   plot_samples=None):
         
         barcode_frame = self.barcode_frame
         
@@ -589,6 +590,8 @@ class BarSeqFitnessFrame:
             # get lists of samples with and without tet
             sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples)
         
+        if plot_samples is None:
+            plot_samples = samples_with_tet + samples_without_tet
         # Dictionary of dictionaries
         #     first key is tet concentration
         #     second key is spike-in name
@@ -668,9 +671,9 @@ class BarSeqFitnessFrame:
                     s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
                     
                     if plots_not_fits:
-                        if initial in show_spike_ins:
-                            slope = (row[f'fitness_S{samp}_{initial}'] - spike_in_fitness)*np.log(10)
-                            slope_list.append(slope)
+                        slope = (row[f'fitness_S{samp}_{initial}'] - spike_in_fitness)*np.log(10)
+                        slope_list.append(slope)
+                        if (initial in show_spike_ins) and (samp in plot_samples):
                             ax.errorbar(x, y, s, fmt='o', label=f"{samp}-{initial}", ms=10)
                     else:
                         if len(x)>1:
@@ -740,7 +743,7 @@ class BarSeqFitnessFrame:
                     def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
                     
                     if plots_not_fits:
-                        if initial in show_spike_ins:
+                        if (initial in show_spike_ins) and (samp in plot_samples):
                             ax.errorbar(x, y, s, fmt='^', label=f"{samp}-{initial}", ms=10)
                     else:
                         if len(x)>1:
@@ -753,18 +756,17 @@ class BarSeqFitnessFrame:
                             f_est_list.append(np.nan)
                             f_err_list.append(np.nan)
                             resids_list.append(np.full(4, np.nan))
-                
-                if plots_not_fits:
-                    for ax in axs:
-                        ax.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=3)
                         
                         
-                else:
+                if not plots_not_fits:
                     fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
                     fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
                     fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
-            
-        if not plots_not_fits:
+        
+        if plots_not_fits:
+            for ax in axs:
+                ax.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=3)
+        else:
             self.barcode_frame = barcode_frame
                 
             if auto_save:
@@ -2125,11 +2127,13 @@ class BarSeqFitnessFrame:
     def plot_count_ratios_vs_time(self, plot_range=None,
                                   with_tet=None,
                                   mark_samples=[],
-                                  show_spike_ins=["b"]):
+                                  show_spike_ins=["b"],
+                                  plot_samples=None):
         
         return self.plot_or_fit_barcode_ratios(plots_not_fits=True,
                                                plot_range=plot_range,
-                                               show_spike_ins=show_spike_ins)
+                                               show_spike_ins=show_spike_ins,
+                                               plot_samples=plot_samples)
         
     def plot_counts_vs_time(self, plot_range,
                                   with_tet=None,
