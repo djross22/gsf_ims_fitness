@@ -271,7 +271,9 @@ class BarSeqFitnessFrame:
                              tau_de_weight=10,
                              ref_samples=None,
                              ref_tau_factor=1,
-                             return_fits=True):
+                             return_fits=True,
+                             use_all_samples_model=True,
+                             slope_ref_prior_std=0.1):
         
         arg_dict = dict(spike_in_name=spike_in_name,
                         ignore_samples=ignore_samples,
@@ -283,7 +285,9 @@ class BarSeqFitnessFrame:
                         tau_de_weight=tau_de_weight,
                         ref_samples=ref_samples,
                         ref_tau_factor=ref_tau_factor,
-                        return_fits=return_fits)
+                        return_fits=return_fits,
+                        use_all_samples_model=use_all_samples_model,
+                        slope_ref_prior_std=slope_ref_prior_std)
                              
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
@@ -329,11 +333,15 @@ class BarSeqFitnessFrame:
                     resid_list_dict[key] += [params[2]]
                     log_ratio_q_dict[key] += [params[3]]
             
+            if use_all_samples_model:
+                stan_str = 'sa'
+            else:
+                stan_str = 's'
             for samp in fitness_list_dict.keys():
-                fit_frame[f'fitness_S{samp}_s{initial}'] = fitness_list_dict[samp]
-                fit_frame[f'fitness_S{samp}_err_s{initial}'] = err_list_dict[samp]
-                fit_frame[f'fitness_S{samp}_resid_s{initial}'] = list(resid_list_dict[samp])
-                fit_frame[f'fitness_S{samp}_log_ratio_out_s{initial}'] = list(log_ratio_q_dict[samp])
+                fit_frame[f'fitness_S{samp}_{stan_str}{initial}'] = fitness_list_dict[samp]
+                fit_frame[f'fitness_S{samp}_err_{stan_str}{initial}'] = err_list_dict[samp]
+                fit_frame[f'fitness_S{samp}_resid_{stan_str}{initial}'] = list(resid_list_dict[samp])
+                fit_frame[f'fitness_S{samp}_log_ratio_out_{stan_str}{initial}'] = list(log_ratio_q_dict[samp])
             
         else:
             # run Stan fit for a single barcode/index
@@ -354,7 +362,9 @@ class BarSeqFitnessFrame:
                                    ref_samples=None,
                                    ref_tau_factor=1,
                                    return_fits=False,
-                                   verbose=True):
+                                   verbose=True,
+                                   use_all_samples_model=True,
+                                   slope_ref_prior_std=0.1):
         
         barcode_frame = self.barcode_frame
         
@@ -363,6 +373,9 @@ class BarSeqFitnessFrame:
         
         if ref_samples is None:
             ref_samples = samples_without_tet
+            non_ref_without_tet = []
+        else:
+            non_ref_without_tet = list(set(samples_without_tet) - set(ref_samples))
         
         # Dictionary of dictionaries
         #     first key is tet concentration
@@ -380,66 +393,109 @@ class BarSeqFitnessFrame:
         
         x0 = np.array([i for i in range(4)])
         
-        sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
-        stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file, verbose=verbose)
+        if use_all_samples_model:
+            if ref_samples == samples_without_tet:
+                # model with all zero-tet samples in reference group
+                sm_file = 'Barcode_fitness_all samples_2.stan'
+            else:
+                # model with some some zero-tet samples in refernce group and some in no_tet group
+                sm_file = 'Barcode_fitness_all samples.stan'
+            stan_model = stan_utility.compile_model(sm_file, verbose=verbose)
+        else:
+            sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
+            stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file, verbose=verbose)
         
-        x_no_tet = []
-        n_reads_no_tet = []
-        spike_ins_no_tet = []
-        tau_no_tet = []
-        stan_fit_list = []
+        if use_all_samples_model:
+            stan_data = dict(N=len(x0),
+                             x=x0,
+                             M_ref=len(ref_samples),
+                             M_no_tet=len(non_ref_without_tet),
+                             M_with_tet=len(samples_with_tet),
+                             alpha=np.log(5), 
+                             dilution_factor=10, 
+                             lower_bound_width=0.3,
+                             slope_ref_prior_std=slope_ref_prior_std)
+            n_reads_ref = []
+            n_spike_ref = []
+            tau_ref = []
+            
+            n_reads_no_tet = []
+            n_spike_no_tet = []
+            tau_no_tet = []
+            
+            n_reads_with_tet = []
+            n_spike_with_tet = []
+            tau_with_tet = []
+        else:
+            x_no_tet = []
+            n_reads_no_tet = []
+            spike_ins_no_tet = []
+            tau_no_tet = []
+            stan_fit_list = []
         fitness_out_dict = {}
-        for samp in samples_without_tet:
-            df = sample_plate_map
-            df = df[df["sample_id"]==samp]
-            df = df.sort_values('growth_plate')
-            well_list = list(df.well.values)
-        
-            spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
-            spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
+        for samp_list in [ref_samples, non_ref_without_tet]:
+            for samp in samp_list:
+                df = sample_plate_map
+                df = df[df["sample_id"]==samp]
+                df = df.sort_values('growth_plate')
+                well_list = list(df.well.values)
             
-            n_reads = np.array(row[well_list], dtype='int64')
+                spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
+                spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
+                
+                n_reads = np.array(row[well_list], dtype='int64')
+                        
+                sel = sample_keep_dict[samp]
+                tau = np.array([tau_default if s else tau_de_weight for s in sel])
+                
+                if use_all_samples_model:
+                    if samp_list is ref_samples:
+                        n_reads_ref.append(n_reads)
+                        n_spike_ref.append(spike_in_reads)
+                        tau_ref.append(tau)
+                    else:
+                        n_reads_no_tet.append(n_reads)
+                        n_spike_no_tet.append(spike_in_reads)
+                        tau_no_tet.append(tau)
+                else:
+                    stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                     
-            sel = sample_keep_dict[samp]
-            tau = np.array([tau_default if s else tau_de_weight for s in sel])
+                    stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                    if return_fits:
+                        stan_fit_list.append(stan_fit)
+                
+                    if samp_list is ref_samples:
+                        x_no_tet += list(x0)
+                        n_reads_no_tet += list(n_reads)
+                        tau_no_tet += list(tau)
+                        spike_ins_no_tet += list(spike_in_reads)
+                    
+                    fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
+                    fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
+                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
+                    log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+                    
+                    fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
+        
+        if not use_all_samples_model:
+            # Run fit again, with counts from all zero-tet samples
+            x = np.array(x_no_tet)
+            n_reads = np.array(n_reads_no_tet)
+            spike_in_reads = np.array(spike_ins_no_tet)
+            tau = np.array(tau_no_tet)*ref_tau_factor
             
-            stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
+            stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
             
             stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
             if return_fits:
                 stan_fit_list.append(stan_fit)
             
-            if samp in ref_samples:
-                x_no_tet += list(x0)
-                n_reads_no_tet += list(n_reads)
-                tau_no_tet += list(tau)
-                spike_ins_no_tet += list(spike_in_reads)
-                
-            fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
-            fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
-            fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
-            log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+            # Run fits for samples with antibiotic
+            sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
+            stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
             
-            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
-        
-        # Run fit again, with counts from all zero-tet samples
-        x = np.array(x_no_tet)
-        n_reads = np.array(n_reads_no_tet)
-        spike_in_reads = np.array(spike_ins_no_tet)
-        tau = np.array(tau_no_tet)*ref_tau_factor
-        
-        stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
-        
-        stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-        if return_fits:
-            stan_fit_list.append(stan_fit)
-        
-        # Run fits for samples with antibiotic
-        sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
-        stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
-        
-        slope_0_mu = np.mean(stan_fit['log_slope'])
-        slope_0_sig = np.std(stan_fit['log_slope'])
+            slope_0_mu = np.mean(stan_fit['log_slope'])
+            slope_0_sig = np.std(stan_fit['log_slope'])
         
         for samp in samples_with_tet:
             df = sample_plate_map
@@ -455,23 +511,70 @@ class BarSeqFitnessFrame:
             sel = sample_keep_dict[samp]
             tau = np.array([tau_default if s else tau_de_weight for s in sel])
             
-            stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau,
-                             slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, 
-                             alpha=np.log(5), dilution_factor=10, lower_bound_width=0.3)
-            
-            stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-            if return_fits:
-                stan_fit_list.append(stan_fit)
+            if use_all_samples_model:
+                n_reads_with_tet.append(n_reads)
+                n_spike_with_tet.append(spike_in_reads)
+                tau_with_tet.append(tau)
+            else:
+                stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau,
+                                 slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, 
+                                 alpha=np.log(5), dilution_factor=10, lower_bound_width=0.3)
                 
-            fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
-            fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
-            fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
-            log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
-            
-            fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
+                stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                if return_fits:
+                    stan_fit_list.append(stan_fit)
+                    
+                fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
+                fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
+                fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
+                log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+                
+                fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
         
+        if use_all_samples_model:
+            stan_data['n_reads_ref'] = np.array(n_reads_ref).transpose()
+            stan_data['n_spike_ref'] = np.array(n_spike_ref).transpose()
+            stan_data['tau_ref'] = np.array(tau_ref).transpose()
+            
+            stan_data['n_reads_no_tet'] = np.array(n_reads_no_tet).transpose()
+            stan_data['n_spike_no_tet'] = np.array(n_spike_no_tet).transpose()
+            stan_data['tau_no_tet'] = np.array(tau_no_tet).transpose()
+            
+            stan_data['n_reads_with_tet'] = np.array(n_reads_with_tet).transpose()
+            stan_data['n_spike_with_tet'] = np.array(n_spike_with_tet).transpose()
+            stan_data['tau_with_tet'] = np.array(tau_with_tet).transpose()
+            
+            stan_fit = stan_model.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+            
+            if not return_fits:
+                fit_mu = spike_in_fitness + np.median(stan_fit['slope_ref'], axis=0)/np.log(10)
+                fit_mu_list = [fit_mu]*len(ref_samples)
+                fit_sig = np.std(stan_fit['slope_ref'], axis=0)/np.log(10)
+                fit_sig_list = [fit_sig]*len(ref_samples)
+                fit_resid_list = np.median(stan_fit['residuals_ref'], axis=0)
+                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_ref'], [0.05, .25, .5, .75, .95], axis=0)
+                for samp, mu, sig, res, log_rat in zip(ref_samples, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
+                    fitness_out_dict[samp] = [mu, sig, res, log_rat]
+                
+                fit_mu_list = spike_in_fitness + np.median(stan_fit['slope_no_tet'], axis=0)/np.log(10)
+                fit_sig_list = np.std(stan_fit['slope_no_tet'], axis=0)/np.log(10)
+                fit_resid_list = np.median(stan_fit['residuals_no_tet'], axis=0)
+                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_no_tet'], [0.05, .25, .5, .75, .95], axis=0)
+                for samp, mu, sig, res, log_rat in zip(non_ref_without_tet, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
+                    fitness_out_dict[samp] = [mu, sig, res, log_rat]
+            
+                fit_mu_list = spike_in_fitness + np.median(stan_fit['slope_with_tet'], axis=0)/np.log(10)
+                fit_sig_list = np.std(stan_fit['slope_with_tet'], axis=0)/np.log(10)
+                fit_resid_list = np.median(stan_fit['residuals_with_tet'], axis=0)
+                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_with_tet'], [0.05, .25, .5, .75, .95], axis=0)
+                for samp, mu, sig, res, log_rat in zip(samples_with_tet, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
+                    fitness_out_dict[samp] = [mu, sig, res, log_rat]
+                    
         if return_fits:
-            return stan_fit_list
+            if use_all_samples_model:
+                return stan_fit
+            else:
+                return stan_fit_list
         else:
             return fitness_out_dict
         
