@@ -268,7 +268,7 @@ class BarSeqFitnessFrame:
                              chains=4,
                              control=None,
                              tau_default=0.01,
-                             tau_de_weight=0.1,
+                             tau_de_weight=10,
                              ref_samples=None,
                              ref_tau_factor=1,
                              return_fits=True):
@@ -288,6 +288,9 @@ class BarSeqFitnessFrame:
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
             print("Using Stan model to detirmine fitness estimate for all barcodes in dataset")
+            for ig in ignore_samples:
+                    print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
+                    
             arg_dict['return_fits'] = False
             arg_dict['verbose'] = False
             
@@ -347,7 +350,7 @@ class BarSeqFitnessFrame:
                                    chains=4,
                                    control=None,
                                    tau_default=0.01,
-                                   tau_de_weight=0.1,
+                                   tau_de_weight=10,
                                    ref_samples=None,
                                    ref_tau_factor=1,
                                    return_fits=False,
@@ -528,9 +531,10 @@ class BarSeqFitnessFrame:
                         new_ignore.append((row.sample_id, gp))
                         
                 ignore_samples = new_ignore
-            for ig in ignore_samples:
-                print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
-            print()
+            if verbose:
+                for ig in ignore_samples:
+                    print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
+                print()
         
         sample_list = np.unique(sample_plate_map.sample_id)
         # dictionary where each entry is a list of 4 booleans indicating whether or not 
