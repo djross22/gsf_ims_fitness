@@ -551,22 +551,22 @@ class BarSeqFitnessFrame:
                 fit_mu_list = [fit_mu]*len(ref_samples)
                 fit_sig = np.std(stan_fit['slope_ref'], axis=0)/np.log(10)
                 fit_sig_list = [fit_sig]*len(ref_samples)
-                fit_resid_list = np.median(stan_fit['residuals_ref'], axis=0)
-                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_ref'], [0.05, .25, .5, .75, .95], axis=0)
+                fit_resid_list = np.median(stan_fit['residuals_ref'], axis=0).transpose()
+                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_ref'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
                 for samp, mu, sig, res, log_rat in zip(ref_samples, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
                     fitness_out_dict[samp] = [mu, sig, res, log_rat]
                 
                 fit_mu_list = spike_in_fitness + np.median(stan_fit['slope_no_tet'], axis=0)/np.log(10)
                 fit_sig_list = np.std(stan_fit['slope_no_tet'], axis=0)/np.log(10)
-                fit_resid_list = np.median(stan_fit['residuals_no_tet'], axis=0)
-                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_no_tet'], [0.05, .25, .5, .75, .95], axis=0)
+                fit_resid_list = np.median(stan_fit['residuals_no_tet'], axis=0).transpose()
+                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_no_tet'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
                 for samp, mu, sig, res, log_rat in zip(non_ref_without_tet, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
                     fitness_out_dict[samp] = [mu, sig, res, log_rat]
             
                 fit_mu_list = spike_in_fitness + np.median(stan_fit['slope_with_tet'], axis=0)/np.log(10)
                 fit_sig_list = np.std(stan_fit['slope_with_tet'], axis=0)/np.log(10)
-                fit_resid_list = np.median(stan_fit['residuals_with_tet'], axis=0)
-                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_with_tet'], [0.05, .25, .5, .75, .95], axis=0)
+                fit_resid_list = np.median(stan_fit['residuals_with_tet'], axis=0).transpose()
+                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_with_tet'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
                 for samp, mu, sig, res, log_rat in zip(samples_with_tet, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
                     fitness_out_dict[samp] = [mu, sig, res, log_rat]
                     
