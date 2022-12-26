@@ -779,10 +779,19 @@ class BarSeqFitnessFrame:
                 for (index, row), ax in zip(fit_frame.iterrows(), axs): # iterate over barcodes
                     n_reads = np.array(row[well_list], dtype='int64')
                     
-                    sel = (n_reads>0)&(spike_in_reads>0)&sample_keep_dict[samp]
-                    x = x0[sel]
-                    y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
-                    s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
+                    x = x0
+                    y = (np.log(n_reads) - np.log(spike_in_reads))
+                    s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                    
+                    # de-weight samples to be ignored, instead of dropping data
+                    sel = np.array(sample_keep_dict[samp])
+                    s[~sel] = 10 
+                    
+                    # then, drop data for any samples with zero read count 
+                    sel = (n_reads>0)&(spike_in_reads>0)
+                    x = x[sel]
+                    y = y[sel]
+                    s = s[sel]
                     
                     if plots_not_fits:
                         slope = (row[f'fitness_S{samp}_{initial}'] - spike_in_fitness)*np.log(10)
@@ -854,10 +863,19 @@ class BarSeqFitnessFrame:
                             
                     n_reads = np.array(row[well_list], dtype='int64')
                     
-                    sel = (n_reads>0)&(spike_in_reads>0)&sample_keep_dict[samp]
-                    x = x0[sel]
-                    y = (np.log(n_reads[sel]) - np.log(spike_in_reads[sel]))
-                    s = np.sqrt(1/n_reads[sel] + 1/spike_in_reads[sel])
+                    x = x0
+                    y = (np.log(n_reads) - np.log(spike_in_reads))
+                    s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                    
+                    # de-weight samples to be ignored, instead of dropping data
+                    sel = np.array(sample_keep_dict[samp])
+                    s[~sel] = 10 
+                    
+                    # then, drop data for any samples with zero read count 
+                    sel = (n_reads>0)&(spike_in_reads>0)
+                    x = x[sel]
+                    y = y[sel]
+                    s = s[sel]
                     
                     def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
                     
@@ -866,7 +884,14 @@ class BarSeqFitnessFrame:
                             ax.errorbar(x, y, s, fmt='^', label=f"{samp}-{initial}", ms=10)
                     else:
                         if len(x)>1:
-                            popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
+                            try:
+                                popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True)
+                            except RuntimeError:
+                                try:
+                                    popt, pcov = curve_fit(fit_funct, x, y, sigma=s, absolute_sigma=True, maxfev=6000)
+                                except:
+                                    popt = np.full(2, np.nan)
+                                    pcov = np.full([2,2], np.nan)
                             log_ratio_out = fit_funct(x, *popt)
                             resids = y - log_ratio_out
                             resids_list.append(resids)
