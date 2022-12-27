@@ -338,10 +338,10 @@ class BarSeqFitnessFrame:
             else:
                 stan_str = 's'
             for samp in fitness_list_dict.keys():
-                fit_frame[f'fitness_S{samp}_{stan_str}{initial}'] = fitness_list_dict[samp]
-                fit_frame[f'fitness_S{samp}_err_{stan_str}{initial}'] = err_list_dict[samp]
-                fit_frame[f'fitness_S{samp}_resid_{stan_str}{initial}'] = list(resid_list_dict[samp])
-                fit_frame[f'fitness_S{samp}_log_ratio_out_{stan_str}{initial}'] = list(log_ratio_q_dict[samp])
+                fit_frame[f'fit_slope_S{samp}_{stan_str}{initial}'] = fitness_list_dict[samp]
+                fit_frame[f'fit_slope_S{samp}_err_{stan_str}{initial}'] = err_list_dict[samp]
+                fit_frame[f'fit_slope_S{samp}_resid_{stan_str}{initial}'] = list(resid_list_dict[samp])
+                fit_frame[f'fit_slope_S{samp}_log_ratio_out_{stan_str}{initial}'] = list(log_ratio_q_dict[samp])
             
         else:
             # run Stan fit for a single barcode/index
@@ -441,7 +441,7 @@ class BarSeqFitnessFrame:
                 well_list = list(df.well.values)
             
                 spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
-                spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
+                #spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
                 
                 n_reads = np.array(row[well_list], dtype='int64')
                         
@@ -470,8 +470,8 @@ class BarSeqFitnessFrame:
                         tau_no_tet += list(tau)
                         spike_ins_no_tet += list(spike_in_reads)
                     
-                    fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
-                    fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
+                    fit_mu = np.median(stan_fit['log_slope'])
+                    fit_sig = np.std(stan_fit['log_slope'])
                     fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
                     log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
                     
@@ -504,7 +504,7 @@ class BarSeqFitnessFrame:
             well_list = list(df.well.values)
         
             spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
-            spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
+            #spike_in_fitness = spike_in_fitness_dict[0][spike_in_name]
             
             n_reads = np.array(row[well_list], dtype='int64')
                     
@@ -524,8 +524,8 @@ class BarSeqFitnessFrame:
                 if return_fits:
                     stan_fit_list.append(stan_fit)
                     
-                fit_mu = spike_in_fitness + np.median(stan_fit['log_slope'])/np.log(10)
-                fit_sig = np.std(stan_fit['log_slope'])/np.log(10)
+                fit_mu = np.median(stan_fit['log_slope'])
+                fit_sig = np.std(stan_fit['log_slope'])
                 fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
                 log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
                 
@@ -547,28 +547,16 @@ class BarSeqFitnessFrame:
             stan_fit = stan_model.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
             
             if not return_fits:
-                fit_mu = spike_in_fitness + np.median(stan_fit['slope_ref'], axis=0)/np.log(10)
-                fit_mu_list = [fit_mu]*len(ref_samples)
-                fit_sig = np.std(stan_fit['slope_ref'], axis=0)/np.log(10)
-                fit_sig_list = [fit_sig]*len(ref_samples)
-                fit_resid_list = np.median(stan_fit['residuals_ref'], axis=0).transpose()
-                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_ref'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
-                for samp, mu, sig, res, log_rat in zip(ref_samples, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
-                    fitness_out_dict[samp] = [mu, sig, res, log_rat]
-                
-                fit_mu_list = spike_in_fitness + np.median(stan_fit['slope_no_tet'], axis=0)/np.log(10)
-                fit_sig_list = np.std(stan_fit['slope_no_tet'], axis=0)/np.log(10)
-                fit_resid_list = np.median(stan_fit['residuals_no_tet'], axis=0).transpose()
-                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_no_tet'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
-                for samp, mu, sig, res, log_rat in zip(non_ref_without_tet, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
-                    fitness_out_dict[samp] = [mu, sig, res, log_rat]
-            
-                fit_mu_list = spike_in_fitness + np.median(stan_fit['slope_with_tet'], axis=0)/np.log(10)
-                fit_sig_list = np.std(stan_fit['slope_with_tet'], axis=0)/np.log(10)
-                fit_resid_list = np.median(stan_fit['residuals_with_tet'], axis=0).transpose()
-                log_ratio_out_list = np.quantile(stan_fit['log_ratio_out_with_tet'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
-                for samp, mu, sig, res, log_rat in zip(samples_with_tet, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
-                    fitness_out_dict[samp] = [mu, sig, res, log_rat]
+                for samp_list, samp_str in zip([ref_samples, non_ref_without_tet, samples_with_tet], ['ref', 'no_tet', 'with_tet']):
+                    fit_mu_list = np.median(stan_fit[f'slope_{samp_str}'], axis=0)
+                    fit_sig_list = np.std(stan_fit[f'slope_{samp_str}'], axis=0)
+                    if samp_list is ref_samples:
+                        fit_mu_list = [fit_mu_list]*len(ref_samples)
+                        fit_sig_list = [fit_sig_list]*len(ref_samples)
+                    fit_resid_list = np.median(stan_fit[f'residuals_{samp_str}'], axis=0).transpose()
+                    log_ratio_out_list = np.quantile(stan_fit[f'log_ratio_out_{samp_str}'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
+                    for samp, mu, sig, res, log_rat in zip(samp_list, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
+                        fitness_out_dict[samp] = [mu, sig, res, log_rat]
                     
         if return_fits:
             if use_all_samples_model:
@@ -769,7 +757,7 @@ class BarSeqFitnessFrame:
                 well_list = list(df.well.values)
             
                 spike_in_reads = np.array(spike_in_row_dict[spike_in][well_list], dtype='int64')
-                spike_in_fitness = spike_in_fitness_dict[0][spike_in]
+                #spike_in_fitness = spike_in_fitness_dict[0][spike_in]
             
                 f_est_list = []
                 f_err_list = []
@@ -794,7 +782,7 @@ class BarSeqFitnessFrame:
                     s = s[sel]
                     
                     if plots_not_fits:
-                        slope = (row[f'fitness_S{samp}_{initial}'] - spike_in_fitness)*np.log(10)
+                        slope = row[f'fit_slope_S{samp}_{initial}']
                         slope_list.append(slope)
                         if (initial in show_spike_ins) and (samp in plot_samples):
                             ax.errorbar(x, y, s, fmt='o', label=f"{samp}-{initial}", ms=10)
@@ -806,8 +794,8 @@ class BarSeqFitnessFrame:
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
                             slope_list.append(popt[0])
-                            f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
-                            f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
+                            f_est_list.append(popt[0])
+                            f_err_list.append(np.sqrt(pcov[0,0]))
                         else:
                             slope_list.append(np.nan)
                             f_est_list.append(np.nan)
@@ -816,10 +804,10 @@ class BarSeqFitnessFrame:
                             log_ratio_out_list.append(np.full(4, np.nan))
                 
                 if not plots_not_fits:
-                    fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
-                    fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
-                    fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
-                    fit_frame[f'fitness_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
+                    fit_frame[f'fit_slope_S{samp}_{initial}'] = f_est_list
+                    fit_frame[f'fit_slope_S{samp}_err_{initial}'] = f_err_list
+                    fit_frame[f'fit_slope_S{samp}_resid_{initial}'] = list(resids_list)
+                    fit_frame[f'fit_slope_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
             
                 no_tet_slope_lists.append(slope_list)
                 
@@ -841,7 +829,7 @@ class BarSeqFitnessFrame:
                     tet_conc = high_tet
                 else:
                     tet_conc = df.antibiotic_conc.iloc[0]
-                spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
+                #spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
             
                 f_est_list = []
                 f_err_list = []
@@ -896,8 +884,8 @@ class BarSeqFitnessFrame:
                             resids = y - log_ratio_out
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
-                            f_est_list.append(spike_in_fitness + popt[0]/np.log(10))
-                            f_err_list.append(np.sqrt(pcov[0,0])/np.log(10))
+                            f_est_list.append(popt[0])
+                            f_err_list.append(np.sqrt(pcov[0,0]))
                         else:
                             f_est_list.append(np.nan)
                             f_err_list.append(np.nan)
@@ -906,10 +894,10 @@ class BarSeqFitnessFrame:
                         
                         
                 if not plots_not_fits:
-                    fit_frame[f'fitness_S{samp}_{initial}'] = f_est_list
-                    fit_frame[f'fitness_S{samp}_err_{initial}'] = f_err_list
-                    fit_frame[f'fitness_S{samp}_resid_{initial}'] = list(resids_list)
-                    fit_frame[f'fitness_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
+                    fit_frame[f'fit_slope_S{samp}_{initial}'] = f_est_list
+                    fit_frame[f'fit_slope_S{samp}_err_{initial}'] = f_err_list
+                    fit_frame[f'fit_slope_S{samp}_resid_{initial}'] = list(resids_list)
+                    fit_frame[f'fit_slope_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
         
         if plots_not_fits:
             for ax in axs:
@@ -953,7 +941,7 @@ class BarSeqFitnessFrame:
             iptg = df.IPTG.iloc[0]
             onpf = df.ONPF.iloc[0]
             
-            resid_array = barcode_frame[f'fitness_S{samp}_resid_{initial}']
+            resid_array = barcode_frame[f'fit_slope_S{samp}_resid_{initial}']
             sel = [len(x)==4 for x in resid_array]
             resid_array = np.array(list(resid_array[sel]))
             x_list = [barcode_frame[sel][x] for x in df.well]
