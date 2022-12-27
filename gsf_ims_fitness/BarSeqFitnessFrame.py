@@ -1009,7 +1009,8 @@ class BarSeqFitnessFrame:
                                       refit_index=None,
                                       plasmid="pVER",
                                       return_fit=False,
-                                      include_lactose_zero=False):
+                                      include_lactose_zero=False,
+                                      initial='b'):
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
@@ -1072,7 +1073,7 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid)
+            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid)
 
             try:
                 if len(lig_list) == 1:
@@ -1218,7 +1219,8 @@ class BarSeqFitnessFrame:
                        auto_save=True,
                        refit_index=None,
                        plasmid="pVER",
-                       return_fit=False):
+                       return_fit=False,
+                       initial='b'):
             
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
@@ -1285,7 +1287,7 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial="b", plasmid=plasmid, is_gp_model=True)
+            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid, is_gp_model=True)
         
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
@@ -1851,7 +1853,8 @@ class BarSeqFitnessFrame:
                             fontsize=13,
                             ax_label_size=14,
                             show_bc_str=False,
-                            real_fitness_units=False):
+                            real_fitness_units=False,
+                            plot_initials=["b", "e"]):
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -1896,8 +1899,7 @@ class BarSeqFitnessFrame:
             old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
-            for initial in ["b", "e"]:
-                fill_style = "full" if initial=="b" else "none"
+            for initial, fill_style in zip(plot_initials, ['full', 'none', 'right', 'left']):
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
