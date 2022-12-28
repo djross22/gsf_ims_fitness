@@ -55,21 +55,21 @@ transformed data {
   for (m in 1:M_ref) {
 	for (n in 1:N) {
 	  log_spike_ref[n][m] = log(n_spike_ref[n, m]);
-	  log_ratio_in_ref[n][m] = log(n_reads_ref[n, m]) - log(n_spike_ref[n, m]);
+	  log_ratio_in_ref[n][m] = log(n_reads_ref[n, m] + 0.1) - log(n_spike_ref[n, m]);
 	}
     log_ratio_0_ref[m] = log_ratio_in_ref[1][m];
   }
   for (m in 1:M_no_tet) {
 	for (n in 1:N) {
 	  log_spike_no_tet[n][m] = log(n_spike_no_tet[n, m]);
-	  log_ratio_in_no_tet[n][m] = log(n_reads_no_tet[n, m]) - log(n_spike_no_tet[n, m]);
+	  log_ratio_in_no_tet[n][m] = log(n_reads_no_tet[n, m] + 0.1) - log(n_spike_no_tet[n, m]);
 	}
     log_ratio_0_no_tet[m] = log_ratio_in_no_tet[1][m];
   }
   for (m in 1:M_with_tet) {
 	for (n in 1:N) {
 	  log_spike_with_tet[n][m] = log(n_spike_with_tet[n, m]);
-	  log_ratio_in_with_tet[n][m] = log(n_reads_with_tet[n, m]) - log(n_spike_with_tet[n, m]);
+	  log_ratio_in_with_tet[n][m] = log(n_reads_with_tet[n, m] + 0.1) - log(n_spike_with_tet[n, m]);
 	}
     log_ratio_0_with_tet[m] = log_ratio_in_with_tet[1][m];
   }
