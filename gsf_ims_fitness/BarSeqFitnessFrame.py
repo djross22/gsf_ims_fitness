@@ -346,6 +346,7 @@ class BarSeqFitnessFrame:
             
             if auto_save:
                 self.save_as_pickle()
+            
         else:
             # run Stan fit for a single barcode/index
             arg_dict['index'] = index
@@ -379,16 +380,6 @@ class BarSeqFitnessFrame:
             non_ref_without_tet = []
         else:
             non_ref_without_tet = list(set(samples_without_tet) - set(ref_samples))
-        
-        # Dictionary of dictionaries
-        #     first key is tet concentration
-        #     second key is spike-in name
-        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
-        
-        antibiotic_concentration_list = np.unique(sample_plate_map.antibiotic_conc)
-        high_tet = antibiotic_concentration_list[-1]
-        if len(antibiotic_concentration_list)>2:
-            low_tet = antibiotic_concentration_list[1]
         
         row = barcode_frame.loc[index]
         
@@ -910,6 +901,41 @@ class BarSeqFitnessFrame:
                 
             if auto_save:
                 self.save_as_pickle()
+        
+    
+    def add_fitness_from_slopes(self,
+                                plasmid='pVER',
+                                initial='b',
+                                auto_save=True):
+        
+        fit_frame = self.barcode_frame
+        
+        sample_plate_map = self.get_sample_layout_info(verbose=False)[0]
+        sample_list = np.unique(sample_plate_map.sample_id)
+        
+        # Dictionary of dictionaries
+        #     first key is tet concentration
+        #     second key is spike-in name
+        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
+        
+        if plasmid == 'pVER':
+            if initial[-1] == 'b':
+                spike_in = "AO-B"
+            elif initial[-1] == 'e':
+                spike_in = "AO-E"
+        
+        for samp in sample_list:
+            df = sample_plate_map
+            df = df[df["sample_id"]==samp]
+            tet_conc = df.antibiotic_conc.iloc[0]
+            
+            spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
+            
+            fit_frame[f'fitness_S{samp}_{initial}'] = spike_in_fitness + fit_frame[f'fit_slope_S{samp}_{initial}']/np.log(10)
+            fit_frame[f'fitness_S{samp}_err_{initial}'] = fit_frame[f'fit_slope_S{samp}_err_{initial}']/np.log(10)
+            
+        if auto_save:
+            self.save_as_pickle()
         
     
     def plot_fit_residuals(self, initial='b'):
