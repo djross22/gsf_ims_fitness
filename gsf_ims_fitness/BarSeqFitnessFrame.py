@@ -273,7 +273,8 @@ class BarSeqFitnessFrame:
                              ref_tau_factor=1,
                              return_fits=True,
                              use_all_samples_model=True,
-                             slope_ref_prior_std=0.1):
+                             slope_ref_prior_std=0.1,
+                             auto_save=True):
         
         arg_dict = dict(spike_in_name=spike_in_name,
                         ignore_samples=ignore_samples,
@@ -343,6 +344,8 @@ class BarSeqFitnessFrame:
                 fit_frame[f'fit_slope_S{samp}_resid_{stan_str}{initial}'] = list(resid_list_dict[samp])
                 fit_frame[f'fit_slope_S{samp}_log_ratio_out_{stan_str}{initial}'] = list(log_ratio_q_dict[samp])
             
+            if auto_save:
+                self.save_as_pickle()
         else:
             # run Stan fit for a single barcode/index
             arg_dict['index'] = index
