@@ -1934,7 +1934,7 @@ class BarSeqFitnessFrame:
                             s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
             
-                if initial == "b":
+                if initial == plot_initials[0]:
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name']
