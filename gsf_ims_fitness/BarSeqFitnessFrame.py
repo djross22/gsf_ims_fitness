@@ -81,6 +81,8 @@ class BarSeqFitnessFrame:
         
         self.fit_fitness_difference_params = None
         self.fit_fitness_difference_funct = None
+        self.set_sample_plate_map()
+        
             
     def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True):
         
@@ -353,6 +355,21 @@ class BarSeqFitnessFrame:
             single_ret = self.stan_barcode_fitness_index(**arg_dict)
             return single_ret
             
+    
+    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True):
+        self.ignore_samples = ignore_samples
+        
+        sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(verbose=verbose)
+        
+        self.sample_plate_map = sample_plate_map
+        self.samples_with_tet = samples_with_tet
+        self.samples_without_tet = samples_without_tet
+        self.sample_keep_dict = sample_keep_dict
+        
+        if auto_save:
+            self.save_as_pickle()
+    
+    
     def stan_barcode_fitness_index(self,
                                    index,
                                    spike_in_name="AO-B",
@@ -372,8 +389,10 @@ class BarSeqFitnessFrame:
         
         barcode_frame = self.barcode_frame
         
-        # get lists of samples with and without tet
-        sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples, verbose=verbose)
+        sample_plate_map = self.sample_plate_map
+        samples_with_tet = self.samples_with_tet
+        samples_without_tet = self.samples_without_tet
+        sample_keep_dict = self.sample_keep_dict
         
         if ref_samples is None:
             ref_samples = samples_without_tet
@@ -577,12 +596,12 @@ class BarSeqFitnessFrame:
         
         
     def get_sample_layout_info(self,
-                               ignore_samples=[],
                                verbose=True):
         
         barcode_frame = self.barcode_frame
         high_tet = self.high_tet
         low_tet = getattr(self, 'low_tet', None)
+        ignore_samples = self.ignore_samples
     
         inducer_conc_list = self.inducer_conc_list
         inducer = self.inducer
@@ -683,8 +702,10 @@ class BarSeqFitnessFrame:
             else:
                 print(f"Fitting to log(barcode ratios) to find fitness for each barcode in {self.experiment}")
             
-            # get lists of samples with and without tet
-            sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(ignore_samples=ignore_samples)
+            sample_plate_map = self.sample_plate_map
+            samples_with_tet = self.samples_with_tet
+            samples_without_tet = self.samples_without_tet
+            sample_keep_dict = self.sample_keep_dict
         
         if plot_samples is None:
             plot_samples = samples_with_tet + samples_without_tet
@@ -910,8 +931,7 @@ class BarSeqFitnessFrame:
                                 auto_save=True):
         
         fit_frame = self.barcode_frame
-        
-        sample_plate_map = self.get_sample_layout_info(verbose=False)[0]
+        sample_plate_map = self.sample_plate_map
         sample_list = np.unique(sample_plate_map.sample_id)
         
         # Dictionary of dictionaries
@@ -1867,12 +1887,13 @@ class BarSeqFitnessFrame:
                             include_ref_seqs=True,
                             includeChimeras=False,
                             ylim=None,
-                            plot_size=[8, 6],
+                            plot_size=[6, 4],
                             fontsize=13,
                             ax_label_size=14,
                             show_bc_str=False,
                             real_fitness_units=False,
-                            plot_initials=["b", "e"]):
+                            plot_initials=["b", "e"],
+                            plot_slope_not_fitness=False):
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -1930,8 +1951,12 @@ class BarSeqFitnessFrame:
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
                             x = df[lig]
-                            y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
-                            s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
+                            if plot_slope_not_fitness:
+                                y = [row[f"fit_slope_S{i}_{initial}"]*fit_scale for i in df.sample_id]
+                                s = [row[f"fit_slope_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
+                            else:
+                                y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
+                                s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
             
                 if initial == plot_initials[0]:
@@ -1949,7 +1974,10 @@ class BarSeqFitnessFrame:
                     ax.set_xscale('symlog', linthresh=linthresh)
                     x_lab = '], ['.join(ligand_list)
                     ax.set_xlabel(f'[{x_lab}] (umol/L)', size=ax_label_size)
-                    ax.set_ylabel(f'Growth Rate ({fit_units})', size=ax_label_size)
+                    if plot_slope_not_fitness:
+                        ax.set_ylabel(f'Log slope relative to {plot_initials}', size=ax_label_size)
+                    else:
+                        ax.set_ylabel(f'Growth Rate ({fit_units})', size=ax_label_size)
                     ax.tick_params(labelsize=ax_label_size-2);
                     if ylim is not None:
                         ax.set_ylim(ylim);
