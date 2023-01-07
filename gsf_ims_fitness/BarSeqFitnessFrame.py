@@ -662,6 +662,9 @@ class BarSeqFitnessFrame:
                             refit_index=None,
                             ref_slope_to_average=True,
                             bi_linear_alpha=np.log(5)):
+                            
+        for ig in self.ignore_samples:
+            print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
         
         return self.plot_or_fit_barcode_ratios(auto_save=auto_save,
                                                refit_index=refit_index,
