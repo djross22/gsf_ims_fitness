@@ -56,7 +56,7 @@ def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=No
         A list of inducer_2 concentrations used in the experiment
         
     tet_conc_list : list or array of float
-        A list of non-zero antibiotic concentrations used in the experiment
+        A list of antibiotic concentrations used in the experiment, including zero
 
     Returns
     -------
@@ -96,9 +96,9 @@ def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=No
                 well_list.append(f"{r}{c}")
                 sample_id.append(layout_dict[w])
         
-        antibiotic_conc = [tet_conc_list[0] if x else 0 for x in with_tet]
+        antibiotic_conc = [tet_conc_list[-1] if x else 0 for x in with_tet]
     else:
-        # This handles the case for the plate layout with 2 inducers and 2 antibiotic concentrations
+        # This handles the case for the plate layout with 2 inducers and 2 non-zero antibiotic concentrations
         inducer_conc_list.sort()
         inducer_conc_list_2.sort()
         
@@ -116,16 +116,16 @@ def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=No
                 w2 = f"{r2}{c2 + y}"
                 w3 = f"{r3}{c1 + y}"
                 w4 = f"{r4}{c2 + y}"
-                layout_dict[w1] = [x1, inducer, tet_conc_list[0], s1]
-                layout_dict[w2] = [x1, inducer, tet_conc_list[1], s2]
-                layout_dict[w3] = [x2, inducer_2, tet_conc_list[0], s3]
-                layout_dict[w4] = [x2, inducer_2, tet_conc_list[1], s4]
+                layout_dict[w1] = [x1, inducer, tet_conc_list[1], s1]
+                layout_dict[w2] = [x1, inducer, tet_conc_list[2], s2]
+                layout_dict[w3] = [x2, inducer_2, tet_conc_list[1], s3]
+                layout_dict[w4] = [x2, inducer_2, tet_conc_list[2], s4]
         for y in [0, 3, 6, 9]:
             w = f"C{2 + y}"
             layout_dict[w] = [0, 'none', 0, 6]
             
             w = f"D{2 + y}"
-            layout_dict[w] = [0, 'none', tet_conc_list[0], 18]
+            layout_dict[w] = [0, 'none', tet_conc_list[1], 18]
             
             w = f"E{2 + y}"
             layout_dict[w] = [zero_tet_inducer_conc, inducer, 0, 7]

@@ -37,14 +37,14 @@ sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.directi
 
 class BarSeqFitnessFrame:
         
-    def __init__(self, notebook_dir, experiment=None, barcode_file=None, high_tet=20, inducer_conc_list=None, inducer="IPTG",
-                 inducer_2=None, inducer_conc_list_2=None, low_tet=None):
+    def __init__(self, notebook_dir, experiment=None, barcode_file=None, 
+                 antibiotic_concentration_list=[0, 20], 
+                 inducer_conc_list=None, inducer="IPTG",
+                 inducer_2=None, inducer_conc_list_2=None):
         
         self.notebook_dir = notebook_dir
         
-        self.high_tet = high_tet
-        if low_tet is not None:
-            self.low_tet = low_tet
+        self.antibiotic_concentration_list = antibiotic_concentration_list
         
         if experiment is None:
             experiment = fitness.get_exp_id(notebook_dir)
@@ -81,6 +81,7 @@ class BarSeqFitnessFrame:
         
         self.fit_fitness_difference_params = None
         self.fit_fitness_difference_funct = None
+        
         self.set_sample_plate_map()
         
             
@@ -358,7 +359,86 @@ class BarSeqFitnessFrame:
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
         
-        sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(verbose=verbose)
+        barcode_frame = self.barcode_frame
+        antibiotic_concentration_list = self.antibiotic_concentration_list
+        ignore_samples = self.ignore_samples
+        inducer = self.inducer
+        inducer_conc_list = self.inducer_conc_list
+        inducer_2 = getattr(self, 'inducer_2', None)
+        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
+        
+        if (len(antibiotic_concentration_list) == 2) and (inducer_2 is None):
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, 
+                                                            tet_conc_list=antibiotic_concentration_list)
+        else:
+            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
+                                                            inducer_2=inducer_2, 
+                                                            inducer_conc_list_2=inducer_conc_list_2, 
+                                                            tet_conc_list=antibiotic_concentration_list)
+                                                            
+        # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
+        # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
+        # For backward compatibility, check if the old version is used, and convert it to the new version
+        if len(ignore_samples)>0:
+            if len(ignore_samples[0])==3:
+                new_ignore = []
+                for ig in ignore_samples:
+                    w = ig[0]=="tet"
+                    gp = ig[1]
+                    x = ig[2]
+                    df = sample_plate_map
+                    df = df[df.with_tet==w]
+                    df = df[df.growth_plate==gp]
+                    df = df[df[self.inducer]==x]
+                    if len(df)>1:
+                        print("problem converting ignore_samples")
+                    elif len(df)==1:
+                        row = df.iloc[0]
+                        new_ignore.append((row.sample_id, gp))
+                        
+                ignore_samples = new_ignore
+            if verbose:
+                for ig in ignore_samples:
+                    print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
+                print()
+        
+        sample_list = np.unique(sample_plate_map.sample_id)
+        # dictionary where each entry is a list of 4 booleans indicating whether or not 
+        #     the sample should be ignored for each time point:
+        sample_keep_dict = {}
+        for s in sample_list:
+            v = [(s, i+2) not in ignore_samples for i in range(4)]
+            sample_keep_dict[s] = v
+        
+        
+        samples_with_tet = []
+        samples_without_tet = []
+        for s in sample_list:
+            df = sample_plate_map
+            df = df[df["sample_id"]==s]
+            
+            has_tet = df.iloc[0].with_tet
+            if has_tet:
+                samples_with_tet.append(s)
+            else:
+                samples_without_tet.append(s)
+            
+            df = df.sort_values('growth_plate')
+            well_list = list(df.well.values)
+            
+            if f"read_count_S{s}" not in barcode_frame.columns:
+                count_list = []
+                for ind, row in barcode_frame.iterrows():
+                    row_by_sample = row[well_list]
+                    count_list.append(row_by_sample.values)
+                
+                # for each sample_id, get a list of counts for each barcode at the 4 time points
+                barcode_frame[f"read_count_S{s}"] = count_list
+        
+        if verbose:
+            print(f"samples_with_tet: {samples_with_tet}")
+            print(f"samples_without_tet: {samples_without_tet}")
+            print()
         
         self.sample_plate_map = sample_plate_map
         self.samples_with_tet = samples_with_tet
@@ -590,92 +670,6 @@ class BarSeqFitnessFrame:
                                                bi_linear_alpha=bi_linear_alpha,
                                                plots_not_fits=False)
         
-        
-    def get_sample_layout_info(self,
-                               verbose=True):
-        
-        barcode_frame = self.barcode_frame
-        high_tet = self.high_tet
-        low_tet = getattr(self, 'low_tet', None)
-        ignore_samples = self.ignore_samples
-    
-        inducer_conc_list = self.inducer_conc_list
-        inducer = self.inducer
-        inducer_2 = getattr(self, 'inducer_2', None)
-        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
-        
-        if (low_tet is None) and (inducer_2 is None):
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
-        else:
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
-        
-        # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
-        # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
-        # For backward compatibility, check if the old version is used, and convert it to the new version
-        if len(ignore_samples)>0:
-            if len(ignore_samples[0])==3:
-                new_ignore = []
-                for ig in ignore_samples:
-                    w = ig[0]=="tet"
-                    gp = ig[1]
-                    x = ig[2]
-                    df = sample_plate_map
-                    df = df[df.with_tet==w]
-                    df = df[df.growth_plate==gp]
-                    df = df[df[inducer]==x]
-                    if len(df)>1:
-                        print("problem converting ignore_samples")
-                    elif len(df)==1:
-                        row = df.iloc[0]
-                        new_ignore.append((row.sample_id, gp))
-                        
-                ignore_samples = new_ignore
-            if verbose:
-                for ig in ignore_samples:
-                    print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
-                print()
-        
-        sample_list = np.unique(sample_plate_map.sample_id)
-        # dictionary where each entry is a list of 4 booleans indicating whether or not 
-        #     the sample should be ignored for each time point:
-        sample_keep_dict = {}
-        for s in sample_list:
-            v = [(s, i+2) not in ignore_samples for i in range(4)]
-            sample_keep_dict[s] = v
-        
-        
-        samples_with_tet = []
-        samples_without_tet = []
-        for s in sample_list:
-            df = sample_plate_map
-            df = df[df["sample_id"]==s]
-            
-            has_tet = df.iloc[0].with_tet
-            if has_tet:
-                samples_with_tet.append(s)
-            else:
-                samples_without_tet.append(s)
-            
-            df = df.sort_values('growth_plate')
-            well_list = list(df.well.values)
-            
-            if f"read_count_S{s}" not in barcode_frame.columns:
-                count_list = []
-                for ind, row in barcode_frame.iterrows():
-                    row_by_sample = row[well_list]
-                    count_list.append(row_by_sample.values)
-                
-                # for each sample_id, get a list of counts for each barcode at the 4 time points
-                barcode_frame[f"read_count_S{s}"] = count_list
-        
-        if verbose:
-            print(f"samples_with_tet: {samples_with_tet}")
-            print(f"samples_without_tet: {samples_without_tet}")
-            print()
-        
-        return sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict
-        
     
     def plot_or_fit_barcode_ratios(self,
                                    auto_save=True,
@@ -709,7 +703,7 @@ class BarSeqFitnessFrame:
         #     second key is spike-in name
         spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
         
-        antibiotic_concentration_list = np.unique(sample_plate_map.antibiotic_conc)
+        antibiotic_concentration_list = self.antibiotic_concentration_list
         high_tet = antibiotic_concentration_list[-1]
         if len(antibiotic_concentration_list)==2:
             ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
@@ -836,10 +830,8 @@ class BarSeqFitnessFrame:
                 well_list = list(df.well.values)
             
                 spike_in_reads = np.array(spike_in_row_dict[spike_in][well_list], dtype='int64')
-                if low_tet is None:
-                    tet_conc = high_tet
-                else:
-                    tet_conc = df.antibiotic_conc.iloc[0]
+                
+                tet_conc = df.antibiotic_conc.iloc[0]
                 #spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
             
                 f_est_list = []
@@ -957,19 +949,15 @@ class BarSeqFitnessFrame:
     def plot_fit_residuals(self, initial='b'):
         
         barcode_frame = self.barcode_frame
-        high_tet = self.high_tet
-        low_tet = getattr(self, 'low_tet', None)
+        
+        antibiotic_concentration_list = self.antibiotic_concentration_list
     
         inducer_conc_list = self.inducer_conc_list
         inducer = self.inducer
         inducer_2 = getattr(self, 'inducer_2', None)
         inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
         
-        if (low_tet is None) and (inducer_2 is None):
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
-        else:
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
+        sample_plate_map = self.sample_plate_map
         
         plt.rcParams["figure.figsize"] = [16, 3]
         sample_list = np.unique(sample_plate_map.sample_id)
@@ -1016,7 +1004,7 @@ class BarSeqFitnessFrame:
         for samp, mean_list, rms_list, marker, tet in zip(sample_list, mean_resid_lists, rms_resid_lists, marker_list, tet_list):
             if tet == 0:
                 fillstyle = 'none'
-            elif tet == low_tet:
+            elif (len() == 3) and (tet == asdf[1]):
                 fillstyle = 'left'
             else:
                 fillstyle = 'full'
@@ -1310,9 +1298,6 @@ class BarSeqFitnessFrame:
         
         stan_model = stan_utility.compile_model(stan_GP_model)
         
-        if old_style_columns:
-            high_tet = antibiotic_conc_list[1]
-        
         log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
         
         rng = np.random.default_rng()
@@ -1517,7 +1502,7 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
             
         
-            
+    ''' The merge_barcodes() needs to be updated. comment it out for now
     def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True):
         # merge small barcode into big barcode (add read counts)
         # remove small barcode from dataframe
@@ -1554,7 +1539,7 @@ class BarSeqFitnessFrame:
         if auto_refit:
             self.fit_barcode_fitness(auto_save=auto_save, refit_index=big_bc_index)
             self.stan_fitness_difference_curves(auto_save=auto_save, refit_index=big_bc_index)
-        
+    '''
         
             
     def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None):
@@ -1674,19 +1659,8 @@ class BarSeqFitnessFrame:
         #Plot read fraction across all samples for first several barcodes
         plt.rcParams["figure.figsize"] = [plot_size,6*len(f_data)*plot_size/16]
         fig, axs = plt.subplots(len(f_data), 1)
-        
-        inducer = self.inducer
-        inducer_conc_list = self.inducer_conc_list
-        high_tet = self.high_tet
-        
-        low_tet = getattr(self, 'low_tet', None)
-        inducer_2 = getattr(self, 'inducer_2', None)
-        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
-        if (low_tet is None) and (inducer_2 is None):
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
-        else:
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                            inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
+                
+        sample_plate_map = self.sample_plate_map
         
         tet_list = np.unique(sample_plate_map.antibiotic_conc)
         if plot_fraction:
@@ -1988,15 +1962,8 @@ class BarSeqFitnessFrame:
     def get_fitness_columns_setup(self):
         barcode_frame = self.barcode_frame
         
-        high_tet = self.high_tet
-        low_tet = getattr(self, 'low_tet', None)
-        
-        inducer = self.inducer
-        inducer_2 = getattr(self, 'inducer_2', None)
-        
-        inducer_conc_list = self.inducer_conc_list
-        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
-        
+        antibiotic_concentration_list = self.antibiotic_concentration_list
+                        
         # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{high_tet}_estimate_{initial}")
         #     or the new style (i.e., f"fitness_S{i}_{initial}"
         # The new style is preferred, so will be used if both are possible
@@ -2016,21 +1983,14 @@ class BarSeqFitnessFrame:
             x = np.array(self.inducer_conc_list)
             linthresh = min(x[x>0])
             
-            ligand_list = [inducer]
+            ligand_list = [self.inducer]
             
-            antibiotic_conc_list = np.array([0, high_tet])
-            
-            return old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list
+            return old_style_plots, x, linthresh, fit_plot_colors, ligand_list
         else:
-            if (low_tet is None) and (inducer_2 is None):
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list=[high_tet])
-            else:
-                sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                                inducer_2=inducer_2, inducer_conc_list_2=inducer_conc_list_2, tet_conc_list=[low_tet, high_tet])
+            sample_plate_map = self.sample_plate_map
             ligand_list = list(np.unique(sample_plate_map.ligand))
             if 'none' in ligand_list:
                 ligand_list.remove('none')
-            antibiotic_conc_list = np.unique(sample_plate_map.antibiotic_conc)
             
             plot_df = sample_plate_map
             plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=ligand_list)
@@ -2038,7 +1998,7 @@ class BarSeqFitnessFrame:
             x_list = np.array([np.array(plot_df[x]) for x in ligand_list]).flatten()
             linthresh = min(x_list[x_list>0])
             
-            return old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list
+            return old_style_plots, linthresh, fit_plot_colors, plot_df, ligand_list
     
 
     def plot_fitness_and_difference_curves(self,
@@ -2072,15 +2032,17 @@ class BarSeqFitnessFrame:
             os.chdir(self.data_directory)
             pdf_file = 'barcode fitness plots.pdf'
             pdf = PdfPages(pdf_file)
+            
+        antibiotic_conc_list = self.antibiotic_concentration_list
         
         #plot fitness curves
         fitness_columns_setup = self.get_fitness_columns_setup()
         if fitness_columns_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
             if "sensor_params" not in barcode_frame.columns:
                 show_fits = False
         else:
-            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
+            old_style_plots, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
             if "log_g0" not in barcode_frame.columns:
                 show_fits = False
         
@@ -2326,6 +2288,8 @@ class BarSeqFitnessFrame:
                                                show_spike_ins=show_spike_ins,
                                                plot_samples=plot_samples)
         
+    
+    ''' The plot_counts_vs_time() function needs to be updated or deleted. Comment it out for now.
     def plot_counts_vs_time(self, plot_range,
                                   with_tet=None,
                                   mark_samples=[]):
@@ -2452,6 +2416,7 @@ class BarSeqFitnessFrame:
             
             ax.plot(x_mark, y_mark, c='k', marker='o', ms=18, fillstyle="none", markeredgewidth=3, zorder=1000, linestyle="none")
         
+    '''
          
     
     def plot_chimera_plot(self,
