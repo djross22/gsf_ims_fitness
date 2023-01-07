@@ -40,7 +40,8 @@ class BarSeqFitnessFrame:
     def __init__(self, notebook_dir, experiment=None, barcode_file=None, 
                  antibiotic_concentration_list=[0, 20], 
                  inducer_conc_list=None, inducer="IPTG",
-                 inducer_2=None, inducer_conc_list_2=None):
+                 inducer_2=None, inducer_conc_list_2=None,
+                 min_read_count=500):
         
         self.notebook_dir = notebook_dir
         
@@ -62,6 +63,7 @@ class BarSeqFitnessFrame:
         barcode_frame = pd.read_csv(barcode_file, skipinitialspace=True)
     
         barcode_frame.sort_values('total_counts', ascending=False, inplace=True)
+        barcode_frame = barcode_frame[barcode_frame.total_counts>=min_read_count]
         #barcode_frame.reset_index(drop=True, inplace=True)
         
         self.barcode_frame = barcode_frame
