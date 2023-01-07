@@ -160,7 +160,104 @@ def get_sample_plate_map(inducer_list, inducer_conc_lists, tet_conc_list):
                     inducer_2_conc_list_in_plate.append(0)
         
         ligand_list = [inducer if x>0 else inducer_2 if y>0 else 'none' for x, y in zip(inducer_conc_list_in_plate, inducer_2_conc_list_in_plate)]
-
+    elif (len(inducer_list) == 3) and (len(tet_conc_list) == 2):
+        # This handles the case for the plate layout with 3 inducers and 1 non-zero antibiotic concentrations
+        inducer_2 = inducer_list[1]
+        inducer_3 = inducer_list[2]
+        
+        inducer_conc_list.sort()
+        inducer_conc_list_2 = inducer_conc_lists[1]
+        inducer_conc_list_2.sort()
+        inducer_conc_list_3 = inducer_conc_lists[2]
+        inducer_conc_list_3.sort()
+        
+        zero_tet_inducer_conc = max(inducer_conc_list)/4
+        zero_tet_inducer_conc_2 = max(inducer_conc_list_2)/4
+        zero_tet_inducer_conc_3 = max(inducer_conc_list_3)/4
+        layout_dict = {}
+        for zip_tup in zip(['G', 'E', 'C', 'A', 'G', 'E'],
+                           ['B', 'D', 'F', 'H', 'B', 'D'], 
+                           ['H', 'F', 'D', 'B', 'H', 'F'],
+                           [3, 3, 3, 3, 2, 2], 
+                           [1, 1, 1, 1, 2, 2],
+                           inducer_conc_list[::-1], 
+                           inducer_conc_list_2[::-1],
+                           inducer_conc_list_3[::-1],
+                           [12, 11, 10, 9, 8, 7], 
+                           [13, 14, 15, 16, 17, 18], 
+                           [24, 23, 22, 21, 20, 19]):
+            r1, r2, r3, c1, c2, x1, x2, x3, s1, s2, s3 = zip_tup
+            for y in [0, 3, 6, 9]:
+                w1 = f"{r1}{c1 + y}"
+                w2 = f"{r2}{c2 + y}"
+                w3 = f"{r3}{c1 + y}"
+                layout_dict[w1] = [x1, inducer, tet_conc_list[1], s1]
+                layout_dict[w2] = [x1, inducer, tet_conc_list[1], s2]
+                layout_dict[w3] = [x2, inducer_2, tet_conc_list[1], s3]
+        for y in [0, 3, 6, 9]:
+            w = f"A{1 + y}"
+            layout_dict[w] = [0, 'none', tet_conc_list[1], 1]
+            
+            w = f"A{2 + y}"
+            layout_dict[w] = [0, 'none', 0, 2]
+            
+            w = f"A{3 + y}"
+            layout_dict[w] = [0, 'none', tet_conc_list[1], 3]
+            
+            w = f"A{4 + y}"
+            layout_dict[w] = [zero_tet_inducer_conc, inducer, 0, 4]
+            
+            w = f"A{5 + y}"
+            layout_dict[w] = [zero_tet_inducer_conc_2, inducer_2, 0, 5]
+            
+            w = f"A{6 + y}"
+            layout_dict[w] = [zero_tet_inducer_conc_3, inducer_3, 0, 6]
+        
+        with_tet = []
+        plate_list = []
+        well_list = []
+        inducer_conc_list_in_plate = []
+        inducer_2_conc_list_in_plate = []
+        inducer_3_conc_list_in_plate = []
+        antibiotic_conc = []
+        sample_id = []
+        for r in rows():
+            for c in columns():
+                w = f"{r}{c}"
+                plate_list.append( int(2+(c-1)/3) )
+                v = layout_dict[w]
+                with_tet.append(v[2]>0)
+                antibiotic_conc.append(v[2])
+                well_list.append(w)
+                sample_id.append(v[3])
+                
+                if v[1] == inducer:
+                    inducer_conc_list_in_plate.append(v[0])
+                else:
+                    inducer_conc_list_in_plate.append(0)
+                
+                if v[1] == inducer_2:
+                    inducer_2_conc_list_in_plate.append(v[0])
+                else:
+                    inducer_2_conc_list_in_plate.append(0)
+                
+                if v[1] == inducer_3:
+                    inducer_3_conc_list_in_plate.append(v[0])
+                else:
+                    inducer_3_conc_list_in_plate.append(0)
+        
+        ligand_list = []
+        for x, y, z in zip(inducer_conc_list_in_plate, inducer_2_conc_list_in_plate):
+            if x>0:
+                ind = inducer
+            elif y>0:
+                ind = inducer_2
+            elif z>0:
+                ind = inducer_3
+            else:
+                ind = 'none'
+            ligand_list.append(ind)
+    
     sample_plate_map = pd.DataFrame({"well": well_list}, dtype='string')
     sample_plate_map['sample_id'] = sample_id
     sample_plate_map['ligand'] = ligand_list
