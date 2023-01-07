@@ -98,9 +98,9 @@ class BarSeqFitnessFrame:
         print(f"Calculating read fraction for each barcode in each sample")
         for w in fitness.wells():
             label = 'fraction_' + w
-            barcode_frame[label] = barcode_frame[w]/barcode_frame[w].sum()
+            barcode_frame[label] = barcode_frame[w]/(barcode_frame[w].sum())
         
-        barcode_frame['fraction_total'] = barcode_frame['total_counts']/barcode_frame['total_counts'].sum()
+        barcode_frame['fraction_total'] = barcode_frame['total_counts']/(barcode_frame['total_counts'].sum())
         
         print(f"Calculating read totals and fractions for each barcode in samples from first time point")
         total = []
@@ -110,7 +110,7 @@ class BarSeqFitnessFrame:
                 counts += row[t]
             total.append(counts)
         barcode_frame['total_counts_plate_2'] = total
-        barcode_frame['fraction_total_p2'] = barcode_frame['total_counts_plate_2']/barcode_frame['total_counts_plate_2'].sum()  
+        barcode_frame['fraction_total_p2'] = barcode_frame['total_counts_plate_2']/(barcode_frame['total_counts_plate_2'].sum())
         
         fraction_list = ["fraction_" + w for w in fitness.wells_by_column()[:24] ]
         barcode_frame["fraction_p2_std"] = barcode_frame[fraction_list].std(axis=1)
