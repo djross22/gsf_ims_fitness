@@ -264,7 +264,6 @@ class BarSeqFitnessFrame:
     def stan_barcode_fitness(self,
                              index=None,
                              spike_in_name="AO-B",
-                             ignore_samples=[],
                              plasmid="pVER",
                              iterations=1000,
                              chains=4,
@@ -279,7 +278,6 @@ class BarSeqFitnessFrame:
                              auto_save=True):
         
         arg_dict = dict(spike_in_name=spike_in_name,
-                        ignore_samples=ignore_samples,
                         plasmid=plasmid,
                         iterations=iterations,
                         chains=chains,
@@ -295,7 +293,7 @@ class BarSeqFitnessFrame:
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
             print("Using Stan model to detirmine fitness estimate for all barcodes in dataset")
-            for ig in ignore_samples:
+            for ig in self.ignore_samples:
                     print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
                     
             arg_dict['return_fits'] = False
@@ -357,6 +355,7 @@ class BarSeqFitnessFrame:
             
     
     def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True):
+        # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
         
         sample_plate_map, samples_with_tet, samples_without_tet, sample_keep_dict = self.get_sample_layout_info(verbose=verbose)
@@ -373,7 +372,6 @@ class BarSeqFitnessFrame:
     def stan_barcode_fitness_index(self,
                                    index,
                                    spike_in_name="AO-B",
-                                   ignore_samples=[],
                                    plasmid="pVER",
                                    iterations=1000,
                                    chains=4,
@@ -582,13 +580,11 @@ class BarSeqFitnessFrame:
     
     def fit_barcode_fitness(self,
                             auto_save=True,
-                            ignore_samples=[],
                             refit_index=None,
                             ref_slope_to_average=True,
                             bi_linear_alpha=np.log(5)):
         
         return self.plot_or_fit_barcode_ratios(auto_save=auto_save,
-                                               ignore_samples=ignore_samples,
                                                refit_index=refit_index,
                                                ref_slope_to_average=ref_slope_to_average,
                                                bi_linear_alpha=bi_linear_alpha,
@@ -683,7 +679,6 @@ class BarSeqFitnessFrame:
     
     def plot_or_fit_barcode_ratios(self,
                                    auto_save=True,
-                                   ignore_samples=[],
                                    refit_index=None,
                                    ref_slope_to_average=True,
                                    bi_linear_alpha=np.log(5),
@@ -1523,7 +1518,7 @@ class BarSeqFitnessFrame:
             
         
             
-    def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True, ignore_samples=[]):
+    def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True):
         # merge small barcode into big barcode (add read counts)
         # remove small barcode from dataframe
         
@@ -1557,7 +1552,7 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
             
         if auto_refit:
-            self.fit_barcode_fitness(auto_save=auto_save, ignore_samples=ignore_samples, refit_index=big_bc_index)
+            self.fit_barcode_fitness(auto_save=auto_save, refit_index=big_bc_index)
             self.stan_fitness_difference_curves(auto_save=auto_save, refit_index=big_bc_index)
         
         
