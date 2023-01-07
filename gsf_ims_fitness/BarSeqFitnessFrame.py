@@ -428,12 +428,9 @@ class BarSeqFitnessFrame:
             
             if f"read_count_S{s}" not in barcode_frame.columns:
                 count_list = []
-                for ind, row in barcode_frame.iterrows():
-                    row_by_sample = row[well_list]
-                    count_list.append(row_by_sample.values)
-                
+                bc_arr = np.array([barcode_frame[w].values for w in well_list]).transpose()
                 # for each sample_id, get a list of counts for each barcode at the 4 time points
-                barcode_frame[f"read_count_S{s}"] = count_list
+                barcode_frame[f"read_count_S{s}"] = [list(x) for x in bc_arr]
         
         if verbose:
             print(f"samples_with_tet: {samples_with_tet}")
