@@ -663,6 +663,51 @@ class BarSeqFitnessFrame:
                                                plots_not_fits=False)
         
     
+    def plot_count_ratio_per_sample(self,
+                                    plot_range=None,
+                                    spike_in_initial='sab',
+                                    max_plots=20):
+                                    
+        plt.rcParams["figure.figsize"] = [26, 13]
+
+        plot_frame = self.barcode_frame
+        spike_in_row = plot_frame.loc[0]
+        if plot_range is not None:
+            plot_frame = plot_frame.loc[plot_range[0], plot_range[1]]
+        if len(plot_frame) > max_plots:
+            plot_frame = plot_frame.iloc[:max_plots]
+
+        x = [i for i in range(4)]
+        plot_list = self.samples_without_tet + self.samples_with_tet
+        sample_plate_map = self.sample_plate_map
+
+        for ind, row in plot_frame.iterrows():
+            fig, axs = plt.subplots(4, 6)
+            fig.suptitle(f'index: {ind}', size=24, y=0.925)
+            axs = axs.flatten()
+            
+            for samp, ax in zip(plot_list, axs):
+                if samp in self.samples_with_tet:
+                    for s in ['top', 'bottom', 'left', 'right']:
+                        ax.spines[s].set_color('red')
+                df = sample_plate_map
+                df = df[df["sample_id"]==samp]
+                df = df.sort_values('growth_plate')
+                well_list = list(df.well.values)
+
+                spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
+                n_reads = np.array(row[well_list], dtype='int64')
+                
+                y = np.log(n_reads) - np.log(spike_in_reads)
+                s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                ax.errorbar(x, y, s, fmt='o');
+                
+                for q in row[f'fit_slope_S{samp}_log_ratio_out_sab']:
+                    ax.plot(x, q);
+                
+                ax.set_title(f'sample {samp}')
+    
+    
     def plot_or_fit_barcode_ratios(self,
                                    auto_save=True,
                                    refit_index=None,
