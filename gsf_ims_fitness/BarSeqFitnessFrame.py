@@ -113,7 +113,7 @@ class BarSeqFitnessFrame:
         fraction_list = ["fraction_" + w for w in fitness.wells_by_column()[:24] ]
         barcode_frame["fraction_p2_std"] = barcode_frame[fraction_list].std(axis=1)
         
-        self.barcode_frame = barcode_frame
+        self.barcode_frame = barcode_frame.copy()
         
         if export_trimmed_file:
             if trimmed_export_file is None:
@@ -934,6 +934,8 @@ class BarSeqFitnessFrame:
             fit_frame[f'fitness_S{samp}_{initial}'] = spike_in_fitness + fit_frame[f'fit_slope_S{samp}_{initial}']/np.log(10)
             fit_frame[f'fitness_S{samp}_err_{initial}'] = fit_frame[f'fit_slope_S{samp}_err_{initial}']/np.log(10)
             
+        self.barcode_frame = fit_frame.copy()
+        
         if auto_save:
             self.save_as_pickle()
         
