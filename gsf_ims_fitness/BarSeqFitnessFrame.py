@@ -39,9 +39,10 @@ class BarSeqFitnessFrame:
         
     def __init__(self, notebook_dir, experiment=None, barcode_file=None, 
                  antibiotic_concentration_list=[0, 20], 
-                 inducer_conc_list=None, inducer="IPTG",
-                 inducer_2=None, inducer_conc_list_2=None,
+                 inducer_conc_lists=None, 
+                 inducer_list=["IPTG"],
                  min_read_count=500):
+                 #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
         
@@ -68,18 +69,15 @@ class BarSeqFitnessFrame:
         
         self.barcode_frame = barcode_frame
         
-        if inducer_conc_list is None:
-            inducer_conc_list = [0, 2]
+        if inducer_conc_lists is None:
+            conc_list = [0, 2]
             for i in range(10):
-                inducer_conc_list.append(2*inducer_conc_list[-1])
-        self.inducer_conc_list = inducer_conc_list
+                conc_list.append(2*inducer_conc_list[-1])
+            inducer_conc_lists = [conc_list]
+        else:
+            self.inducer_conc_lists = inducer_conc_lists
         
-        if inducer_conc_list_2 is not None:
-            self.inducer_conc_list_2 = inducer_conc_list_2
-        
-        self.inducer = inducer
-        if inducer_2 is not None:
-            self.inducer_2 = inducer_2
+        self.inducer_list = inducer_list
         
         self.fit_fitness_difference_params = None
         self.fit_fitness_difference_funct = None
@@ -364,19 +362,11 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         antibiotic_concentration_list = self.antibiotic_concentration_list
         ignore_samples = self.ignore_samples
-        inducer = self.inducer
-        inducer_conc_list = self.inducer_conc_list
-        inducer_2 = getattr(self, 'inducer_2', None)
-        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
+        inducer_list = self.inducer_list
+        inducer_conc_lists = self.inducer_conc_lists
         
-        if (len(antibiotic_concentration_list) == 2) and (inducer_2 is None):
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list, 
-                                                            tet_conc_list=antibiotic_concentration_list)
-        else:
-            sample_plate_map = fitness.get_sample_plate_map(inducer, inducer_conc_list,
-                                                            inducer_2=inducer_2, 
-                                                            inducer_conc_list_2=inducer_conc_list_2, 
-                                                            tet_conc_list=antibiotic_concentration_list)
+        sample_plate_map = fitness.get_sample_plate_map(inducer_list, inducer_conc_lists, 
+                                                        tet_conc_list=antibiotic_concentration_list)
                                                             
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
@@ -391,7 +381,7 @@ class BarSeqFitnessFrame:
                     df = sample_plate_map
                     df = df[df.with_tet==w]
                     df = df[df.growth_plate==gp]
-                    df = df[df[self.inducer]==x]
+                    df = df[df[self.inducer_list[0]]==x]
                     if len(df)>1:
                         print("problem converting ignore_samples")
                     elif len(df)==1:
@@ -954,10 +944,14 @@ class BarSeqFitnessFrame:
         
         antibiotic_concentration_list = self.antibiotic_concentration_list
     
-        inducer_conc_list = self.inducer_conc_list
-        inducer = self.inducer
-        inducer_2 = getattr(self, 'inducer_2', None)
-        inducer_conc_list_2 = getattr(self, 'inducer_conc_list_2', None)
+        inducer_conc_list = self.inducer_conc_lists[0]
+        inducer = self.inducer_list[0]
+        if len(self.inducer_list) > 1:
+            inducer_2 = self.self.inducer_list[1]
+            inducer_conc_list_2 = self.inducer_conc_lists[1]
+        else:
+            inducer_2 = None
+            inducer_conc_list_2 = None
         
         sample_plate_map = self.sample_plate_map
         
@@ -1985,7 +1979,7 @@ class BarSeqFitnessFrame:
             x = np.array(self.inducer_conc_list)
             linthresh = min(x[x>0])
             
-            ligand_list = [self.inducer]
+            ligand_list = self.inducer_list
             
             return old_style_plots, x, linthresh, fit_plot_colors, ligand_list
         else:

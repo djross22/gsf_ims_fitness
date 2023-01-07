@@ -32,7 +32,7 @@ import cmocean
 #import ipywidgets as widgets
 #from ipywidgets import interact#, interact_manual
 
-def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=None, inducer_conc_list_2=None):
+def get_sample_plate_map(inducer_list, inducer_conc_lists, tet_conc_list):
 
     """
     This method returns a dataframe that has the growth conditions for each well in the BarSeq output plate.
@@ -43,17 +43,11 @@ def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=No
     
     Parameters
     ----------
-    inducer : string
-        Identifier for the inducer used in the experiment
+    inducer_list : list of strings
+        Identifiers for the inducers used in the experiment
         
-    inducer_2 : string
-        Identifier for the second inducer used in the experiment
-        
-    inducer_conc_list : list or array of float
-        A list of inducer concentrations used in the experiment
-        
-    inducer_conc_list_2 : list or array of float
-        A list of inducer_2 concentrations used in the experiment
+    inducer_conc_list : list or array of lists of float
+        A list of lists of inducer concentrations used in the experiment
         
     tet_conc_list : list or array of float
         A list of antibiotic concentrations used in the experiment, including zero
@@ -64,7 +58,10 @@ def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=No
         A dataframe with the growth conditions for each well in the BarSeq output plate
     """
     
-    if inducer_2 is None:
+    inducer = inducer_list[0]
+    inducer_conc_list = inducer_conc_lists[0]
+    
+    if (len(inducer_list) == 1) and (len(tet_conc_list) == 2):
         # This handles the case for the original plate layout, with 12 inducer concentrations, each measured with and without antibiotic
         inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
         inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
@@ -97,9 +94,11 @@ def get_sample_plate_map(inducer, inducer_conc_list, tet_conc_list, inducer_2=No
                 sample_id.append(layout_dict[w])
         
         antibiotic_conc = [tet_conc_list[-1] if x else 0 for x in with_tet]
-    else:
+    elif (len(inducer_list) == 2) and (len(tet_conc_list) == 3):
         # This handles the case for the plate layout with 2 inducers and 2 non-zero antibiotic concentrations
+        inducer_2 = inducer_list[1]
         inducer_conc_list.sort()
+        inducer_conc_list_2 = inducer_conc_lists[1]
         inducer_conc_list_2.sort()
         
         zero_tet_inducer_conc = max(inducer_conc_list)/5
