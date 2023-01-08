@@ -85,7 +85,7 @@ class BarSeqFitnessFrame:
         self.fit_fitness_difference_params = None
         self.fit_fitness_difference_funct = None
         
-        self.set_sample_plate_map()
+        self.set_sample_plate_map(auto_save=False)
         self.set_ref_samples(ref_samples)
         
             
