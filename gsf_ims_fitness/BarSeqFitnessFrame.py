@@ -40,7 +40,7 @@ class BarSeqFitnessFrame:
     def __init__(self, notebook_dir, experiment=None, barcode_file=None, 
                  antibiotic_concentration_list=[0, 20], 
                  inducer_conc_lists=None, 
-                 inducer_list=["IPTG"],
+                 ligand_list=["IPTG"],
                  antibiotic='tet',
                  min_read_count=500,
                  ref_samples=None,
@@ -83,7 +83,7 @@ class BarSeqFitnessFrame:
         else:
             self.inducer_conc_lists = inducer_conc_lists
         
-        self.inducer_list = inducer_list
+        self.ligand_list = ligand_list
         
         self.fit_fitness_difference_params = None
         self.fit_fitness_difference_funct = None
@@ -416,10 +416,10 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         antibiotic_concentration_list = self.antibiotic_concentration_list
         ignore_samples = self.ignore_samples
-        inducer_list = self.inducer_list
+        ligand_list = self.ligand_list
         inducer_conc_lists = self.inducer_conc_lists
         
-        sample_plate_map = fitness.get_sample_plate_map(inducer_list, inducer_conc_lists, 
+        sample_plate_map = fitness.get_sample_plate_map(ligand_list, inducer_conc_lists, 
                                                         tet_conc_list=antibiotic_concentration_list)
                                                             
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
@@ -435,7 +435,7 @@ class BarSeqFitnessFrame:
                     df = sample_plate_map
                     df = df[df.with_tet==w]
                     df = df[df.growth_plate==gp]
-                    df = df[df[self.inducer_list[0]]==x]
+                    df = df[df[ligand_list[0]]==x]
                     if len(df)>1:
                         print("problem converting ignore_samples")
                     elif len(df)==1:
@@ -1050,7 +1050,7 @@ class BarSeqFitnessFrame:
         
         antibiotic_concentration_list = self.antibiotic_concentration_list
     
-        inducer_list = self.inducer_list
+        ligand_list = self.ligand_list
         antibiotic = self.antibiotic
         
         sample_plate_map = self.sample_plate_map
@@ -1077,7 +1077,7 @@ class BarSeqFitnessFrame:
             
             fig, axs = plt.subplots(1, 4)
             txt = f'Sample {samp}: {tet} {antibiotic}' 
-            for lig in inducer_list:
+            for lig in ligand_list:
                 c = df[lig].iloc[0]
                 txt += f', {c} {lig}'
             fig.suptitle(txt, size=20, y=1.1)
@@ -1105,7 +1105,7 @@ class BarSeqFitnessFrame:
         for samp, mean_list, rms_list, marker, tet in zip(sample_list, mean_resid_lists, rms_resid_lists, marker_list, tet_list):
             if tet == 0:
                 fillstyle = 'none'
-            elif (len(inducer_list) == 3) and (tet == asdf[1]):
+            elif (len(ligand_list) == 3) and (tet == asdf[1]):
                 fillstyle = 'left'
             else:
                 fillstyle = 'full'
@@ -1163,13 +1163,14 @@ class BarSeqFitnessFrame:
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
         fitness_columns_setup = self.get_fitness_columns_setup()
+        ligand_list = self.ligand_list
         
         if fitness_columns_setup[0]:
-            old_style_columns, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
+            old_style_columns, x, linthresh, fit_plot_colors = fitness_columns_setup
             
             plot_df = None
         else:
-            old_style_columns, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+            old_style_columns, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
         antibiotic_conc_list = self.antibiotic_concentration_list
         fit_fitness_difference_params = self.fit_fitness_difference_params
@@ -1370,14 +1371,16 @@ class BarSeqFitnessFrame:
         
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
+        ligand_list = self.ligand_list
+        
         if fitness_columns_setup[0]:
-            old_style_columns, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
+            old_style_columns, x, linthresh, fit_plot_colors = fitness_columns_setup
             
             low_fitness = fit_fitness_difference_params[0]
             mid_g = fit_fitness_difference_params[1]
             fitness_n = fit_fitness_difference_params[2]
         else:
-            old_style_columns, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+            old_style_columns, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
         antibiotic_conc_list = self.antibiotic_concentration_list
         
@@ -2015,9 +2018,9 @@ class BarSeqFitnessFrame:
         
         fitness_columns_setup = self.get_fitness_columns_setup()
         if fitness_columns_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
+            old_style_plots, x, linthresh, fit_plot_colors = fitness_columns_setup
         else:
-            old_style_plots, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+            old_style_plots, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
         antibiotic_conc_list = self.antibiotic_concentration_list
         
@@ -2098,22 +2101,20 @@ class BarSeqFitnessFrame:
             x = np.array(self.inducer_conc_list)
             linthresh = min(x[x>0])
             
-            ligand_list = self.inducer_list
-            
-            return old_style_plots, x, linthresh, fit_plot_colors, ligand_list
+            return old_style_plots, x, linthresh, fit_plot_colors
         else:
             sample_plate_map = self.sample_plate_map
-            ligand_list = list(np.unique(sample_plate_map.ligand))
-            if 'none' in ligand_list:
-                ligand_list.remove('none')
+            lig_list = list(np.unique(sample_plate_map.ligand))
+            if 'none' in lig_list:
+                lig_list.remove('none')
             
             plot_df = sample_plate_map
-            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=ligand_list)
+            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=lig_list)
             
-            x_list = np.array([np.array(plot_df[x]) for x in ligand_list]).flatten()
+            x_list = np.array([np.array(plot_df[x]) for x in lig_list]).flatten()
             linthresh = min(x_list[x_list>0])
             
-            return old_style_plots, linthresh, fit_plot_colors, plot_df, ligand_list
+            return old_style_plots, linthresh, fit_plot_colors, plot_df
     
 
     def plot_fitness_and_difference_curves(self,
@@ -2149,15 +2150,16 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
             
         antibiotic_conc_list = self.antibiotic_concentration_list
+        ligand_list = self.ligand_list
         
         #plot fitness curves
         fitness_columns_setup = self.get_fitness_columns_setup()
         if fitness_columns_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
+            old_style_plots, x, linthresh, fit_plot_colors = fitness_columns_setup
             if "sensor_params" not in barcode_frame.columns:
                 show_fits = False
         else:
-            old_style_plots, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+            old_style_plots, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
             if "log_g0" not in barcode_frame.columns:
                 show_fits = False
         
