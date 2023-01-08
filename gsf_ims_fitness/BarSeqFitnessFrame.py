@@ -1122,9 +1122,21 @@ class BarSeqFitnessFrame:
         return (sample_list, mean_resid_lists, rms_resid_lists)
     
     
+    def set_fit_fitness_difference_params(fit_fitness_difference_params=None,
+                                          auto_save=True):
+        antibiotic_conc_list = self.antibiotic_concentration_list
+        
+        if fit_fitness_difference_params is None:
+            fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
+        
+        self.fit_fitness_difference_params = fit_fitness_difference_params
+            
+        if auto_save:
+            self.save_as_pickle()
+        
+    
     def stan_fitness_difference_curves(self,
                                       includeChimeras=False,
-                                      fit_fitness_difference_params=None,
                                       control=dict(adapt_delta=0.9),
                                       iterations=1000,
                                       chains=4,
@@ -1154,12 +1166,10 @@ class BarSeqFitnessFrame:
             old_style_columns, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
         
         antibiotic_conc_list = self.antibiotic_concentration_list
+        fit_fitness_difference_params = self.fit_fitness_difference_params
         
         if len(ligand_list) == 1:
             sm_file = 'Double Hill equation fit.stan'
-        
-            if fit_fitness_difference_params is None:
-                fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
             
             params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
@@ -1169,9 +1179,6 @@ class BarSeqFitnessFrame:
                 
         elif len(ligand_list) == 2:
             sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
-        
-            if fit_fitness_difference_params is None:
-                fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
             
             params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
                            'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2',
@@ -1186,7 +1193,6 @@ class BarSeqFitnessFrame:
         quantile_params_dim = len(quantile_params_list)
                 
         stan_model = stan_utility.compile_model(sm_file)
-        self.fit_fitness_difference_params = fit_fitness_difference_params
         
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
@@ -1337,7 +1343,6 @@ class BarSeqFitnessFrame:
     def stan_GP_curves(self,
                        includeChimeras=False,
                        stan_GP_model='gp-hill-nomean-constrained.stan',
-                       fit_fitness_difference_params=None,
                        control=dict(adapt_delta=0.9),
                        iterations=1000,
                        chains=4,
@@ -1357,6 +1362,8 @@ class BarSeqFitnessFrame:
         
         fitness_columns_setup = self.get_fitness_columns_setup()
         
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
         if fitness_columns_setup[0]:
             old_style_columns, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
             
@@ -1370,9 +1377,6 @@ class BarSeqFitnessFrame:
         
         if len(ligand_list) == 1:
             stan_GP_model = 'gp-hill-nomean-constrained.stan'
-        
-            if fit_fitness_difference_params is None:
-                fit_fitness_difference_params = fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=antibiotic_conc_list[1])
             
             params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
             
@@ -1384,9 +1388,6 @@ class BarSeqFitnessFrame:
                 
         elif len(ligand_list) == 2:
             stan_GP_model = 'gp-hill-nomean-constrained.two-lig.two-tet.stan'
-        
-            if fit_fitness_difference_params is None:
-                fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
             
             params_list = ['low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet', 
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 
