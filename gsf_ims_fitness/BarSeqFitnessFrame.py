@@ -1669,7 +1669,7 @@ class BarSeqFitnessFrame:
         if save_plots:
             pdf.close()
         
-    def plot_read_counts(self, num_to_plot=None, save_plots=False, pdf_file=None, vmin=None):
+    def plot_read_counts(self, num_to_plot=None, save_plots=False, pdf_file=None, vmin=0):
         
         barcode_frame = self.barcode_frame
         
