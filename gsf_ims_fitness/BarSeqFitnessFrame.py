@@ -41,12 +41,14 @@ class BarSeqFitnessFrame:
                  antibiotic_concentration_list=[0, 20], 
                  inducer_conc_lists=None, 
                  inducer_list=["IPTG"],
+                 antibiotic='tet',
                  min_read_count=500):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
         
         self.antibiotic_concentration_list = antibiotic_concentration_list
+        self.antibiotic = antibiotic
         
         if experiment is None:
             experiment = fitness.get_exp_id(notebook_dir)
@@ -358,6 +360,7 @@ class BarSeqFitnessFrame:
     def display_viewable_plate_layouts(self):
         sample_plate_map = self.sample_plate_map
         col_contents = []
+        antibiotic = self.antibiotic
         for row in fitness.rows():
             sel = [row in w for w in sample_plate_map.well]
             df = sample_plate_map[sel]
@@ -367,7 +370,7 @@ class BarSeqFitnessFrame:
                 lig = row2.ligand
                 if lig != 'none':
                     st += f'{row2[lig]} {lig}, '
-                st += f'{row2.antibiotic_conc} tet'
+                st += f'{row2.antibiotic_conc} {antibiotic}'
                 st_list.append(st)
             col_contents.append(st_list)
         plate_layout_frame_2 = pd.DataFrame({r:cont for r, cont in zip(fitness.rows(), col_contents)}, 
@@ -1036,6 +1039,7 @@ class BarSeqFitnessFrame:
     
         inducer_conc_list = self.inducer_conc_lists[0]
         inducer = self.inducer_list[0]
+        antibiotic = self.antibiotic
         if len(self.inducer_list) > 1:
             inducer_2 = self.self.inducer_list[1]
             inducer_conc_list_2 = self.inducer_conc_lists[1]
@@ -1057,8 +1061,6 @@ class BarSeqFitnessFrame:
             df = df[df.sample_id==samp]
             tet = df.antibiotic_conc.iloc[0]
             tet_list.append(tet)
-            iptg = df.IPTG.iloc[0]
-            onpf = df.ONPF.iloc[0]
             
             resid_array = barcode_frame[f'fit_slope_S{samp}_resid_{initial}']
             sel = [len(x)==4 for x in resid_array]
@@ -1068,7 +1070,11 @@ class BarSeqFitnessFrame:
             y_list = resid_array.transpose()
             
             fig, axs = plt.subplots(1, 4)
-            fig.suptitle(f'Sample {samp}: {tet} Tet, {iptg} IPTG, {onpf} ONPF', size=20, y=1.1)
+            txt = f'Sample {samp}: {tet} {antibiotic}' 
+            for lig in inducer_list:
+                c = df[lig].iloc[0]
+                txt += f', {c} {lig}'
+            fig.suptitle(txt, size=20, y=1.1)
             for x, y, w, ax in zip(x_list, y_list, w_list, axs):
                 ax.set_title(w, size=16)
                 #ax.plot(x, y, 'o', alpha=0.2);
