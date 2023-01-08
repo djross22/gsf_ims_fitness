@@ -1123,10 +1123,15 @@ class BarSeqFitnessFrame:
     
     
     def set_fit_fitness_difference_params(fit_fitness_difference_params=None,
+                                          params_file=None,
                                           auto_save=True):
         antibiotic_conc_list = self.antibiotic_concentration_list
         
-        if fit_fitness_difference_params is None:
+        if fit_fitness_difference_params is not None:
+            pass
+        elif params_file is not None:
+            fit_fitness_difference_params = pickle.load(open(params_file, 'rb'))
+        else:
             fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
         
         self.fit_fitness_difference_params = fit_fitness_difference_params
