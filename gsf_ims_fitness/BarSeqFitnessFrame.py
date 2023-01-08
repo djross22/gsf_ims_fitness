@@ -748,8 +748,12 @@ class BarSeqFitnessFrame:
                 s = np.sqrt(1/n_reads + 1/spike_in_reads)
                 ax.errorbar(x, y, s, fmt='o');
                 
-                for q in row[f'fit_slope_S{samp}_log_ratio_out_sab']:
-                    ax.plot(x, q);
+                log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
+                if len(log_ratio.shape) ==  1:
+                    ax.plot(x, log_ratio, '--k')
+                else:
+                    for q in log_ratio:
+                        ax.plot(x, q);
                 
                 ax.set_title(f'sample {samp}')
     
