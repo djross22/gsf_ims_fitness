@@ -42,7 +42,8 @@ class BarSeqFitnessFrame:
                  inducer_conc_lists=None, 
                  inducer_list=["IPTG"],
                  antibiotic='tet',
-                 min_read_count=500):
+                 min_read_count=500,
+                 ref_samples=None):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
@@ -85,8 +86,16 @@ class BarSeqFitnessFrame:
         self.fit_fitness_difference_funct = None
         
         self.set_sample_plate_map()
+        self.set_ref_samples(ref_samples)
         
             
+    def set_ref_samples(self, ref_samples):
+        if ref_samples is None:
+            ref_samples = self.samples_without_tet
+            
+        self.ref_samples = ref_samples
+        
+    
     def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True):
         
         barcode_frame = self.barcode_frame
@@ -273,7 +282,6 @@ class BarSeqFitnessFrame:
                              control=None,
                              tau_default=0.01,
                              tau_de_weight=10,
-                             ref_samples=None,
                              ref_tau_factor=1,
                              return_fits=True,
                              use_all_samples_model=True,
@@ -287,7 +295,6 @@ class BarSeqFitnessFrame:
                         control=control,
                         tau_default=tau_default,
                         tau_de_weight=tau_de_weight,
-                        ref_samples=ref_samples,
                         ref_tau_factor=ref_tau_factor,
                         return_fits=return_fits,
                         use_all_samples_model=use_all_samples_model,
@@ -493,7 +500,6 @@ class BarSeqFitnessFrame:
                                    control=None,
                                    tau_default=0.01,
                                    tau_de_weight=10,
-                                   ref_samples=None,
                                    ref_tau_factor=1,
                                    return_fits=False,
                                    verbose=True,
@@ -507,11 +513,15 @@ class BarSeqFitnessFrame:
         samples_without_tet = self.samples_without_tet
         sample_keep_dict = self.sample_keep_dict
         
+        ref_samples = self.ref_samples
+        
         if ref_samples is None:
             ref_samples = samples_without_tet
             non_ref_without_tet = []
         else:
             non_ref_without_tet = list(set(samples_without_tet) - set(ref_samples))
+            
+        print(f'Using these samples as reference samples: {ref_samples}')
         
         row = barcode_frame.loc[index]
         
