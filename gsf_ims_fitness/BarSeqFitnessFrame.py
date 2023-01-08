@@ -38,7 +38,7 @@ sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.directi
 class BarSeqFitnessFrame:
         
     def __init__(self, notebook_dir, experiment=None, barcode_file=None, 
-                 antibiotic_concentration_list=[0, 20], 
+                 antibiotic_conc_list=[0, 20], 
                  inducer_conc_lists=None, 
                  ligand_list=["IPTG"],
                  antibiotic='tet',
@@ -51,7 +51,7 @@ class BarSeqFitnessFrame:
         
         self.plasmid = plasmid
         
-        self.antibiotic_concentration_list = antibiotic_concentration_list
+        self.antibiotic_conc_list = antibiotic_conc_list
         self.antibiotic = antibiotic
         
         if experiment is None:
@@ -414,13 +414,13 @@ class BarSeqFitnessFrame:
         self.ignore_samples = ignore_samples
         
         barcode_frame = self.barcode_frame
-        antibiotic_concentration_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
         ignore_samples = self.ignore_samples
         ligand_list = self.ligand_list
         inducer_conc_lists = self.inducer_conc_lists
         
         sample_plate_map = fitness.get_sample_plate_map(ligand_list, inducer_conc_lists, 
-                                                        tet_conc_list=antibiotic_concentration_list)
+                                                        tet_conc_list=antibiotic_conc_list)
                                                             
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
@@ -799,13 +799,13 @@ class BarSeqFitnessFrame:
         #     second key is spike-in name
         spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid)
         
-        antibiotic_concentration_list = self.antibiotic_concentration_list
-        high_tet = antibiotic_concentration_list[-1]
-        if len(antibiotic_concentration_list)==2:
+        antibiotic_conc_list = self.antibiotic_conc_list
+        high_tet = antibiotic_conc_list[-1]
+        if len(antibiotic_conc_list)==2:
             ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
             ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
         else:
-            low_tet = antibiotic_concentration_list[1]
+            low_tet = antibiotic_conc_list[1]
             ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
             ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
             
@@ -1048,7 +1048,7 @@ class BarSeqFitnessFrame:
         
         barcode_frame = self.barcode_frame
         
-        antibiotic_concentration_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
     
         ligand_list = self.ligand_list
         antibiotic = self.antibiotic
@@ -1125,7 +1125,7 @@ class BarSeqFitnessFrame:
                                           fit_fitness_difference_params=None,
                                           params_file=None,
                                           auto_save=True):
-        antibiotic_conc_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
         plasmid = self.plasmid
         
         if fit_fitness_difference_params is not None:
@@ -1172,7 +1172,7 @@ class BarSeqFitnessFrame:
         else:
             old_style_columns, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
-        antibiotic_conc_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
         if len(ligand_list) == 1:
@@ -1382,7 +1382,7 @@ class BarSeqFitnessFrame:
         else:
             old_style_columns, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
-        antibiotic_conc_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
         
         if len(ligand_list) == 1:
             stan_GP_model = 'gp-hill-nomean-constrained.stan'
@@ -2022,7 +2022,7 @@ class BarSeqFitnessFrame:
         else:
             old_style_plots, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
-        antibiotic_conc_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial, fill_style in zip(plot_initials, ['full', 'none', 'right', 'left']):
@@ -2079,8 +2079,6 @@ class BarSeqFitnessFrame:
         
     def get_fitness_columns_setup(self):
         barcode_frame = self.barcode_frame
-        
-        antibiotic_concentration_list = self.antibiotic_concentration_list
                         
         # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{high_tet}_estimate_{initial}")
         #     or the new style (i.e., f"fitness_S{i}_{initial}"
@@ -2149,7 +2147,7 @@ class BarSeqFitnessFrame:
             pdf_file = 'barcode fitness plots.pdf'
             pdf = PdfPages(pdf_file)
             
-        antibiotic_conc_list = self.antibiotic_concentration_list
+        antibiotic_conc_list = self.antibiotic_conc_list
         ligand_list = self.ligand_list
         
         #plot fitness curves
