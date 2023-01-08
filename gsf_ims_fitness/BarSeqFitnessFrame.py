@@ -43,10 +43,13 @@ class BarSeqFitnessFrame:
                  inducer_list=["IPTG"],
                  antibiotic='tet',
                  min_read_count=500,
-                 ref_samples=None):
+                 ref_samples=None,
+                 plasmid='pVER'):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
+        
+        self.plasmid = plasmid
         
         self.antibiotic_concentration_list = antibiotic_concentration_list
         self.antibiotic = antibiotic
@@ -276,7 +279,6 @@ class BarSeqFitnessFrame:
     def stan_barcode_fitness(self,
                              index=None,
                              spike_in_name="AO-B",
-                             plasmid="pVER",
                              iterations=1000,
                              chains=4,
                              control=None,
@@ -289,7 +291,6 @@ class BarSeqFitnessFrame:
                              auto_save=True):
         
         arg_dict = dict(spike_in_name=spike_in_name,
-                        plasmid=plasmid,
                         iterations=iterations,
                         chains=chains,
                         control=control,
@@ -494,7 +495,6 @@ class BarSeqFitnessFrame:
     def stan_barcode_fitness_index(self,
                                    index,
                                    spike_in_name="AO-B",
-                                   plasmid="pVER",
                                    iterations=1000,
                                    chains=4,
                                    control=None,
@@ -777,7 +777,6 @@ class BarSeqFitnessFrame:
                                    plot_range=None,
                                    show_spike_ins=["b"],
                                    show_bc_str=False,
-                                   plasmid="pVER",
                                    plot_samples=None):
         
         barcode_frame = self.barcode_frame
@@ -798,7 +797,7 @@ class BarSeqFitnessFrame:
         # Dictionary of dictionaries
         #     first key is tet concentration
         #     second key is spike-in name
-        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
+        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid)
         
         antibiotic_concentration_list = self.antibiotic_concentration_list
         high_tet = antibiotic_concentration_list[-1]
@@ -1010,11 +1009,11 @@ class BarSeqFitnessFrame:
         
     
     def add_fitness_from_slopes(self,
-                                plasmid='pVER',
                                 initial='b',
                                 auto_save=True):
         
         fit_frame = self.barcode_frame
+        plasmid = self.plasmid
         sample_plate_map = self.sample_plate_map
         sample_list = np.unique(sample_plate_map.sample_id)
         
@@ -1122,10 +1121,12 @@ class BarSeqFitnessFrame:
         return (sample_list, mean_resid_lists, rms_resid_lists)
     
     
-    def set_fit_fitness_difference_params(fit_fitness_difference_params=None,
+    def set_fit_fitness_difference_params(self,
+                                          fit_fitness_difference_params=None,
                                           params_file=None,
                                           auto_save=True):
         antibiotic_conc_list = self.antibiotic_concentration_list
+        plasmid = self.plasmid
         
         if fit_fitness_difference_params is not None:
             pass
@@ -1147,11 +1148,11 @@ class BarSeqFitnessFrame:
                                       chains=4,
                                       auto_save=True,
                                       refit_index=None,
-                                      plasmid="pVER",
                                       return_fit=False,
                                       include_lactose_zero=False,
                                       initial='b'):
-            
+        
+        plasmid = self.plasmid
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
         print("      Version from 2022-11-25")
@@ -1353,10 +1354,10 @@ class BarSeqFitnessFrame:
                        chains=4,
                        auto_save=True,
                        refit_index=None,
-                       plasmid="pVER",
                        return_fit=False,
                        initial='b'):
-            
+        
+        plasmid = self.plasmid
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
         print("      Method version from 2022-11-25")
