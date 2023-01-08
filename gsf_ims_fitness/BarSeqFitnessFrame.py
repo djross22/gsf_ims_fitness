@@ -2840,6 +2840,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
     
+    antibiotic_conc_list = np.array(antibiotic_conc_list)
+    
     if old_style_columns:
         high_tet = antibiotic_conc_list[1]
         
