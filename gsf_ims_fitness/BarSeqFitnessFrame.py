@@ -1137,11 +1137,13 @@ class BarSeqFitnessFrame:
         fitness_columns_setup = self.get_fitness_columns_setup()
         
         if fitness_columns_setup[0]:
-            old_style_columns, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+            old_style_columns, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
             
             plot_df = None
         else:
-            old_style_columns, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
+            old_style_columns, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+        
+        antibiotic_conc_list = self.antibiotic_concentration_list
         
         if len(ligand_list) == 1:
             sm_file = 'Double Hill equation fit.stan'
@@ -1346,14 +1348,16 @@ class BarSeqFitnessFrame:
         fitness_columns_setup = self.get_fitness_columns_setup()
         
         if fitness_columns_setup[0]:
-            old_style_columns, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+            old_style_columns, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
             
             low_fitness = fit_fitness_difference_params[0]
             mid_g = fit_fitness_difference_params[1]
             fitness_n = fit_fitness_difference_params[2]
         else:
-            old_style_columns, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
-            
+            old_style_columns, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+        
+        antibiotic_conc_list = self.antibiotic_concentration_list
+        
         if len(ligand_list) == 1:
             stan_GP_model = 'gp-hill-nomean-constrained.stan'
         
@@ -1994,9 +1998,11 @@ class BarSeqFitnessFrame:
         
         fitness_columns_setup = self.get_fitness_columns_setup()
         if fitness_columns_setup[0]:
-            old_style_plots, x, linthresh, fit_plot_colors, ligand_list, antibiotic_conc_list = fitness_columns_setup
+            old_style_plots, x, linthresh, fit_plot_colors, ligand_list = fitness_columns_setup
         else:
-            old_style_plots, linthresh, fit_plot_colors, antibiotic_conc_list, plot_df, ligand_list = fitness_columns_setup
+            old_style_plots, linthresh, fit_plot_colors, plot_df, ligand_list = fitness_columns_setup
+        
+        antibiotic_conc_list = self.antibiotic_concentration_list
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             for initial, fill_style in zip(plot_initials, ['full', 'none', 'right', 'left']):
