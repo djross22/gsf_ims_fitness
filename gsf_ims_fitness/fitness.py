@@ -266,9 +266,9 @@ def get_sample_plate_map(inducer_list, inducer_conc_lists, tet_conc_list):
     sample_plate_map['antibiotic_conc'] = antibiotic_conc
         
     sample_plate_map[inducer] = inducer_conc_list_in_plate
-    if inducer_2 is not None:
+    if len(inducer_list) >= 2:
         sample_plate_map[inducer_2] = inducer_2_conc_list_in_plate
-    if inducer_3 is not None:
+    if len(inducer_list) >= 3:
         sample_plate_map[inducer_3] = inducer_3_conc_list_in_plate
         
     sample_plate_map['growth_plate'] = plate_list
