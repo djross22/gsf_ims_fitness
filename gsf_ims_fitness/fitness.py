@@ -192,25 +192,25 @@ def get_sample_plate_map(inducer_list, inducer_conc_lists, tet_conc_list):
                 w2 = f"{r2}{c2 + y}"
                 w3 = f"{r3}{c1 + y}"
                 layout_dict[w1] = [x1, inducer, tet_conc_list[1], s1]
-                layout_dict[w2] = [x1, inducer, tet_conc_list[1], s2]
-                layout_dict[w3] = [x2, inducer_2, tet_conc_list[1], s3]
+                layout_dict[w2] = [x1, inducer_2, tet_conc_list[1], s2]
+                layout_dict[w3] = [x2, inducer_3, tet_conc_list[1], s3]
         for y in [0, 3, 6, 9]:
             w = f"A{1 + y}"
             layout_dict[w] = [0, 'none', tet_conc_list[1], 1]
             
-            w = f"A{2 + y}"
+            w = f"C{1 + y}"
             layout_dict[w] = [0, 'none', 0, 2]
             
-            w = f"A{3 + y}"
+            w = f"E{1 + y}"
             layout_dict[w] = [0, 'none', tet_conc_list[1], 3]
             
-            w = f"A{4 + y}"
+            w = f"G{1 + y}"
             layout_dict[w] = [zero_tet_inducer_conc, inducer, 0, 4]
             
-            w = f"A{5 + y}"
+            w = f"A{2 + y}"
             layout_dict[w] = [zero_tet_inducer_conc_2, inducer_2, 0, 5]
             
-            w = f"A{6 + y}"
+            w = f"C{2 + y}"
             layout_dict[w] = [zero_tet_inducer_conc_3, inducer_3, 0, 6]
         
         with_tet = []
@@ -247,7 +247,7 @@ def get_sample_plate_map(inducer_list, inducer_conc_lists, tet_conc_list):
                     inducer_3_conc_list_in_plate.append(0)
         
         ligand_list = []
-        for x, y, z in zip(inducer_conc_list_in_plate, inducer_2_conc_list_in_plate):
+        for x, y, z in zip(inducer_conc_list_in_plate, inducer_2_conc_list_in_plate, inducer_3_conc_list_in_plate):
             if x>0:
                 ind = inducer
             elif y>0:
@@ -268,6 +268,8 @@ def get_sample_plate_map(inducer_list, inducer_conc_lists, tet_conc_list):
     sample_plate_map[inducer] = inducer_conc_list_in_plate
     if inducer_2 is not None:
         sample_plate_map[inducer_2] = inducer_2_conc_list_in_plate
+    if inducer_3 is not None:
+        sample_plate_map[inducer_3] = inducer_3_conc_list_in_plate
         
     sample_plate_map['growth_plate'] = plate_list
     sample_plate_map.set_index('well', inplace=True, drop=False)
