@@ -355,6 +355,49 @@ class BarSeqFitnessFrame:
             return single_ret
             
     
+    def display_viewable_plate_layouts(self):
+        sample_plate_map = self.sample_plate_map
+        col_contents = []
+        for row in fitness.rows():
+            sel = [row in w for w in sample_plate_map.well]
+            df = sample_plate_map[sel]
+            st_list = []
+            for ind, row2 in df.iterrows():
+                st = f'S{row2.sample_id}, '
+                lig = row2.ligand
+                if lig != 'none':
+                    st += f'{row2[lig]} {lig}, '
+                st += f'{row2.antibiotic_conc} tet'
+                st_list.append(st)
+            col_contents.append(st_list)
+        plate_layout_frame_2 = pd.DataFrame({r:cont for r, cont in zip(fitness.rows(), col_contents)}, 
+                                            index=[i+1 for i in range(12)])
+        plate_layout_frame_2 = plate_layout_frame_2.transpose()
+
+        plate_layout_frame_2.columns.name = 'BarSeq Samples Layout'
+        display(plate_layout_frame_2)
+
+        samp_dict = {}
+        for st in plate_layout_frame_2[[1,2,3]].values.flatten():
+            k = int(st[1:st.find(',')])
+            v = st#[st.find(',')+2:]
+            samp_dict[k] = v
+
+        gp_samps_arr = np.array([[n for n in range(1, 13)],
+                                 [n for n in range(13, 25)]])
+
+        gp_layout_arr = []
+        for samps_row in gp_samps_arr:
+            sub_arr = []
+            for samp in samps_row:
+                sub_arr.append(samp_dict[samp])
+            gp_layout_arr.append(sub_arr)
+
+        plate_layout_frame_3 = pd.DataFrame(gp_layout_arr, index=['A', 'B'])
+        plate_layout_frame_3.columns.name = 'Growth Plate Layout'
+        display(plate_layout_frame_3)
+    
+    
     def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True):
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
