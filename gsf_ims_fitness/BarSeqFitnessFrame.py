@@ -1041,15 +1041,8 @@ class BarSeqFitnessFrame:
         
         antibiotic_concentration_list = self.antibiotic_concentration_list
     
-        inducer_conc_list = self.inducer_conc_lists[0]
-        inducer = self.inducer_list[0]
+        inducer_list = self.inducer_list
         antibiotic = self.antibiotic
-        if len(self.inducer_list) > 1:
-            inducer_2 = self.self.inducer_list[1]
-            inducer_conc_list_2 = self.inducer_conc_lists[1]
-        else:
-            inducer_2 = None
-            inducer_conc_list_2 = None
         
         sample_plate_map = self.sample_plate_map
         
@@ -1100,7 +1093,7 @@ class BarSeqFitnessFrame:
         for samp, mean_list, rms_list, marker, tet in zip(sample_list, mean_resid_lists, rms_resid_lists, marker_list, tet_list):
             if tet == 0:
                 fillstyle = 'none'
-            elif (len() == 3) and (tet == asdf[1]):
+            elif (len(inducer_list) == 3) and (tet == asdf[1]):
                 fillstyle = 'left'
             else:
                 fillstyle = 'full'
