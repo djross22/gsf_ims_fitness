@@ -44,28 +44,25 @@ class BarSeqFitnessFrame:
                  antibiotic='tet',
                  min_read_count=500,
                  ref_samples=None,
-                 plasmid='pVER'):
+                 plasmid='pVER', #A designation for the plasmid used for the flow cytometry calibration data
+                 get_layout_from_file=False,
+                 growth_plate_layout_file=None):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
-        
-        self.plasmid = plasmid
-        
-        self.antibiotic_conc_list = antibiotic_conc_list
-        self.antibiotic = antibiotic
         
         if experiment is None:
             experiment = fitness.get_exp_id(notebook_dir)
         
         self.experiment = experiment
         
-        print(f"Importing BarSeq count data and plotting histogram for thresholding for experiment: {experiment}")
-
+        print(f"Importing BarSeq count data for experiment: {experiment}")
+        
         self.data_directory = notebook_dir + "\\barcode_analysis"
         os.chdir(self.data_directory)
-    
+        
         if barcode_file is None:
-            barcode_file = glob.glob("*.sorted_counts.csv")[0]
+            barcode_file = glob.glob("*.trimmed_sorted_counts.csv")[0]
         print(f"Importing BarSeq count data from file: {barcode_file}")
         barcode_frame = pd.read_csv(barcode_file, skipinitialspace=True)
     
@@ -74,6 +71,14 @@ class BarSeqFitnessFrame:
         #barcode_frame.reset_index(drop=True, inplace=True)
         
         self.barcode_frame = barcode_frame
+        
+        self.fit_fitness_difference_params = None
+        self.fit_fitness_difference_funct = None
+        
+        self.plasmid = plasmid
+        
+        self.antibiotic_conc_list = antibiotic_conc_list
+        self.antibiotic = antibiotic
         
         if inducer_conc_lists is None:
             conc_list = [0, 2]
@@ -84,9 +89,6 @@ class BarSeqFitnessFrame:
             self.inducer_conc_lists = inducer_conc_lists
         
         self.ligand_list = ligand_list
-        
-        self.fit_fitness_difference_params = None
-        self.fit_fitness_difference_funct = None
         
         self.set_sample_plate_map(auto_save=False)
         self.set_ref_samples(ref_samples)
