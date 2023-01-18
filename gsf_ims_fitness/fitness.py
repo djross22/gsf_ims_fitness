@@ -290,6 +290,21 @@ def get_sample_plate_map(grow_plate_layout_file=None, inducer_list=None, inducer
         pass
     return sample_plate_map
 
+
+def growth_plate_well_from_barseq_well(bs_w):
+    bs_row = bs_w[0]
+    bs_col = int(bs_w[1:])
+    
+    bs_col_tp_1 = (bs_col - 1)%3 + 1
+    
+    if bs_row in ['A', 'C', 'E', 'G']:
+        gp_row = 'A'
+        gp_col = 'ACEG'.find(bs_row) + (bs_col_tp_1 - 1)*4 + 1
+    else:
+        gp_row = 'B'
+        gp_col = 'BDFH'.find(bs_row) + (bs_col_tp_1 - 1)*4 + 1
+    
+    return f'{gp_row}{gp_col}'
 def bar_seq_threshold_plot(notebook_dir,
                            experiment=None,
                            save_plots=False,
