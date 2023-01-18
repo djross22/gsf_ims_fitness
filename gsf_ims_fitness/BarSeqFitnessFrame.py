@@ -77,20 +77,26 @@ class BarSeqFitnessFrame:
         
         self.plasmid = plasmid
         
-        self.antibiotic_conc_list = antibiotic_conc_list
-        self.antibiotic = antibiotic
-        
-        if inducer_conc_lists is None:
-            conc_list = [0, 2]
-            for i in range(10):
-                conc_list.append(2*inducer_conc_list[-1])
-            inducer_conc_lists = [conc_list]
+        if get_layout_from_file:
+            if growth_plate_layout_file is None:
+                raise ValueError('The parameter growth_plate_layout_file must be set if get_layout_from_file==True')
+            self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file)
         else:
-            self.inducer_conc_lists = inducer_conc_lists
+            self.antibiotic_conc_list = antibiotic_conc_list
+            self.antibiotic = antibiotic
+            
+            if inducer_conc_lists is None:
+                conc_list = [0, 2]
+                for i in range(10):
+                    conc_list.append(2*inducer_conc_list[-1])
+                inducer_conc_lists = [conc_list]
+            else:
+                self.inducer_conc_lists = inducer_conc_lists
+            
+            self.ligand_list = ligand_list
+            
+            self.set_sample_plate_map(auto_save=False)
         
-        self.ligand_list = ligand_list
-        
-        self.set_sample_plate_map(auto_save=False)
         self.set_ref_samples(ref_samples)
         
             
@@ -411,7 +417,7 @@ class BarSeqFitnessFrame:
         display(plate_layout_frame_3)
     
     
-    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True):
+    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, growth_plate_layout_file=None):
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
         
@@ -421,7 +427,9 @@ class BarSeqFitnessFrame:
         ligand_list = self.ligand_list
         inducer_conc_lists = self.inducer_conc_lists
         
-        sample_plate_map = fitness.get_sample_plate_map(ligand_list, inducer_conc_lists, 
+        sample_plate_map = fitness.get_sample_plate_map(growth_plate_layout_file=growth_plate_layout_file,
+                                                        inducer_list=ligand_list, 
+                                                        inducer_conc_lists=inducer_conc_lists, 
                                                         tet_conc_list=antibiotic_conc_list)
                                                             
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
