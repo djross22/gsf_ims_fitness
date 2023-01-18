@@ -79,7 +79,7 @@ class BarSeqFitnessFrame:
         
         if get_layout_from_file:
             if growth_plate_layout_file is None:
-                raise ValueError('The parameter growth_plate_layout_file must be set if get_layout_from_file==True')
+                growth_plate_layout_file = self.find_growth_plate_layout_file()
             self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file)
         else:
             self.antibiotic_conc_list = antibiotic_conc_list
@@ -100,6 +100,20 @@ class BarSeqFitnessFrame:
         self.set_ref_samples(ref_samples)
         
             
+    def find_growth_plate_layout_file(self):
+        notebook_dir = self.notebook_dir
+        experiment = self.experiment
+        
+        exp_directory = notebook_dir[:notebook_dir.find(experiment)] + experiment
+        os.chdir(exp_directory)
+        
+        ret_file = glob.glob('*growth-plate_5.csv')[0]
+        
+        ret_file = exp_directory + '\\' + ret_file
+        
+        return ret_file
+    
+    
     def set_ref_samples(self, ref_samples):
         if ref_samples is None:
             ref_samples = self.samples_without_tet
