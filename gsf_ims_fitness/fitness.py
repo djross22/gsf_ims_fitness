@@ -32,12 +32,12 @@ import cmocean
 #import ipywidgets as widgets
 #from ipywidgets import interact#, interact_manual
 
-def get_sample_plate_map(grow_plate_layout_file=None, inducer_list=None, inducer_conc_lists=None, tet_conc_list=None):
+def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, inducer_conc_lists=None, tet_conc_list=None):
 
     """
     This method returns a dataframe that has the growth conditions for each well in the BarSeq output plate.
-    The method uses information from the grow_plate_layout_file if that parameter is not None. Otherwise, it uses the other parameters.
-    If grow_plate_layout_file is None, then the other parameters cannot be None.
+    The method uses information from the growth_plate_layout_file if that parameter is not None. Otherwise, it uses the other parameters.
+    If growth_plate_layout_file is None, then the other parameters cannot be None.
     Note that the BarSeq output plate has a different layout from the growth plate.
         Each well in the BarSeq output plate corresponds to 4 wells from the growth plate that have been combined.
         Columns 1-3 of the BarSeq output plate correspond to time point 1 (also sometimes refered to as growth plate 2).
@@ -51,7 +51,7 @@ def get_sample_plate_map(grow_plate_layout_file=None, inducer_list=None, inducer
     
     Parameters
     ----------
-    grow_plate_layout_file : str or path to file
+    growth_plate_layout_file : str or path to file
         The name of the growth plate layout file (usually something like, 'Experiment-ID_growth-plate_5.csv', 
         where the Experiment-ID starts with the date of the experiment)
         
@@ -69,7 +69,7 @@ def get_sample_plate_map(grow_plate_layout_file=None, inducer_list=None, inducer
     sample_plate_map : Pandas.DataFrame
         A dataframe with the growth conditions for each well in the BarSeq output plate
     """
-    if grow_plate_layout_file is None:
+    if growth_plate_layout_file is None:
         inducer = inducer_list[0]
         inducer_conc_list = inducer_conc_lists[0]
         
