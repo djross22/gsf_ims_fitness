@@ -769,13 +769,31 @@ class BarSeqFitnessFrame:
     
     def plot_count_ratio_per_sample(self,
                                     plot_range=None,
-                                    spike_in_initial='sab',
+                                    spike_in_initial=None,
                                     max_plots=20):
                                     
         plt.rcParams["figure.figsize"] = [26, 13]
 
         plot_frame = self.barcode_frame
-        spike_in_row = plot_frame.loc[0]
+        
+        
+        if self.plasmid == 'pVER':
+            if spike_in_initial is None:
+                spike_in_initial = 'sab'
+            if spike_in_initial[-1] == 'b':
+                spike_in = "AO-B"
+            elif spike_in_initial[-1] == 'e':
+                spike_in = "AO-E"
+        elif self.plasmid == 'pRamR':
+            if spike_in_initial is None:
+                spike_in_initial = 'sp01'
+            if spike_in_initial[-4:] == 'sp01':
+                spike_in = "ON-01"
+            elif spike_in_initial[-4:] == 'sp02':
+                spike_in = "ON-02"
+        
+        
+        spike_in_row = plot_frame[plot_frame.RS_name==spike_in].iloc[0]
         if plot_range is not None:
             plot_frame = plot_frame.loc[plot_range[0], plot_range[1]]
         if len(plot_frame) > max_plots:
@@ -823,11 +841,17 @@ class BarSeqFitnessFrame:
                                    bi_linear_alpha=np.log(5),
                                    plots_not_fits=False,
                                    plot_range=None,
-                                   show_spike_ins=["b"],
+                                   show_spike_ins=None,
                                    show_bc_str=False,
                                    plot_samples=None):
         
         barcode_frame = self.barcode_frame
+        
+        if show_spike_ins is None:
+            if self.plasmid == 'pVER':
+                show_spike_ins = ["b"]
+            elif self.plasmid == 'pRamR':
+                show_spike_ins = ["sp01"]
         
         if refit_index is None:
             if plots_not_fits:
@@ -849,34 +873,48 @@ class BarSeqFitnessFrame:
         
         antibiotic_conc_list = self.antibiotic_conc_list
         high_tet = antibiotic_conc_list[-1]
-        if len(antibiotic_conc_list)==2:
-            ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
-            ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
+        
+        if self.plasmid == 'pVER':
+            spike_1 = "AO-B"
+            spike_2 = "AO-E"
+            spike_1_init = 'b'
+            spike_2_init = 'e'
+        if self.plasmid == 'pRamR':
+            spike_1 = "ON-01"
+            spike_2 = "ON-02"
+            spike_1_init = 'sp01'
+            spike_2_init = 'sp02'
+            
+        if len(antibiotic_conc_list)==2: #Case for one non-zero antibiotic concentration
+            ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
+            ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
         else:
             low_tet = antibiotic_conc_list[1]
-            ref_fit_str_B = str(spike_in_fitness_dict[0]["AO-B"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-B"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-B"])
-            ref_fit_str_E = str(spike_in_fitness_dict[0]["AO-E"]) + ';' + str(spike_in_fitness_dict[low_tet]["AO-E"]) + ';' + str(spike_in_fitness_dict[high_tet]["AO-E"])
+            ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[low_tet][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
+            ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[low_tet][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
             
         if not plots_not_fits:
-            print(f'Reference fitness values, AO-B: {ref_fit_str_B}, AO-E: {ref_fit_str_E}')
+            print(f'Reference fitness values, {spike_1}: {ref_fit_str_B}, {spike_2}: {ref_fit_str_E}')
             print()
     
-        #ref_index_b = barcode_frame[barcode_frame["RS_name"]=="AO-B"].index[0]
-        #ref_index_e = barcode_frame[barcode_frame["RS_name"]=="AO-E"].index[0]
+        #ref_index_b = barcode_frame[barcode_frame["RS_name"]==spike_1].index[0]
+        #ref_index_e = barcode_frame[barcode_frame["RS_name"]==spike_2].index[0]
     
-        #spike_in_row_dict = {"AO-B": barcode_frame[ref_index_b:ref_index_b+1], "AO-E": barcode_frame[ref_index_e:ref_index_e+1]}
-        spike_in_row_dict = {"AO-B": barcode_frame[barcode_frame["RS_name"]=="AO-B"].iloc[0],
-                             "AO-E": barcode_frame[barcode_frame["RS_name"]=="AO-E"].iloc[0]}
+        #spike_in_row_dict = {spike_1: barcode_frame[ref_index_b:ref_index_b+1], spike_2: barcode_frame[ref_index_e:ref_index_e+1]}
+        spike_in_row_dict = {spike_1: barcode_frame[barcode_frame["RS_name"]==spike_1].iloc[0],
+                             spike_2: barcode_frame[barcode_frame["RS_name"]==spike_2].iloc[0]}
         
-        sp_b = spike_in_row_dict["AO-B"][["RS_name", "read_count_S6"]]
-        sp_e = spike_in_row_dict["AO-E"][["RS_name", "read_count_S6"]]
+        # These are only used for printing out info: the read counts for the 1st reference sample
+        samp = self.ref_samples[0]
+        sp_1 = spike_in_row_dict[spike_1][["RS_name", f"read_count_S{samp}"]]
+        sp_2 = spike_in_row_dict[spike_2][["RS_name", f"read_count_S{samp}"]]
         if not plots_not_fits:
-            print(f"AO-B: {sp_b}")
-            print(f"AO-E: {sp_e}")
+            print(f"{spike_1}: {sp_1}")
+            print(f"{spike_2}: {sp_2}")
             print()
         
         # Fit to barcode log(ratios) over time to get slopes = fitness
-        #     use both AO-B and AO-E as reference (separately)
+        #     use both spike-ins as reference (separately)
         # Samples without tet are fit to simple linear function.
         # Samples with tet are fit to bi-linear function, with initial slope equal to corresponding without-tet sample (or average)
         
@@ -896,7 +934,7 @@ class BarSeqFitnessFrame:
         
         x0 = np.array([2, 3, 4, 5])
         print()
-        for spike_in, initial in zip(["AO-B", "AO-E"], ["b", "e"]):
+        for spike_in, initial in zip([spike_1, spike_2], [spike_1_init, spike_2_init]):
             no_tet_slope_lists = []
             
             for samp in samples_without_tet:
@@ -983,7 +1021,7 @@ class BarSeqFitnessFrame:
                 resids_list = []
                 log_ratio_out_list = []
                 for (index, row), slope_0, ax in zip(fit_frame.iterrows(), no_tet_slope, axs): # iterate over barcodes
-                    if plots_not_fits and (initial=='b') and (samp == samples_with_tet[0]):
+                    if plots_not_fits and (initial==spike_1_init) and (samp == samples_with_tet[0]):
                         barcode_str = str(index) + ': '
                         barcode_str += format(row[f'total_counts'], ",") + "; "
                         barcode_str += row['RS_name']
@@ -1057,7 +1095,7 @@ class BarSeqFitnessFrame:
         
     
     def add_fitness_from_slopes(self,
-                                initial='b',
+                                initial=None,
                                 auto_save=True):
         
         fit_frame = self.barcode_frame
@@ -1071,10 +1109,19 @@ class BarSeqFitnessFrame:
         spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
         
         if plasmid == 'pVER':
+            if initial is None:
+                initial = 'b'
             if initial[-1] == 'b':
                 spike_in = "AO-B"
             elif initial[-1] == 'e':
                 spike_in = "AO-E"
+        elif plasmid == 'pRamR':
+            if initial is None:
+                initial = 'sp01'
+            if initial[-4:] == 'sp01':
+                spike_in = "ON-01"
+            elif initial[-4:] == 'sp02':
+                spike_in = "ON-02"
         
         for samp in sample_list:
             df = sample_plate_map
@@ -2445,7 +2492,7 @@ class BarSeqFitnessFrame:
     def plot_count_ratios_vs_time(self, plot_range=None,
                                   with_tet=None,
                                   mark_samples=[],
-                                  show_spike_ins=["b"],
+                                  show_spike_ins=None,
                                   plot_samples=None):
         
         return self.plot_or_fit_barcode_ratios(plots_not_fits=True,
