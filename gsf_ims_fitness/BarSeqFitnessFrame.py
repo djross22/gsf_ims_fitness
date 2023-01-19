@@ -2072,8 +2072,14 @@ class BarSeqFitnessFrame:
                             ax_label_size=14,
                             show_bc_str=False,
                             real_fitness_units=False,
-                            plot_initials=["b", "e"],
+                            plot_initials=None,
                             plot_slope_not_fitness=False):
+        
+        if plot_initials is None:
+            if self.plasmid == 'pVER':
+                plot_initials=["b", "e"]
+            elif self.plasmid == 'pRamR':
+                plot_initials=["sp01", "sp02"]
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -2181,10 +2187,11 @@ class BarSeqFitnessFrame:
         #     or the new style (i.e., f"fitness_S{i}_{initial}"
         # The new style is preferred, so will be used if both are possible
         old_style_plots = False
-        for initial in ['b', 'e']:
-            for i  in range(1, 25):
-                c = f"fitness_S{i}_{initial}"
-                old_style_plots = old_style_plots or (c not in barcode_frame.columns)
+        if self.plasmid == 'pVER':
+            for initial in ['b', 'e']:
+                for i  in range(1, 25):
+                    c = f"fitness_S{i}_{initial}"
+                    old_style_plots = old_style_plots or (c not in barcode_frame.columns)
         if old_style_plots:
             print("Using old style column headings")
         #else:
