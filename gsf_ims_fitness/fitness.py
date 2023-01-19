@@ -70,6 +70,7 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         A dataframe with the growth conditions for each well in the BarSeq output plate
     """
     if growth_plate_layout_file is None:
+        antibiotic = None
         inducer = inducer_list[0]
         inducer_conc_list = inducer_conc_lists[0]
         
@@ -291,6 +292,16 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         
         gp_frame = pd.read_csv(growth_plate_layout_file)
         
+        antibiotic = list(np.unique(gp_frame.selectorId))
+        if 'none' in antibiotic:
+            antibiotic.remove('none')
+        if len(antibiotic) == 1:
+            antibiotic = antibiotic[0]
+        elif len(antibiotic) > 1:
+            raise ValueError(f'Growth plate file contains more then one antibiotic/selector, {growth_plate_layout_file}')
+        elif len(antibiotic) < 1:
+            raise ValueError(f'Growth plate file does not contain an antibiotic/selector, {growth_plate_layout_file}')
+        
         bs_wells = wells()
         
         sample_id = []
@@ -346,7 +357,7 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
                 gp_list.append(5)
         sample_plate_map['growth_plate'] = gp_list
         
-    return sample_plate_map
+    return sample_plate_map, antibiotic
 
 
 def growth_plate_well_from_barseq_well(bs_w):
