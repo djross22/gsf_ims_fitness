@@ -202,13 +202,21 @@ class BarSeqFitnessFrame:
         
         name_list = [""]*len(barcode_frame)
         barcode_frame["RS_name"] = name_list
+        
+        double_barcodes = "reverse_lin_tag" in ref_seq_frame.columns
+        
+        if double_barcodes:
+            disp_cols = ["RS_name", "forward_BC", "reverse_BC", "total_counts"]
+        else:
+            disp_cols = ["RS_name", "forward_BC", "total_counts"]
     
         if ref_seq_frame is not None:
             no_match_list = []
             for index, row in ref_seq_frame.iterrows():
                 display_frame = barcode_frame[barcode_frame["forward_BC"].str.contains(row["forward_lin_tag"])]
-                display_frame = display_frame[display_frame["reverse_BC"].str.contains(row["reverse_lin_tag"])]
-                display_frame = display_frame[["RS_name", "forward_BC", "reverse_BC", "total_counts"]]
+                if double_barcodes:
+                    display_frame = display_frame[display_frame["reverse_BC"].str.contains(row["reverse_lin_tag"])]
+                display_frame = display_frame[disp_cols]
                 if len(display_frame)==0:
                     n = row["RS_name"]
                     no_match_list.append(n)
