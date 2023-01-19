@@ -449,10 +449,10 @@ class BarSeqFitnessFrame:
         self.ignore_samples = ignore_samples
         
         barcode_frame = self.barcode_frame
-        antibiotic_conc_list = self.antibiotic_conc_list
+        antibiotic_conc_list = getattr(self, 'antibiotic_conc_list', None)
         ignore_samples = self.ignore_samples
-        ligand_list = self.ligand_list
-        inducer_conc_lists = self.inducer_conc_lists
+        ligand_list = getattr(self, 'ligand_list', None)
+        inducer_conc_lists = getattr(self, 'inducer_conc_lists', None)
         
         sample_plate_map, anti_out = fitness.get_sample_plate_map(growth_plate_layout_file=growth_plate_layout_file,
                                                                   inducer_list=ligand_list, 
