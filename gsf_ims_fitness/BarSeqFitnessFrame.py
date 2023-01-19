@@ -799,7 +799,7 @@ class BarSeqFitnessFrame:
         if len(plot_frame) > max_plots:
             plot_frame = plot_frame.iloc[:max_plots]
 
-        x = [i for i in range(4)]
+        x = np.array([i for i in range(4)])
         plot_list = self.samples_without_tet + self.samples_with_tet
         sample_plate_map = self.sample_plate_map
 
@@ -826,7 +826,7 @@ class BarSeqFitnessFrame:
                 
                 log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
                 if len(log_ratio.shape) ==  1:
-                    ax.plot(x, log_ratio, '--k')
+                    ax.plot(x[n_reads>0], log_ratio, '--k')
                 else:
                     for q in log_ratio:
                         ax.plot(x, q);
