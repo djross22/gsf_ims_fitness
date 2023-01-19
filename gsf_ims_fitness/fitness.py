@@ -284,7 +284,7 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             sample_plate_map[inducer_3] = inducer_3_conc_list_in_plate
             
         sample_plate_map['growth_plate'] = plate_list
-        sample_plate_map.set_index('well', inplace=True, drop=False)
+        #sample_plate_map.set_index('well', inplace=True, drop=False)
     
     else:
         print(f'Automatically importing layout info from {growth_plate_layout_file}')
