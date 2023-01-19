@@ -64,6 +64,7 @@ class BarSeqFitnessFrame:
         if barcode_file is None:
             barcode_file = glob.glob("*.trimmed_sorted_counts.csv")[0]
         print(f"Importing BarSeq count data from file: {barcode_file}")
+        print()
         barcode_frame = pd.read_csv(barcode_file, skipinitialspace=True)
     
         barcode_frame.sort_values('total_counts', ascending=False, inplace=True)
