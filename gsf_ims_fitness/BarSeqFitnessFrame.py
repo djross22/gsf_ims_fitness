@@ -449,6 +449,7 @@ class BarSeqFitnessFrame:
             gp_layout_arr.append(sub_arr)
 
         plate_layout_frame_3 = pd.DataFrame(gp_layout_arr, index=['A', 'B'])
+        plate_layout_frame_3.rename(columns={n: n+1 for n in plate_layout_frame_3.columns}, inplace=True)
         plate_layout_frame_3.columns.name = 'Growth Plate Layout'
         display(plate_layout_frame_3)
     
