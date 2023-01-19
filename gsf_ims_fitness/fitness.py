@@ -287,7 +287,65 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         sample_plate_map.set_index('well', inplace=True, drop=False)
     
     else:
-        pass
+        print(f'Automatically importing layout info from {growth_plate_layout_file}')
+        
+        gp_frame = pd.read_csv(growth_plate_layout_file)
+        
+        bs_wells = wells()
+        
+        sample_id = []
+        ligand_list = []
+        with_tet = []
+        antibiotic_conc = []
+        ligand_conc = []
+        for bs_w in bs_wells:
+            gp_w = growth_plate_well_from_barseq_well(bs_w)
+            if gp_w[0] == 'A':
+                samp = int(gp_w[1:])
+            else:
+                samp = int(gp_w[1:]) + 12
+            sample_id.append(samp)
+            
+            gp_row = gp_frame[gp_frame.well==gp_w].iloc[0]
+            
+            ligand_list.append(gp_row.inducerId)
+            tet_conc = gp_row.selectorConc
+            with_tet.append(tet_conc > 0)
+            antibiotic_conc.append(tet_conc)
+            ligand_conc.append(gp_row.inducerConcentration)
+            
+        sample_plate_map = pd.DataFrame({"well": bs_wells}, dtype='string')
+        sample_plate_map['sample_id'] = sample_id
+        sample_plate_map['ligand'] = ligand_list
+        
+        sample_plate_map['with_tet'] = with_tet
+        sample_plate_map['antibiotic_conc'] = antibiotic_conc
+        
+        lig_id_list = list(np.unique(sample_plate_map['ligand']))
+        if 'none' in lig_id_list:
+            lig_id_list.remove('none')
+        for lig_id in lig_id_list:
+            conc_list = []
+            for lig, conc in zip(ligand_list, ligand_conc):
+                if lig == lig_id:
+                    conc_list.append(conc)
+                else:
+                    conc_list.append(0)
+            sample_plate_map[lig_id] = conc_list
+            
+        gp_list = []
+        for w in sample_plate_map.well:
+            c = int(w[1:])
+            if c in [1, 2, 3]:
+                gp_list.append(2)
+            elif c in [4, 5, 6]:
+                gp_list.append(3)
+            elif c in [7, 8, 9]:
+                gp_list.append(4)
+            elif c in [10, 11, 12]:
+                gp_list.append(5)
+        sample_plate_map['growth_plate'] = gp_list
+        
     return sample_plate_map
 
 
@@ -305,6 +363,8 @@ def growth_plate_well_from_barseq_well(bs_w):
         gp_col = 'BDFH'.find(bs_row) + (bs_col_tp_1 - 1)*4 + 1
     
     return f'{gp_row}{gp_col}'
+
+
 def bar_seq_threshold_plot(notebook_dir,
                            experiment=None,
                            save_plots=False,
