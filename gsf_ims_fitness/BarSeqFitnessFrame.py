@@ -1044,13 +1044,24 @@ class BarSeqFitnessFrame:
                     sel = np.array(sample_keep_dict[samp])
                     s[~sel] = 10 
                     
-                    # then, drop data for any samples with zero read count 
+                    # Need to drop data for any samples with zero read count (after bi_linear_alpha check)
                     sel = (n_reads>0)&(spike_in_reads>0)
+                    
+                    # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
+                    if bi_linear_alpha is None:
+                        x = x[1:]
+                        y = y[1:]
+                        s = s[1:]
+                        sel = sel[1:]
+                    
                     x = x[sel]
                     y = y[sel]
                     s = s[sel]
                     
-                    def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
+                    if bi_linear_alpha is not None:
+                        def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
+                    else:
+                        fit_funct = fitness.line_funct
                     
                     if plots_not_fits:
                         if (initial in show_spike_ins) and (samp in plot_samples):
@@ -1067,6 +1078,9 @@ class BarSeqFitnessFrame:
                                     pcov = np.full([2,2], np.nan)
                             log_ratio_out = fit_funct(x, *popt)
                             resids = y - log_ratio_out
+                            if bi_linear_alpha is None:
+                                resids = np.array([np.nan] + list(resids))
+                                log_ratio_out = np.array([np.nan] + list(log_ratio_out))
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
                             f_est_list.append(popt[0])
