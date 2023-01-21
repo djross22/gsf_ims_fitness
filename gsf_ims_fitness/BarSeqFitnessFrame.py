@@ -1153,7 +1153,12 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
         
     
-    def plot_fit_residuals(self, initial='b'):
+    def plot_fit_residuals(self, initial=None):
+        if initial is None:
+            if self.plasmid == 'pVER':
+                initial = 'b'
+            elif self.plasmid == 'pRamR':
+                initial = 'sp01'
         
         barcode_frame = self.barcode_frame
         
@@ -1196,13 +1201,19 @@ class BarSeqFitnessFrame:
                 s = (x>10)&(~np.isnan(y))
                 y = y[s]
                 x = x[s]
-                if len(x) > 100:
+                if len(x) == 0:
+                    pass
+                elif len(x) > 100:
                     ax.hist2d(np.log10(x), y, bins=50, norm=colors.LogNorm())
                 else:
                     ax.plot(np.log10(x), y, 'o', alpha=0.3)
                 #ax.set_xscale('log')
-                mean_sub_list.append(np.mean(y))
-                rms_sub_list.append(np.sqrt(np.mean(y**2)))
+                if len(x) != 0:
+                    mean_sub_list.append(np.mean(y))
+                    rms_sub_list.append(np.sqrt(np.mean(y**2)))
+                else:
+                    mean_sub_list.append(np.nan)
+                    rms_sub_list.append(np.nan)
             mean_resid_lists.append(mean_sub_list)
             rms_resid_lists.append(rms_sub_list)
     
@@ -1212,15 +1223,8 @@ class BarSeqFitnessFrame:
         marker_list = ['-o']*8 + ['-^']*8 + ['-v']*8
         x = [i for i in range(1, 5)]
         for samp, mean_list, rms_list, marker, tet in zip(sample_list, mean_resid_lists, rms_resid_lists, marker_list, tet_list):
-            if tet == 0:
-                fillstyle = 'none'
-            elif (len(ligand_list) == 3) and (tet == asdf[1]):
-                fillstyle = 'left'
-            else:
-                fillstyle = 'full'
-                
             for ax, y in zip(axs, [mean_list, rms_list]):
-                ax.plot(x, y, marker, label=f'S{samp}', fillstyle=fillstyle, ms=12);
+                ax.plot(x, y, marker, label=f'S{samp}', fillstyle=None, ms=12);
         ax.legend(loc='upper left', bbox_to_anchor= (1.05, 1.05), ncol=3);
         axs[0].set_xlabel('time point')
         axs[1].set_xlabel('time point')
