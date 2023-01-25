@@ -320,19 +320,19 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
     
     
-    def stan_barcode_fitness(self,
-                             index=None,
-                             spike_in_name="AO-B",
-                             iterations=1000,
-                             chains=4,
-                             control=None,
-                             tau_default=0.01,
-                             tau_de_weight=10,
-                             ref_tau_factor=1,
-                             return_fits=True,
-                             use_all_samples_model=True,
-                             slope_ref_prior_std=0.1,
-                             auto_save=True):
+    def stan_barcode_slope(self,
+                           index=None,
+                           spike_in_name="AO-B",
+                           iterations=1000,
+                           chains=4,
+                           control=None,
+                           tau_default=0.01,
+                           tau_de_weight=10,
+                           ref_tau_factor=1,
+                           return_fits=True,
+                           use_all_samples_model=True,
+                           slope_ref_prior_std=0.1,
+                           auto_save=True):
         
         arg_dict = dict(spike_in_name=spike_in_name,
                         iterations=iterations,
@@ -368,7 +368,7 @@ class BarSeqFitnessFrame:
             
             ind = fit_frame.index[0]
             print(ind)
-            ret_dict = self.stan_barcode_fitness_index(index=ind, **arg_dict)
+            ret_dict = self.stan_barcode_slope_index(index=ind, **arg_dict)
             key_list = [k for k in ret_dict.keys()]
             for key in key_list:
                 params = ret_dict[key]
@@ -381,7 +381,7 @@ class BarSeqFitnessFrame:
             for ind in fit_frame.iloc[1:].index:
                 if ind%print_interval == 0:
                     print(ind)
-                ret_dict = self.stan_barcode_fitness_index(index=ind, **arg_dict)
+                ret_dict = self.stan_barcode_slope_index(index=ind, **arg_dict)
                 for key in key_list:
                     params = ret_dict[key]
                     fitness_list_dict[key] += [params[0]]
@@ -405,7 +405,7 @@ class BarSeqFitnessFrame:
         else:
             # run Stan fit for a single barcode/index
             arg_dict['index'] = index
-            single_ret = self.stan_barcode_fitness_index(**arg_dict)
+            single_ret = self.stan_barcode_slope_index(**arg_dict)
             return single_ret
             
     
@@ -540,19 +540,19 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
     
     
-    def stan_barcode_fitness_index(self,
-                                   index,
-                                   spike_in_name="AO-B",
-                                   iterations=1000,
-                                   chains=4,
-                                   control=None,
-                                   tau_default=0.01,
-                                   tau_de_weight=10,
-                                   ref_tau_factor=1,
-                                   return_fits=False,
-                                   verbose=True,
-                                   use_all_samples_model=True,
-                                   slope_ref_prior_std=0.1):
+    def stan_barcode_slope_index(self,
+                                 index,
+                                 spike_in_name="AO-B",
+                                 iterations=1000,
+                                 chains=4,
+                                 control=None,
+                                 tau_default=0.01,
+                                 tau_de_weight=10,
+                                 ref_tau_factor=1,
+                                 return_fits=False,
+                                 verbose=True,
+                                 use_all_samples_model=True,
+                                 slope_ref_prior_std=0.1):
         
         barcode_frame = self.barcode_frame
         
