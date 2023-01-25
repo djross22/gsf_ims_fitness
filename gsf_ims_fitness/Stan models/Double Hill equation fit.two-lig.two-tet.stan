@@ -137,9 +137,9 @@ model {
   fitness_n_high_tet ~ normal(fitness_n_mu_high_tet, fitness_n_std_high_tet);
   
   
-  // Prior on sensor_n; <gamma> = alpha/beta = 1.2; std = sqrt(alpha)/beta = 0.6
-  sensor_n_1 ~ gamma(4.0, 10.0/3.0);
-  sensor_n_2 ~ gamma(4.0, 10.0/3.0);
+  // Prior on sensor_n; <gamma> = alpha/beta = 1.5; std = sqrt(alpha)/beta = 0.5
+  sensor_n_1 ~ gamma(9.0, 6.0);
+  sensor_n_2 ~ gamma(9.0, 6.0);
   
   // Prior on log_ec50; flat prior with erf boundaries
   target += log1m(erf((log_x_min + 0.7 - log_ec50_1)/0.5));
@@ -147,16 +147,6 @@ model {
   
   target += log1m(erf((log_x_min + 0.7 - log_ec50_2)/0.5));
   target += log1m(erf((log_ec50_2 - log_x_max + 0.8)/0.3));
-  
-  // Prior on log_g0; flat prior with erf boundaries
-  target += log1m(erf((log_g_min + 0.9 - log_g0)/log_g_prior_scale));
-  target += log1m(erf((log_g0 - log_g_max + 0.9)/log_g_prior_scale));
-  
-  // Prior on log_ginf; flat prior with erf boundaries
-  target += log1m(erf((log_g_min + 0.9 - log_ginf_1)/log_g_prior_scale));
-  target += log1m(erf((log_ginf_1 - log_g_max + 0.9)/log_g_prior_scale));
-  target += log1m(erf((log_g_min + 0.9 - log_ginf_2)/log_g_prior_scale));
-  target += log1m(erf((log_ginf_2 - log_g_max + 0.9)/log_g_prior_scale));
   
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);

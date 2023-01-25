@@ -18,14 +18,7 @@ data {
 transformed data {
   real x_gp[N];
   real sqrt_pi = sqrt(pi());
-  real low_constr;
-  real high_constr;
-  real sig_constr;
   real center_log_g;
-  
-  low_constr = log_g_min + 0.5;
-  high_constr = log_g_max - 0.5;
-  sig_constr = 0.9;
   
   center_log_g = (log_g_min + log_g_max)/2;
   
@@ -69,21 +62,14 @@ transformed parameters {
     L_K = cholesky_decompose(K);
 
     log_g = center_log_g + L_K * eta;
-    for (i in 1:N){
-      //constr_log_g[i] = 1.5*erf(sqrt_pi/3*(log_g[i] - 2.5)) + 2.5;
-      
-      term1 = sig_constr/sqrt_pi*(exp(-((low_constr - log_g[i])^2/sig_constr^2)) - exp(-((high_constr - log_g[i])^2/sig_constr^2)));
-      term2 = (log_g[i] - high_constr)*erf((high_constr - log_g[i])/sig_constr);
-      term3 = (low_constr - log_g[i])*erf((low_constr - log_g[i])/sig_constr);
-      
-      constr_log_g[i] = (high_constr + low_constr + term1 + term2 + term3)/2;
-      
-      g[i] = 10^constr_log_g[i];
-    }
+	
+    constr_log_g = log_g_min + (log_g_max - log_g_min)*inv_logit(log_g);
 
   }
   
   for (i in 1:N) {
+    g[i] = 10^constr_log_g[i];
+    
     mean_y[i] = low_fitness_high_tet - low_fitness_high_tet*(g[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g[i]^fitness_n_high_tet);
   }
 
