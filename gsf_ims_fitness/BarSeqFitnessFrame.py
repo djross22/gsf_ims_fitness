@@ -1229,7 +1229,9 @@ class BarSeqFitnessFrame:
                     ax.hist2d(np.log10(x), y, bins=50, norm=colors.LogNorm())
                 else:
                     ax.plot(np.log10(x), y, 'o', alpha=0.3)
-                #ax.set_xscale('log')
+                ax.set_xlabel('log10(read count)')
+                if ax is axs[0]:
+                    ax.set_ylabel('fit residual')
                 if len(x) != 0:
                     mean_sub_list.append(np.mean(y))
                     rms_sub_list.append(np.sqrt(np.mean(y**2)))
