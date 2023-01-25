@@ -1132,10 +1132,16 @@ def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
     return colors.hsv_to_rgb(hsv_color)
 
-def fitness_calibration_dict(plasmid="pVER"):
+def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
     # Dictionary of dictionaries
     #     first key is antibiotic concentration
     #     second key is spike-in name
+    #     units for fitness values are 10-fold per plate. 
+    #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
+    # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
+    #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
+    #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
+    #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
     spike_in_fitness_dict = {}
     if plasmid == 'pVER':
         tet_list = [0, 1.25, 10, 20]
@@ -1171,9 +1177,20 @@ def fitness_calibration_dict(plasmid="pVER"):
             spike_in_fitness_dict[t] = d
     elif plasmid == 'pRamR':
         zeo_list = [0, 200]
-        # Fitness values are just place-holders for now
-                         
-        fitness_dicts = [{"ON-01": 1.0, "ON-02": 1.0}, {"ON-01": 0.99, "ON-02": 0.99}]
+        # Fitness interpolating functions are from data with rich-M9. They need to be updated when we get new data for regular M9
+        fitness_exp_id = '2022-08-09_three_inducers_OD-test-5-plates'
+        os.chdir(barseq_directory)
+        direct = os.getcwd()
+        while direct[-4:] != 'RamR':
+            os.chdir('..')
+            direct = os.getcwd()
+        os.chdir(fitness_exp_id)
+        
+        fit_files = glob.glob('fitness_vs_ligand_pRamR*.pkl')
+        keys = [x[x.find('ON'):-4] for x in fit_files]
+        values = [pickle.load(open(f, 'rb')) for f in fit_files]
+        
+        fitness_dicts = [dict(zip(keys, values)), dict(zip(keys, values))]
         
         for t, d in zip(zeo_list, fitness_dicts):
             spike_in_fitness_dict[t] = d

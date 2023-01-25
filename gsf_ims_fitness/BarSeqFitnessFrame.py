@@ -869,7 +869,13 @@ class BarSeqFitnessFrame:
         # Dictionary of dictionaries
         #     first key is tet concentration
         #     second key is spike-in name
-        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid)
+        #     units for fitness values are 10-fold per plate. 
+        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
+        # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
+        #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
+        #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
+        #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
+        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid, barseq_directory=self.notebook_dir)
         
         antibiotic_conc_list = self.antibiotic_conc_list
         high_tet = antibiotic_conc_list[-1]
@@ -1120,7 +1126,17 @@ class BarSeqFitnessFrame:
         # Dictionary of dictionaries
         #     first key is tet concentration
         #     second key is spike-in name
-        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid)
+        #     units for fitness values are 10-fold per plate. 
+        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
+        # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
+        #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
+        #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
+        #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
+        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid, barseq_directory=self.notebook_dir)
+        
+        k1 = list(spike_in_fitness_dict.keys())[0]
+        k2 = list(spike_in_fitness_dict[k1].keys())[0]
+        constant_spike_in = type(spike_in_fitness_dict[k1][k2]) is float
         
         if plasmid == 'pVER':
             if initial is None:
@@ -1141,11 +1157,17 @@ class BarSeqFitnessFrame:
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
             tet_conc = df.antibiotic_conc.iloc[0]
+            lig_conc = max(df[self.ligand_list].iloc[0].values)
             
-            spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
+            if constant_spike_in:
+                spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
+                spike_in_fitness_err = 0
+            else:
+                spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](lig_conc)
+                spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](lig_conc)
             
             fit_frame[f'fitness_S{samp}_{initial}'] = spike_in_fitness + fit_frame[f'fit_slope_S{samp}_{initial}']/np.log(10)
-            fit_frame[f'fitness_S{samp}_err_{initial}'] = fit_frame[f'fit_slope_S{samp}_err_{initial}']/np.log(10)
+            fit_frame[f'fitness_S{samp}_err_{initial}'] = np.sqrt(spike_in_fitness_err**2 + (fit_frame[f'fit_slope_S{samp}_err_{initial}']/np.log(10))**2)
             
         self.barcode_frame = fit_frame.copy()
         
