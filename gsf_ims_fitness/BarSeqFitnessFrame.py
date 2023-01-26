@@ -145,11 +145,13 @@ class BarSeqFitnessFrame:
             #barcode_frame.reset_index(drop=True, inplace=True)
             
         print(f"Calculating read fraction for each barcode in each sample")
-        for w in fitness.wells():
-            label = 'fraction_' + w
-            barcode_frame[label] = barcode_frame[w]/(barcode_frame[w].sum())
-        
-        barcode_frame['fraction_total'] = barcode_frame['total_counts']/(barcode_frame['total_counts'].sum())
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            for w in fitness.wells():
+                label = 'fraction_' + w
+                barcode_frame[label] = barcode_frame[w]/(barcode_frame[w].sum())
+            
+            barcode_frame['fraction_total'] = barcode_frame['total_counts']/(barcode_frame['total_counts'].sum())
         
         print(f"Calculating read totals and fractions for each barcode in samples from first time point")
         total = []
@@ -1079,8 +1081,10 @@ class BarSeqFitnessFrame:
                     n_reads = np.array(row[well_list], dtype='int64')
                     
                     x = x0
-                    y = (np.log(n_reads) - np.log(spike_in_reads))
-                    s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        y = (np.log(n_reads) - np.log(spike_in_reads))
+                        s = np.sqrt(1/n_reads + 1/spike_in_reads)
                     
                     # de-weight samples to be ignored, instead of dropping data
                     sel = np.array(sample_keep_dict[samp])
@@ -1206,8 +1210,10 @@ class BarSeqFitnessFrame:
                 spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](lig_conc)
                 spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](lig_conc)
             
-            fit_frame[f'fitness_S{samp}_{initial}'] = spike_in_fitness + fit_frame[f'fit_slope_S{samp}_{initial}']/np.log(10)
-            fit_frame[f'fitness_S{samp}_err_{initial}'] = np.sqrt(spike_in_fitness_err**2 + (fit_frame[f'fit_slope_S{samp}_err_{initial}']/np.log(10))**2)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                fit_frame[f'fitness_S{samp}_{initial}'] = spike_in_fitness + fit_frame[f'fit_slope_S{samp}_{initial}']/np.log(10)
+                fit_frame[f'fitness_S{samp}_err_{initial}'] = np.sqrt(spike_in_fitness_err**2 + (fit_frame[f'fit_slope_S{samp}_err_{initial}']/np.log(10))**2)
             
         self.barcode_frame = fit_frame.copy()
         
@@ -1251,7 +1257,9 @@ class BarSeqFitnessFrame:
             w_list = df.well
             y_list = resid_array.transpose()
             
-            fig, axs = plt.subplots(1, 4)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                fig, axs = plt.subplots(1, 4)
             txt = f'Sample {samp}: {tet} {antibiotic}' 
             for lig in ligand_list:
                 c = df[lig].iloc[0]
@@ -1914,10 +1922,12 @@ class BarSeqFitnessFrame:
     
         axs[1].matshow(BC_total_arr, cmap="inferno", vmin=vmin);
         axs[1].grid(b=False);
-        axs[1].set_xticklabels([i+1 for i in range(12)], size=16);
-        axs[1].set_xticks([i for i in range(12)]);
-        axs[1].set_yticklabels([ r + " " for r in fitness.rows()[::-1] ], size=16);
-        axs[1].set_yticks([i for i in range(8)]);
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            axs[1].set_xticklabels([i+1 for i in range(12)], size=16);
+            axs[1].set_xticks([i for i in range(12)]);
+            axs[1].set_yticklabels([ r + " " for r in fitness.rows()[::-1] ], size=16);
+            axs[1].set_yticks([i for i in range(8)]);
         axs[1].set_ylim(-0.5, 7.5);
         axs[1].tick_params(length=0);
         
