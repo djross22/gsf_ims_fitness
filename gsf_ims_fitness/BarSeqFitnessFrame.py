@@ -8,6 +8,7 @@ Created on Fri Nov 22 09:29:34 2019
 import glob  # filenames and pathnames utility
 import os    # operating sytem utility
 import sys
+import warnings
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -850,9 +851,11 @@ class BarSeqFitnessFrame:
                 spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
                 n_reads = np.array(row[well_list], dtype='int64')
                 
-                y = np.log(n_reads) - np.log(spike_in_reads)
-                s = np.sqrt(1/n_reads + 1/spike_in_reads)
-                ax.errorbar(x, y, s, fmt='o');
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    y = np.log(n_reads) - np.log(spike_in_reads)
+                    s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o');
                 
                 log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
                 if len(log_ratio.shape) ==  1:
