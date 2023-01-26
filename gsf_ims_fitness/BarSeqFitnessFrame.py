@@ -727,7 +727,7 @@ class BarSeqFitnessFrame:
             else:
                 stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau,
                                  slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, 
-                                 alpha=np.log(5), dilution_factor=10, lower_bound_width=0.3)
+                                 alpha=bi_linear_alpha, dilution_factor=dilution_factor, lower_bound_width=0.3)
                 
                 stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
                 if return_fits:
