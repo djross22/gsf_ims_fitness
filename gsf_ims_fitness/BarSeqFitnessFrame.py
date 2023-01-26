@@ -322,7 +322,7 @@ class BarSeqFitnessFrame:
     
     def stan_barcode_slope(self,
                            index=None,
-                           spike_in_name="AO-B",
+                           spike_in_name=None,
                            iterations=1000,
                            chains=4,
                            control=None,
@@ -332,7 +332,15 @@ class BarSeqFitnessFrame:
                            return_fits=True,
                            use_all_samples_model=True,
                            slope_ref_prior_std=0.1,
-                           auto_save=True):
+                           auto_save=True,
+                           bi_linear_alpha=np.log(5),
+                           dilution_factor=10):
+        
+        if spike_in_name is None:
+            if self.plasmid == 'pVER':
+                spike_in_name = "AO-B"
+            elif self.plasmid == 'pRamR':
+                spike_in_name = "ON-01"
         
         arg_dict = dict(spike_in_name=spike_in_name,
                         iterations=iterations,
@@ -343,7 +351,9 @@ class BarSeqFitnessFrame:
                         ref_tau_factor=ref_tau_factor,
                         return_fits=return_fits,
                         use_all_samples_model=use_all_samples_model,
-                        slope_ref_prior_std=slope_ref_prior_std)
+                        slope_ref_prior_std=slope_ref_prior_std,
+                        bi_linear_alpha=bi_linear_alpha,
+                        dilution_factor=dilution_factor)
                              
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
@@ -358,6 +368,12 @@ class BarSeqFitnessFrame:
                 initial = 'b'
             elif spike_in_name == "AO-E":
                 initial = 'e'
+            elif spike_in_name == "ON-01":
+                initial = 'sp01'
+            elif spike_in_name == "ON-02":
+                initial = 'sp02'
+            else:
+                raise ValueError(f'spike_in_name not recognized: {spike_in_name}')
             
             fit_frame = self.barcode_frame
             
@@ -542,7 +558,7 @@ class BarSeqFitnessFrame:
     
     def stan_barcode_slope_index(self,
                                  index,
-                                 spike_in_name="AO-B",
+                                 spike_in_name=None,
                                  iterations=1000,
                                  chains=4,
                                  control=None,
@@ -552,7 +568,9 @@ class BarSeqFitnessFrame:
                                  return_fits=False,
                                  verbose=True,
                                  use_all_samples_model=True,
-                                 slope_ref_prior_std=0.1):
+                                 slope_ref_prior_std=0.1,
+                                 bi_linear_alpha=np.log(5),
+                                 dilution_factor=10):
         
         barcode_frame = self.barcode_frame
         
@@ -572,6 +590,12 @@ class BarSeqFitnessFrame:
         print(f'Using these samples as reference samples: {ref_samples}')
         
         row = barcode_frame.loc[index]
+        
+        if spike_in_name is None:
+            if self.plasmid == 'pVER':
+                spike_in_name = "AO-B"
+            elif self.plasmid == 'pRamR':
+                spike_in_name = "ON-01"
         
         spike_in_row = barcode_frame[barcode_frame["RS_name"]==spike_in_name].iloc[0]
         
@@ -595,8 +619,8 @@ class BarSeqFitnessFrame:
                              M_ref=len(ref_samples),
                              M_no_tet=len(non_ref_without_tet),
                              M_with_tet=len(samples_with_tet),
-                             alpha=np.log(5), 
-                             dilution_factor=10, 
+                             alpha=bi_linear_alpha, 
+                             dilution_factor=dilution_factor, 
                              lower_bound_width=0.3,
                              slope_ref_prior_std=slope_ref_prior_std)
             n_reads_ref = []
@@ -1145,6 +1169,8 @@ class BarSeqFitnessFrame:
                 spike_in = "AO-B"
             elif initial[-1] == 'e':
                 spike_in = "AO-E"
+            else:
+                raise ValueError(f'spike-in initial not recognized: {initial}')
         elif plasmid == 'pRamR':
             if initial is None:
                 initial = 'sp01'
@@ -1152,6 +1178,8 @@ class BarSeqFitnessFrame:
                 spike_in = "ON-01"
             elif initial[-4:] == 'sp02':
                 spike_in = "ON-02"
+            else:
+                raise ValueError(f'spike-in initial not recognized: {initial}')
         
         for samp in sample_list:
             df = sample_plate_map
