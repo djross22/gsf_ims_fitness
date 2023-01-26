@@ -755,7 +755,13 @@ class BarSeqFitnessFrame:
             stan_fit = stan_model.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
             
             if not return_fits:
-                for samp_list, samp_str in zip([ref_samples, non_ref_without_tet, samples_with_tet], ['ref', 'no_tet', 'with_tet']):
+                if len(non_ref_without_tet) == 0:
+                    sample_lists = [ref_samples, samples_with_tet]
+                    sample_str_list = ['ref', 'with_tet']
+                else:
+                    sample_lists = [ref_samples, non_ref_without_tet, samples_with_tet]
+                    sample_str_list = ['ref', 'no_tet', 'with_tet']
+                for samp_list, samp_str in zip(sample_lists, sample_str_list):
                     fit_mu_list = np.median(stan_fit[f'slope_{samp_str}'], axis=0)
                     fit_sig_list = np.std(stan_fit[f'slope_{samp_str}'], axis=0)
                     if samp_list is ref_samples:
