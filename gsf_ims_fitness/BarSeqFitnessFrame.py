@@ -784,11 +784,11 @@ class BarSeqFitnessFrame:
             return fitness_out_dict
         
     
-    def fit_barcode_fitness(self,
-                            auto_save=True,
-                            refit_index=None,
-                            ref_slope_to_average=True,
-                            bi_linear_alpha=np.log(5)):
+    def fit_barcode_slope(self,
+                          auto_save=True,
+                          refit_index=None,
+                          ref_slope_to_average=True,
+                          bi_linear_alpha=np.log(5)):
                             
         for ig in self.ignore_samples:
             print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
@@ -1838,7 +1838,7 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
             
         if auto_refit:
-            self.fit_barcode_fitness(auto_save=auto_save, refit_index=big_bc_index)
+            self.fit_barcode_slope(auto_save=auto_save, refit_index=big_bc_index)
             self.stan_fitness_difference_curves(auto_save=auto_save, refit_index=big_bc_index)
     '''
         
