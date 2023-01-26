@@ -836,7 +836,10 @@ class BarSeqFitnessFrame:
 
         for ind, row in plot_frame.iterrows():
             fig, axs = plt.subplots(4, 6)
-            fig.suptitle(f'index: {ind}', size=24, y=0.925)
+            suptitle = f'index: {ind}'
+            if row.RS_name != '':
+                suptitle += f', {row.RS_name}'
+            fig.suptitle(suptitle, size=24, y=0.925)
             axs = axs.flatten()
             
             for samp, ax in zip(plot_list, axs):
