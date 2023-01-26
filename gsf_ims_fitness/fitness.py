@@ -1044,6 +1044,12 @@ def line_funct(x, m, b):
 
 def bi_linear_funct(z, m2, b, m1, alpha):
     return b + m2*z + ( m1 - m2 + (m2-m1)*np.exp(-z*alpha) )/alpha
+    
+def bi_linear_base(x, m2, m1, alpha, x0):
+    return m2*x - (m1*np.log(1 + np.exp(alpha*(-x + x0))))/alpha + (m2*np.log(1 + np.exp(alpha*(-x + x0))))/alpha
+
+def bi_linear_funct_2(z, m2, b, m1, alpha, x0):
+    return b + bi_linear_base(z, m2, m1, alpha, x0) - bi_linear_base(0, m2, m1, alpha, x0)
 
 def get_exp_id(notebook_dir):
     # this relies on the fact that all experiment IDs will start with the year, and that this software package will no longer be used in the 22nd century

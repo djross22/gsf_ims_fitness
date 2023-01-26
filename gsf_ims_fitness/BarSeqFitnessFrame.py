@@ -788,7 +788,8 @@ class BarSeqFitnessFrame:
                           auto_save=True,
                           refit_index=None,
                           ref_slope_to_average=True,
-                          bi_linear_alpha=np.log(5)):
+                          bi_linear_alpha=np.log(5),
+                          bi_linear_x0=None):
                             
         for ig in self.ignore_samples:
             print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
@@ -797,6 +798,7 @@ class BarSeqFitnessFrame:
                                                refit_index=refit_index,
                                                ref_slope_to_average=ref_slope_to_average,
                                                bi_linear_alpha=bi_linear_alpha,
+                                               bi_linear_x0=bi_linear_x0,
                                                plots_not_fits=False)
         
     
@@ -877,6 +879,7 @@ class BarSeqFitnessFrame:
                                    refit_index=None,
                                    ref_slope_to_average=True,
                                    bi_linear_alpha=np.log(5),
+                                   bi_linear_x0=None,
                                    plots_not_fits=False,
                                    plot_range=None,
                                    show_spike_ins=None,
@@ -1105,7 +1108,10 @@ class BarSeqFitnessFrame:
                     s = s[sel]
                     
                     if bi_linear_alpha is not None:
-                        def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
+                        if bi_linear_x0 is None:
+                            def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
+                        else:
+                            def fit_funct(xp, mp, bp): return fitness.bi_linear_funct_2(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha, x0=bi_linear_x0)
                     else:
                         fit_funct = fitness.line_funct
                     
