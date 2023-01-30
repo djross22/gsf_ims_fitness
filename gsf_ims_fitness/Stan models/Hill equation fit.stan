@@ -16,6 +16,7 @@ transformed data {
   real max_x_in;    // max inducer concentration
   real min_x_in;    // min non-zero inducer concentration
   real log_x_out_spacing;
+  vector[30] x_out;
   
   max_x_in = max(x);
   min_x_in = max_x_in;
@@ -27,6 +28,12 @@ transformed data {
 	}
   }
   log_x_out_spacing = (log(max_x_in*2) - log(min_x_in/2))/28.0;
+  
+  x_out[1] = 0;
+  x_out[2] = min_x_in/2;
+  for (i in 3:30) {
+    x_out[i] = x_out[i-1]*exp(log_x_out_spacing);
+  }
   
 }
 
@@ -81,14 +88,8 @@ generated quantities {
   real log_sensor_n;
   real rms_resid;
   real log_high_low_ratio;
-  vector[30] x_out;
   vector[30] y_out;
   
-  x_out[1] = 0;
-  x_out[2] = min_x_in/2;
-  for (i in 3:30) {
-    x_out[i] = x_out[i-1]*exp(log_x_out_spacing);
-  }
   for (i in 1:30) {
     y_out[i] = low_level + (high_level - low_level)*(x_out[i]^sensor_n)/(IC_50^sensor_n + x_out[i]^sensor_n);
   }
