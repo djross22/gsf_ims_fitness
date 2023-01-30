@@ -789,7 +789,8 @@ class BarSeqFitnessFrame:
                           refit_index=None,
                           ref_slope_to_average=True,
                           bi_linear_alpha=np.log(5),
-                          bi_linear_x0=None):
+                          bi_linear_x0=None,
+                          early_slope=False):
                             
         for ig in self.ignore_samples:
             print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
@@ -799,7 +800,8 @@ class BarSeqFitnessFrame:
                                                ref_slope_to_average=ref_slope_to_average,
                                                bi_linear_alpha=bi_linear_alpha,
                                                bi_linear_x0=bi_linear_x0,
-                                               plots_not_fits=False)
+                                               plots_not_fits=False,
+                                               early_slope=early_slope)
         
     
     def plot_count_ratio_per_sample(self,
@@ -884,7 +886,8 @@ class BarSeqFitnessFrame:
                                    plot_range=None,
                                    show_spike_ins=None,
                                    show_bc_str=False,
-                                   plot_samples=None):
+                                   plot_samples=None,
+                                   early_slope=False):
         
         barcode_frame = self.barcode_frame
         
@@ -931,7 +934,12 @@ class BarSeqFitnessFrame:
             spike_2 = "ON-02"
             spike_1_init = 'sp01'
             spike_2_init = 'sp02'
-            
+        
+        if early_slope:
+            early_initial = 'ea.'
+        else:
+            early_initial = 'ea.'
+
         if len(antibiotic_conc_list)==2: #Case for one non-zero antibiotic concentration
             ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
             ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
@@ -1038,10 +1046,10 @@ class BarSeqFitnessFrame:
                             log_ratio_out_list.append(np.full(4, np.nan))
                 
                 if not plots_not_fits:
-                    fit_frame[f'fit_slope_S{samp}_{initial}'] = f_est_list
-                    fit_frame[f'fit_slope_S{samp}_err_{initial}'] = f_err_list
-                    fit_frame[f'fit_slope_S{samp}_resid_{initial}'] = list(resids_list)
-                    fit_frame[f'fit_slope_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
+                    fit_frame[f'fit_slope_S{samp}_{early_initial}{initial}'] = f_est_list
+                    fit_frame[f'fit_slope_S{samp}_err_{early_initial}{initial}'] = f_err_list
+                    fit_frame[f'fit_slope_S{samp}_resid_{early_initial}{initial}'] = list(resids_list)
+                    fit_frame[f'fit_slope_S{samp}_log_ratio_out_{early_initial}{initial}'] = list(log_ratio_out_list)
             
                 no_tet_slope_lists.append(slope_list)
                 
@@ -1096,8 +1104,14 @@ class BarSeqFitnessFrame:
                     # Need to drop data for any samples with zero read count (after bi_linear_alpha check)
                     sel = (n_reads>0)&(spike_in_reads>0)
                     
+                    # If early_slope == True, use only the first two time points (x = 2, 3)
+                    if early_slope:
+                        x = x[:2]
+                        y = y[:2]
+                        s = s[:2]
+                        sel = sel[:2]
                     # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
-                    if bi_linear_alpha is None:
+                    elif bi_linear_alpha is None:
                         x = x[1:]
                         y = y[1:]
                         s = s[1:]
@@ -1107,7 +1121,9 @@ class BarSeqFitnessFrame:
                     y = y[sel]
                     s = s[sel]
                     
-                    if bi_linear_alpha is not None:
+                    if early_slope:
+                        fit_funct = fitness.line_funct
+                    elif bi_linear_alpha is not None:
                         if bi_linear_x0 is None:
                             def fit_funct(xp, mp, bp): return fitness.bi_linear_funct(xp-2, mp, bp, slope_0, alpha=bi_linear_alpha)
                         else:
@@ -1130,7 +1146,10 @@ class BarSeqFitnessFrame:
                                     pcov = np.full([2,2], np.nan)
                             log_ratio_out = fit_funct(x, *popt)
                             resids = y - log_ratio_out
-                            if bi_linear_alpha is None:
+                            if early_slope:
+                                resids = np.array(list(resids) + [np.nan, np.nan])
+                                log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
+                            elif bi_linear_alpha is None:
                                 resids = np.array([np.nan] + list(resids))
                                 log_ratio_out = np.array([np.nan] + list(log_ratio_out))
                             resids_list.append(resids)
@@ -1145,10 +1164,10 @@ class BarSeqFitnessFrame:
                         
                         
                 if not plots_not_fits:
-                    fit_frame[f'fit_slope_S{samp}_{initial}'] = f_est_list
-                    fit_frame[f'fit_slope_S{samp}_err_{initial}'] = f_err_list
-                    fit_frame[f'fit_slope_S{samp}_resid_{initial}'] = list(resids_list)
-                    fit_frame[f'fit_slope_S{samp}_log_ratio_out_{initial}'] = list(log_ratio_out_list)
+                    fit_frame[f'fit_slope_S{samp}_{early_initial}{initial}'] = f_est_list
+                    fit_frame[f'fit_slope_S{samp}_err_{early_initial}{initial}'] = f_err_list
+                    fit_frame[f'fit_slope_S{samp}_resid_{early_initial}{initial}'] = list(resids_list)
+                    fit_frame[f'fit_slope_S{samp}_log_ratio_out_{early_initial}{initial}'] = list(log_ratio_out_list)
         
         if plots_not_fits:
             for ax in axs:
