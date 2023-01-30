@@ -1010,8 +1010,10 @@ class BarSeqFitnessFrame:
                     n_reads = np.array(row[well_list], dtype='int64')
                     
                     x = x0
-                    y = (np.log(n_reads) - np.log(spike_in_reads))
-                    s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        y = (np.log(n_reads) - np.log(spike_in_reads))
+                        s = np.sqrt(1/n_reads + 1/spike_in_reads)
                     
                     # de-weight samples to be ignored, instead of dropping data
                     sel = np.array(sample_keep_dict[samp])
