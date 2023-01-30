@@ -1183,8 +1183,8 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
             spike_in_fitness_dict[t] = d
     elif plasmid == 'pRamR':
         zeo_list = [0, 200]
-        # Fitness interpolating functions are from data with rich-M9. They need to be updated when we get new data for regular M9
-        fitness_exp_id = '2022-08-09_three_inducers_OD-test-5-plates'
+        # Fitness interpolating functions are from data with Hamilton programming error. They are probably close, but need to be updated when we get new data
+        fitness_exp_id = '2023-01-27_three_inducers_OD-test-5-plates'
         os.chdir(barseq_directory)
         direct = os.getcwd()
         while direct[-4:] != 'RamR':
