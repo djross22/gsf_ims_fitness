@@ -2252,7 +2252,9 @@ class BarSeqFitnessFrame:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
                         s = row[f"fitness_{tet}_err_{initial}"]*fit_scale
-                        ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                 else:
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
                         for lig, color in zip(ligand_list, fit_plot_colors):
@@ -2266,7 +2268,9 @@ class BarSeqFitnessFrame:
                             else:
                                 y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
                                 s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
-                            ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
+                            with warnings.catch_warnings():
+                                warnings.simplefilter("ignore")
+                                ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
             
                 if initial == plot_initials[0]:
                     barcode_str = str(index) + ': '
