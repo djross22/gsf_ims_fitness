@@ -938,7 +938,7 @@ class BarSeqFitnessFrame:
         if early_slope:
             early_initial = 'ea.'
         else:
-            early_initial = 'ea.'
+            early_initial = ''
 
         if len(antibiotic_conc_list)==2: #Case for one non-zero antibiotic concentration
             ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
