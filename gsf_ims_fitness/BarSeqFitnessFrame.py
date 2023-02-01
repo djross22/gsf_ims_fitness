@@ -72,6 +72,23 @@ class BarSeqFitnessFrame:
         barcode_frame = barcode_frame[barcode_frame.total_counts>=min_read_count]
         #barcode_frame.reset_index(drop=True, inplace=True)
         
+        # Add barcode cluster IDs and scores
+        f_cluster_file = glob.glob('*forward_merged_cluster.csv')[0]
+        r_cluster_file = glob.glob('*reverse_merged_cluster.csv')[0]
+        f_bc_cluster_frame = pd.read_csv(f_cluster_file)
+        r_bc_cluster_frame = pd.read_csv(r_cluster_file)
+        
+        for_barcode_clusterID_dict = dict(zip(f_bc_cluster_frame["Center"], f_bc_cluster_frame["Cluster.ID"]))
+        rev_barcode_clusterID_dict = dict(zip(r_bc_cluster_frame["Center"], r_bc_cluster_frame["Cluster.ID"]))
+
+        for_barcode_score_dict = dict(zip(f_bc_cluster_frame["Center"], f_bc_cluster_frame["Cluster.Score"]))
+        rev_barcode_score_dict = dict(zip(r_bc_cluster_frame["Center"], r_bc_cluster_frame["Cluster.Score"]))
+        
+        barcode_frame["for_BC_ID"] = [ for_barcode_clusterID_dict[x] for x in barcode_frame["forward_BC"] ]
+        barcode_frame["rev_BC_ID"] = [ rev_barcode_clusterID_dict[x] for x in barcode_frame["reverse_BC"] ]
+
+        barcode_frame["for_BC_Score"] = [ for_barcode_score_dict[x] for x in barcode_frame["forward_BC"] ]
+        barcode_frame["rev_BC_Score"] = [ rev_barcode_score_dict[x] for x in barcode_frame["reverse_BC"] ]
         self.barcode_frame = barcode_frame
         
         self.fit_fitness_difference_params = None
