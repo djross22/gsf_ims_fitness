@@ -1293,6 +1293,13 @@ def density_scatter_plot(x , y, ax=None, sort=True, bins=50, log_x=True, log_y=F
     return ax, sc
 
 
+def rev_complement(seq):
+    old_chars = "ACGT"
+    replace_chars = "TGCA"
+    tab = str.maketrans(old_chars,replace_chars)
+    return seq.translate(tab)[::-1]
+    
+
 def density_scatter_cmap():
     # Diverging colormap from darkened sns.color_palette()[0] (blue) to sns.color_palette()[1] (orange),
     #     with yellow/off-white in the middle (taken from palettable.lightbartlein.diverging.BlueDarkOrange12_3)
