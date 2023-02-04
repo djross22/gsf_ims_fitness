@@ -47,7 +47,9 @@ class BarSeqFitnessFrame:
                  ref_samples=None,
                  plasmid='pVER', #A designation for the plasmid used for the flow cytometry calibration data
                  get_layout_from_file=False,
-                 growth_plate_layout_file=None):
+                 growth_plate_layout_file=None,
+                 single_barcode=False,
+                 merge_dist_cutoff=2):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
@@ -67,10 +69,6 @@ class BarSeqFitnessFrame:
         print(f"Importing BarSeq count data from file: {barcode_file}")
         print()
         barcode_frame = pd.read_csv(barcode_file, skipinitialspace=True)
-    
-        barcode_frame.sort_values('total_counts', ascending=False, inplace=True)
-        barcode_frame = barcode_frame[barcode_frame.total_counts>=min_read_count]
-        #barcode_frame.reset_index(drop=True, inplace=True)
         
         # Add barcode cluster IDs and scores
         f_cluster_file = glob.glob('*forward_merged_cluster.csv')[0]
@@ -89,6 +87,138 @@ class BarSeqFitnessFrame:
 
         barcode_frame["for_BC_Score"] = [ for_barcode_score_dict[x] for x in barcode_frame["forward_BC"] ]
         barcode_frame["rev_BC_Score"] = [ rev_barcode_score_dict[x] for x in barcode_frame["reverse_BC"] ]
+        
+        # if single_barcode, merge barcodes that result from obvious read errors (differences between forward and reverse reads)
+        if single_barcode:
+            print('Automatically merging barcodes based on comparison between forward and reverse BC reads.')
+            print('This could take a several minutes.')
+            
+            merge_log_file = f'{experiment}_single_barcode_merging.log'
+            with open(merge_log_file, 'w') as log_file:
+            
+                # First, identify possible forward barcodes that should be merged:
+                #     the same reverse barcode but different forward barcodes
+                rev_id_list = barcode_frame.rev_BC_ID.values
+                merge_sets = []
+                for rev_id in np.unique(barcode_frame.rev_BC_ID):
+                    df = barcode_frame
+                    df = df[rev_id_list==rev_id]
+                    if len(df)>1:
+                        merge_sets.append(df.for_BC_ID.values)
+                        
+                for_barcode_center_dict = dict(zip(f_bc_cluster_frame["Cluster.ID"], f_bc_cluster_frame["Center"]))
+                rev_barcode_center_dict = dict(zip(r_bc_cluster_frame["Cluster.ID"], r_bc_cluster_frame["Center"]))
+                for_barcode_count_dict = dict(zip(f_bc_cluster_frame["Cluster.ID"], f_bc_cluster_frame["time_point_1"]))
+                rev_barcode_count_dict = dict(zip(r_bc_cluster_frame["Cluster.ID"], r_bc_cluster_frame["time_point_1"]))
+
+                # Next, Create dictionary of forward barcode merges:
+                #     key : barcode ID to be merged (and removed)
+                #     value : barcode ID that will be merged into (and kept)
+                bc_merge_dict = {}
+                for x in merge_sets:
+                    bc_list = [for_barcode_center_dict[y] for y in x]
+                    for bc, y in zip(bc_list[1:], x[1:]):
+                        if len(bc)==len(bc_list[0]):
+                            dist = fitness.hamming_distance(bc_list[0], bc)
+                            if dist > merge_dist_cutoff:
+                                log_file.write(f'    Warning, forward barcodes NOT merged with Hamming distance > cutoff, {dist}:\n')
+                                log_file.write(f'        {bc_list[0]}, ID: {x[0]}, count: {for_barcode_count_dict[x[0]]}\n')
+                                log_file.write(f'        {bc}, ID: {y}, count: {for_barcode_count_dict[y]}\n')
+                            else:
+                                bc_merge_dict[y] = x[0]
+                                if dist > 1:
+                                    log_file.write(f'    Warning, merging forward barcodes with Hamming distance {dist}:\n')
+                                else:
+                                    log_file.write(f'    Merging forward barcodes with Hamming distance {dist}:\n')
+                                log_file.write(f'        {bc_list[0]}, ID: {x[0]}, count: {for_barcode_count_dict[x[0]]}\n')
+                                log_file.write(f'        {bc}, ID: {y}, count: {for_barcode_count_dict[y]}\n')
+                        else:
+                            dist = fitness.levenshtein_distance(bc_list[0], bc)
+                            len_diff = np.abs(len(bc_list[0]) - len(bc))
+                            if dist - len_diff > merge_dist_cutoff:
+                                log_file.write(f'    Warning, forward barcodes NOT merged with Levenshtein distance > cutoff, {dist}:\n')
+                                log_file.write(f'        {bc_list[0]}, ID: {x[0]}, count: {for_barcode_count_dict[x[0]]}\n')
+                                log_file.write(f'        {bc}, ID: {y}, count: {for_barcode_count_dict[y]}\n')
+                            else:
+                                bc_merge_dict[y] = x[0]
+                                if dist > 1:
+                                    log_file.write(f'    Warning, merging forward barcodes with Levenshtein distance {dist}:\n')
+                                else:
+                                    log_file.write(f'    Merging forward barcodes with Levenshtein distance {dist}:\n')
+                                log_file.write(f'        {bc_list[0]}, ID: {x[0]}, count: {for_barcode_count_dict[x[0]]}\n')
+                                log_file.write(f'        {bc}, ID: {y}, count: {for_barcode_count_dict[y]}\n')
+                
+                new_bc_id_list = [bc_merge_dict[x] if x in bc_merge_dict else x for x in barcode_frame.for_BC_ID]
+                barcode_frame['for_BC_ID'] = new_bc_id_list
+                
+                log_file.write('\n')
+                
+                # Finally, merge rows that have the same forward barcode ID
+                new_row_list = []
+                #rev_merge_list = []
+                for bc_id in np.unique(barcode_frame.for_BC_ID):
+                    df = barcode_frame[barcode_frame.for_BC_ID==bc_id]
+                    if len(df) == 1:
+                        new_row = df.iloc[0].copy()
+                        new_row['reverse_BC'] = ''
+                        new_row_list.append(new_row)
+                    else:
+                        # Default action is to merge all barcodes in df with no warnings
+                        #     So, if all the rows in df have the same reverse barcode, they will be merged.
+                        merge = [True]*len(df)
+                        merge_warning = [False]*len(df)
+                        
+                        rev_bc_list = df.reverse_BC
+                        # If the rows in df have different reverse barcodes, consider merging based on distance between forward and reverse barcodes
+                        if len(np.unique(rev_bc_list)) > 1:
+                            # Check rev comp against forw BC
+                            for_bc = df.iloc[0].forward_BC
+                            rc_rev_bc = [fitness.rev_complement(s) for s in rev_bc_list]
+                            
+                            merge = []
+                            metric_list = []
+                            dist_list = []
+                            for rc_bc in rc_rev_bc:
+                                len_diff = np.abs(len(for_bc) - len(rc_bc))
+                                if len_diff == 0:
+                                    dist = fitness.hamming_distance(for_bc, rc_bc)
+                                    dist_metric = 'Hamming'
+                                else:
+                                    dist = fitness.levenshtein_distance(for_bc, rc_bc)
+                                    dist_metric = 'Levenshtein'
+
+                                merge.append(dist - len_diff <= merge_dist_cutoff)
+                                metric_list.append(dist_metric)
+                                dist_list.append(dist)
+                        
+                        
+                        if np.any(merge):
+                            merge_df = df[merge]
+                            new_row = merge_df.iloc[0].copy()
+                            for w in fitness.wells():
+                                new_row[w] = merge_df[w].sum()
+                            new_row['total_counts'] = merge_df['total_counts'].sum()
+                            new_row['reverse_BC'] = ''
+                            new_row_list.append(new_row)
+                            
+                            #rev_merge_list.append(list(merge_df.rev_BC_ID))
+                            
+                        log_file.write(f'    Reverse barcodes considered for merging based on distance of reverse complement to forward BC:\n')
+                        log_file.write(f'                   Forward BC: {for_bc}\n')
+                        for m, rc_bc, bc, r_bc_id, dist_metric, dist in zip(merge, rc_rev_bc, rev_bc_list, df.rev_BC_ID, metric_list, dist_list):
+                            log_str = 'Yes merging' if m else 'NOT merging'
+                            log_file.write(f'        {log_str}: Rev-comp: {rc_bc}, BC: {bc}, ID: {r_bc_id}, count: {rev_barcode_count_dict[r_bc_id]}, {dist_metric} distance: {dist}\n')
+            
+            with open(f'{experiment}_bc_merge_dict.pkl', 'wb') as f:
+                pickle.dump(bc_merge_dict, f)
+            
+            barcode_frame = pd.DataFrame(new_row_list)
+            print()   
+        
+        barcode_frame.sort_values('total_counts', ascending=False, inplace=True)
+        barcode_frame = barcode_frame[barcode_frame.total_counts>=min_read_count]
+        #barcode_frame.reset_index(drop=True, inplace=True)
+        
         self.barcode_frame = barcode_frame
         
         self.fit_fitness_difference_params = None
@@ -226,9 +356,9 @@ class BarSeqFitnessFrame:
         double_barcodes = "reverse_lin_tag" in ref_seq_frame.columns
         
         if double_barcodes:
-            disp_cols = ["RS_name", "forward_BC", "reverse_BC", "total_counts"]
+            disp_cols = ["RS_name", "forward_BC", "reverse_BC", "rev_BC_ID", "total_counts"]
         else:
-            disp_cols = ["RS_name", "forward_BC", "total_counts"]
+            disp_cols = ["RS_name", "forward_BC", "for_BC_ID", "total_counts"]
     
         if ref_seq_frame is not None:
             no_match_list = []
