@@ -7,38 +7,25 @@ data {
   vector[N_lig] x_1;                 // non-zero ligand 1 concentrations
   vector[N_lig] x_2;                 // non-zero ligand 2 concentrations
   
-  real y_0_low_tet;                  // fitness difference with zero ligand and medium tet concentration
-  real y_0_low_tet_err;              // estimated error of fitness difference
+  real y_0;                  // fitness difference with zero ligand and with antibiotic
+  real y_0_err;              // estimated error of fitness difference
   
-  vector[N_lig] y_1_low_tet;         // fitness difference with ligand 1 and medium tet concentration
-  vector[N_lig] y_1_low_tet_err;     // estimated error of fitness difference
-  vector[N_lig] y_2_low_tet;         // fitness difference with ligand 2 and medium tet concentration
-  vector[N_lig] y_2_low_tet_err;     // estimated error of fitness difference
-  
-  vector[N_lig] y_1_high_tet;        // fitness difference with ligand 1 and high tet concentration
-  vector[N_lig] y_1_high_tet_err;    // estimated error of fitness difference
-  vector[N_lig] y_2_high_tet;        // fitness difference with ligand 2 and high tet concentration
-  vector[N_lig] y_2_high_tet_err;    // estimated error of fitness difference
+  vector[N_lig] y_1;         // fitness difference with ligand 1 and with antibiotic
+  vector[N_lig] y_1_err;     // estimated error of fitness difference
+  vector[N_lig] y_2;         // fitness difference with ligand 2 and with antibiotic
+  vector[N_lig] y_2_err;     // estimated error of fitness difference
   
   real log_g_min;                    // lower bound on log_g0 and log_ginf
   real log_g_max;                    // upper bound on log_g0 and log_ginf
   real log_g_prior_scale;
   
-  real low_fitness_mu_low_tet;       // fitness difference at zero gene expression, medium tet
-  real mid_g_mu_low_tet;             // gene expression level at 1/2 max fitness difference, medium tet
-  real fitness_n_mu_low_tet;         // cooperativity coefficient of fitness difference curve, medium tet
+  real low_fitness_mu;       // fitness difference at zero gene expression, with antibiotic
+  real mid_g_mu;             // gene expression level at 1/2 max fitness difference, with antibiotic
+  real fitness_n_mu;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
-  real low_fitness_std_low_tet;       // fitness difference at zero gene expression, medium tet
-  real mid_g_std_low_tet;             // gene expression level at 1/2 max fitness difference, medium tet
-  real fitness_n_std_low_tet;         // cooperativity coefficient of fitness difference curve, medium tet
-  
-  real low_fitness_mu_high_tet;      // fitness difference at zero gene expression, high tet
-  real mid_g_mu_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
-  real fitness_n_mu_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
-  
-  real low_fitness_std_high_tet;      // fitness difference at zero gene expression, high tet
-  real mid_g_std_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
-  real fitness_n_std_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
+  real low_fitness_std;       // fitness difference at zero gene expression, with antibiotic
+  real mid_g_std;             // gene expression level at 1/2 max fitness difference, with antibiotic
+  real fitness_n_std;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
 }
 
@@ -70,13 +57,9 @@ parameters {
   
   real<lower=0> sigma;            // scale factor for standard deviation of noise in y
   
-  real low_fitness_low_tet;       // fitness difference at zero gene expression, med tet
-  real mid_g_low_tet;             // gene expression level at 1/2 max fitness difference, med tet
-  real fitness_n_low_tet;         // cooperativity coefficient of fitness difference curve, med tet
-  
-  real low_fitness_high_tet;      // fitness difference at zero gene expression, high tet
-  real mid_g_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
-  real fitness_n_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
+  real low_fitness;       // fitness difference at zero gene expression, med tet
+  real mid_g;             // gene expression level at 1/2 max fitness difference, med tet
+  real fitness_n;         // cooperativity coefficient of fitness difference curve, med tet
 }
 
 transformed parameters {
@@ -86,14 +69,12 @@ transformed parameters {
   real ginf_2; 
   real ec50_2;
   
-  real mean_y_0_low_tet;
+  real mean_y_0;
   
-  vector[N_lig] mean_y_1_low_tet;
-  vector[N_lig] mean_y_1_high_tet;
+  vector[N_lig] mean_y_1;
   vector[N_lig] g_1;                // gene expression level at each non-zero concentration of ligand 1
   
-  vector[N_lig] mean_y_2_low_tet;
-  vector[N_lig] mean_y_2_high_tet;
+  vector[N_lig] mean_y_2;
   vector[N_lig] g_2;                // gene expression level at each non-zero concentration of ligand 2
   
   g0 = 10^log_g0;
@@ -102,40 +83,23 @@ transformed parameters {
   ginf_2 = 10^log_ginf_2;
   ec50_2 = 10^log_ec50_2;
   
-  mean_y_0_low_tet = low_fitness_low_tet - low_fitness_low_tet*(g0^fitness_n_low_tet)/(mid_g_low_tet^fitness_n_low_tet + g0^fitness_n_low_tet);
+  mean_y_0 = low_fitness - low_fitness*(g0^fitness_n)/(mid_g^fitness_n + g0^fitness_n);
   
   for (i in 1:N_lig) {
     g_1[i] = g0 + (ginf_1 - g0)*(x_1[i]^sensor_n_1)/(ec50_1^sensor_n_1 + x_1[i]^sensor_n_1);
     g_2[i] = g0 + (ginf_2 - g0)*(x_2[i]^sensor_n_2)/(ec50_2^sensor_n_2 + x_2[i]^sensor_n_2);
 	
-    mean_y_1_low_tet[i] = low_fitness_low_tet - low_fitness_low_tet*(g_1[i]^fitness_n_low_tet)/(mid_g_low_tet^fitness_n_low_tet + g_1[i]^fitness_n_low_tet);
-    mean_y_2_low_tet[i] = low_fitness_low_tet - low_fitness_low_tet*(g_2[i]^fitness_n_low_tet)/(mid_g_low_tet^fitness_n_low_tet + g_2[i]^fitness_n_low_tet);
-	
-    mean_y_1_high_tet[i] = low_fitness_high_tet - low_fitness_high_tet*(g_1[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g_1[i]^fitness_n_high_tet);
-    mean_y_2_high_tet[i] = low_fitness_high_tet - low_fitness_high_tet*(g_2[i]^fitness_n_high_tet)/(mid_g_high_tet^fitness_n_high_tet + g_2[i]^fitness_n_high_tet);
+    mean_y_1[i] = low_fitness - low_fitness*(g_1[i]^fitness_n)/(mid_g^fitness_n + g_1[i]^fitness_n);
+    mean_y_2[i] = low_fitness - low_fitness*(g_2[i]^fitness_n)/(mid_g^fitness_n + g_2[i]^fitness_n);
   }
   
 }
 
 model {
-  //real neg_low_fitness_low_tet;
-  //real neg_low_fitness_high_tet;
   
-  //neg_low_fitness_low_tet = -1*low_fitness_low_tet;
-  //neg_low_fitness_high_tet = -1*low_fitness_high_tet;
-  
-  // fitness calibration params
-  //low_fitness ~ student_t(8, low_fitness_mu, 0.1);
-  //neg_low_fitness_low_tet ~ exp_mod_normal(-1*low_fitness_mu_low_tet - 0.04, 0.03, 14); 
-  
-  low_fitness_low_tet ~ normal(low_fitness_mu_low_tet, low_fitness_std_low_tet);
-  mid_g_low_tet ~ normal(mid_g_mu_low_tet, mid_g_std_low_tet);
-  fitness_n_low_tet ~ normal(fitness_n_mu_low_tet, fitness_n_std_low_tet);
-  
-  low_fitness_high_tet ~ normal(low_fitness_mu_high_tet, low_fitness_std_high_tet);
-  mid_g_high_tet ~ normal(mid_g_mu_high_tet, mid_g_std_high_tet);
-  fitness_n_high_tet ~ normal(fitness_n_mu_high_tet, fitness_n_std_high_tet);
-  
+  low_fitness ~ normal(low_fitness_mu, low_fitness_std);
+  mid_g ~ normal(mid_g_mu, mid_g_std);
+  fitness_n ~ normal(fitness_n_mu, fitness_n_std);
   
   // Prior on sensor_n; <gamma> = alpha/beta = 1.5; std = sqrt(alpha)/beta = 0.5
   sensor_n_1 ~ gamma(9.0, 6.0);
@@ -151,13 +115,10 @@ model {
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
   
-  y_0_low_tet ~ normal(mean_y_0_low_tet, sigma*y_0_low_tet_err);
+  y_0 ~ normal(mean_y_0, sigma*y_0_err);
   
-  y_1_low_tet ~ normal(mean_y_1_low_tet, sigma*y_1_low_tet_err);
-  y_2_low_tet ~ normal(mean_y_2_low_tet, sigma*y_2_low_tet_err);
-  
-  y_1_high_tet ~ normal(mean_y_1_high_tet, sigma*y_1_high_tet_err);
-  y_2_high_tet ~ normal(mean_y_2_high_tet, sigma*y_2_high_tet_err);
+  y_1 ~ normal(mean_y_1, sigma*y_1_err);
+  y_2 ~ normal(mean_y_2, sigma*y_2_err);
   
 }
 
@@ -176,6 +137,6 @@ generated quantities {
   log_sensor_n_1 = log10(sensor_n_1);
   log_sensor_n_2 = log10(sensor_n_2);
   
-  rms_resid = sqrt(distance(y_1_low_tet, mean_y_1_low_tet)^2 + distance(y_2_low_tet, mean_y_2_low_tet)^2 + distance(y_1_high_tet, mean_y_1_high_tet)^2 + distance(y_2_high_tet, mean_y_2_high_tet)^2)/sqrt(4*N_lig + 1);
+  rms_resid = sqrt(distance(y_1, mean_y_1)^2 + distance(y_2, mean_y_2)^2)/sqrt(4*N_lig + 1);
   
 }
