@@ -1554,6 +1554,9 @@ class BarSeqFitnessFrame:
             log_ginf_g0_ind_1 = params_list.index('log_ginf_g0_ratio_1')
             log_ginf_g0_ind_2 = params_list.index('log_ginf_g0_ratio_2')
             params_dim = len(params_list)
+                
+        elif len(ligand_list) == 3:
+            sm_file = 'Double Hill equation fit.three-lig.stan'
             
         quantile_params_list = [x for x in params_list if 'log_' in x]
         quantile_params_dim = len(quantile_params_list)
