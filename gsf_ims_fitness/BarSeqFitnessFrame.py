@@ -3227,7 +3227,8 @@ def log_level(fitness_difference):
 def get_stan_data(st_row, plot_df, antibiotic_conc_list, 
                   lig_list, fit_fitness_difference_params, 
                   old_style_columns=False, initial="b", plasmid="pVER",
-                  is_gp_model=False):
+                  is_gp_model=False,
+                  min_err = 0.03):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
     
