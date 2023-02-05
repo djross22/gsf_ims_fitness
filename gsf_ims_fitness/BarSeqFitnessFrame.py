@@ -3296,7 +3296,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             x_y_s_list.append(sub_list)
             
         if len(lig_list) == 1:
-            # Case for single tet concentration
+            # Case for single ligand and single antibiotic concentration
     
             low_fitness = fit_fitness_difference_params[0]
             mid_g = fit_fitness_difference_params[1]
@@ -3323,8 +3323,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
         
-        else:
-            # Case for two-tet, two-ligand
+        elif (len(lig_list) == 2) and (len(tet_list) == 2):
+            # Case for two-tet, two-ligand (e.g., LacI with high and low tet)
             y_0_med = x_y_s_list[0][0][1][0]
             s_0_med = x_y_s_list[0][0][2][0]
             
