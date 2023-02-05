@@ -3277,10 +3277,20 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 df = df[(df.ligand==lig)|(df.ligand=='none')]
                 df = df[df.antibiotic_conc==tet]
                 x = np.array(df[lig])
+                # Correction factor for non-constant ref fitness (i.e., fitness decreases with [ligand]
+                ref_correction = np.array([fitness.ref_fit_correction(z, plasmid) for z in x])
                 y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
-                y = (y - y_ref)/y_ref
+                raw_fitness = y.copy()
+                y = (y - y_ref)/(y_ref*ref_correction)
                 s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
-                s = np.sqrt(s**2 + s_ref**2)/y_ref
+                s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
+                s = np.sqrt(s**2 + min_err**2)
+                
+                if plasmid == 'pRamR':
+                    early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df_layout.sample_id])
+                    # Additive correction for RamR system at high [ligand]
+                    y_corr = fitness.fitness_corection(x, early_fitness, raw_fitness, crit_conc=200)
+                    y = y - y_corr
                 
                 sub_list.append([x, y, s])
             x_y_s_list.append(sub_list)

@@ -1235,6 +1235,27 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
         
     return params
 
+
+def ref_fit_correction(x, plasmid):
+    if plasmid = "pRamR":
+        y = 1 - 0.25*x/500
+    else:
+        y = 1
+    return(y)
+
+
+def fitness_corection(lig_conc, early_fitness, raw_fitness, crit_conc=200):
+    popt_corr = np.array([-0.83155726,  0.59388542])
+    cor = []
+    for c, e, r in zip(lig_conc, early_fitness, raw_fitness):
+        if c < crit_conc:
+            cor.append(0)
+        else:
+            x = e - r
+            cor.append(line_funct(x, *popt_corr))
+    return np.array(cor)
+    
+
 def log_g_limits(plasmid="pVER"):
     if plasmid == "pVER":
         log_g_min = 0
