@@ -19,11 +19,11 @@ data {
   real log_g_max;                    // upper bound on log_g0 and log_ginf
   real log_g_prior_scale;
   
-  real low_fitness_mu;       // fitness difference at zero gene expression, with antibiotic
+  real high_fitness_mu;      // fitness difference at +infinite gene expression, with antibiotic
   real mid_g_mu;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_mu;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
-  real low_fitness_std;       // fitness difference at zero gene expression, with antibiotic
+  real high_fitness_std;       // fitness difference at +infinite gene expression, with antibiotic
   real mid_g_std;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_std;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
@@ -34,6 +34,9 @@ transformed data {
   real x_max;
   real log_x_min;
   real log_x_max;
+  real low_fitness;
+  
+  low_fitness = 0;
   
   x_max = fmax(max(x_1), max(x_2));
   x_min = fmin(min(x_1), min(x_2));
@@ -57,7 +60,7 @@ parameters {
   
   real<lower=0> sigma;            // scale factor for standard deviation of noise in y
   
-  real low_fitness;       // fitness difference at zero gene expression, med tet
+  real high_fitness;       // fitness difference at +infinite gene expression, med tet
   real mid_g;             // gene expression level at 1/2 max fitness difference, med tet
   real fitness_n;         // cooperativity coefficient of fitness difference curve, med tet
 }
@@ -83,21 +86,21 @@ transformed parameters {
   ginf_2 = 10^log_ginf_2;
   ec50_2 = 10^log_ec50_2;
   
-  mean_y_0 = low_fitness - low_fitness*(g0^fitness_n)/(mid_g^fitness_n + g0^fitness_n);
+  mean_y_0 = low_fitness + (high_fitness - low_fitness)*(g0^fitness_n)/(mid_g^fitness_n + g0^fitness_n);
   
   for (i in 1:N_lig) {
     g_1[i] = g0 + (ginf_1 - g0)*(x_1[i]^sensor_n_1)/(ec50_1^sensor_n_1 + x_1[i]^sensor_n_1);
     g_2[i] = g0 + (ginf_2 - g0)*(x_2[i]^sensor_n_2)/(ec50_2^sensor_n_2 + x_2[i]^sensor_n_2);
 	
-    mean_y_1[i] = low_fitness - low_fitness*(g_1[i]^fitness_n)/(mid_g^fitness_n + g_1[i]^fitness_n);
-    mean_y_2[i] = low_fitness - low_fitness*(g_2[i]^fitness_n)/(mid_g^fitness_n + g_2[i]^fitness_n);
+    mean_y_1[i] = low_fitness + (high_fitness - low_fitness)*(g_1[i]^fitness_n)/(mid_g^fitness_n + g_1[i]^fitness_n);
+    mean_y_2[i] = low_fitness + (high_fitness - low_fitness)*(g_2[i]^fitness_n)/(mid_g^fitness_n + g_2[i]^fitness_n);
   }
   
 }
 
 model {
   
-  low_fitness ~ normal(low_fitness_mu, low_fitness_std);
+  high_fitness ~ normal(high_fitness_mu, high_fitness_std);
   mid_g ~ normal(mid_g_mu, mid_g_std);
   fitness_n ~ normal(fitness_n_mu, fitness_n_std);
   
