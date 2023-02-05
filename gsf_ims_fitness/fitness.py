@@ -1237,7 +1237,7 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
 
 
 def ref_fit_correction(x, plasmid):
-    if plasmid = "pRamR":
+    if plasmid == "pRamR":
         y = 1 - 0.25*x/500
     else:
         y = 1
