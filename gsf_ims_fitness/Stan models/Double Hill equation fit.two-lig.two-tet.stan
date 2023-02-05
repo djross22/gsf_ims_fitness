@@ -176,6 +176,6 @@ generated quantities {
   log_sensor_n_1 = log10(sensor_n_1);
   log_sensor_n_2 = log10(sensor_n_2);
   
-  rms_resid = sqrt(distance(y_1_low_tet, mean_y_1_low_tet)^2 + distance(y_2_low_tet, mean_y_2_low_tet)^2 + distance(y_1_high_tet, mean_y_1_high_tet)^2 + distance(y_2_high_tet, mean_y_2_high_tet)^2)/sqrt(4*N_lig + 1);
+  rms_resid = sqrt((y_0_low_tet - mean_y_0_low_tet)^2 + distance(y_1_low_tet, mean_y_1_low_tet)^2 + distance(y_2_low_tet, mean_y_2_low_tet)^2 + distance(y_1_high_tet, mean_y_1_high_tet)^2 + distance(y_2_high_tet, mean_y_2_high_tet)^2)/sqrt(4*N_lig + 1);
   
 }
