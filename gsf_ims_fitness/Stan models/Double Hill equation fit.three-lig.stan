@@ -8,8 +8,8 @@ data {
   vector[N_lig] x_2;                 // non-zero ligand 2 concentrations
   vector[N_lig] x_3;                 // non-zero ligand 3 concentrations
   
-  real y_0;                  // fitness difference with zero ligand and with antibiotic
-  real y_0_err;              // estimated error of fitness difference
+  vector[2] y_0;                  // fitness difference with zero ligand and with antibiotic; the experiment has two replicate wells for this condition
+  vector[2] y_0_err;              // estimated error of fitness difference
   
   vector[N_lig] y_1;         // fitness difference with ligand 1 and with antibiotic
   vector[N_lig] y_1_err;     // estimated error of fitness difference
@@ -165,6 +165,6 @@ generated quantities {
   log_sensor_n_2 = log10(sensor_n_2);
   log_sensor_n_3 = log10(sensor_n_3);
   
-  rms_resid = sqrt((y_0 - mean_y_0)^2 + distance(y_1, mean_y_1)^2 + distance(y_2, mean_y_2)^2 + distance(y_3, mean_y_3)^2)/sqrt(3*N_lig + 1);
+  rms_resid = sqrt((y_0[0] - mean_y_0)^2 + (y_0[1] - mean_y_0)^2 + distance(y_1, mean_y_1)^2 + distance(y_2, mean_y_2)^2 + distance(y_3, mean_y_3)^2)/sqrt(3*N_lig + 2);
   
 }
