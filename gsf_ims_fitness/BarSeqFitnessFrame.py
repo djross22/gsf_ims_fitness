@@ -3108,6 +3108,19 @@ class BarSeqFitnessFrame:
             frame = frame[frame["pacbio_" + reg + "_mutations"]<=0]
     
         return frame
+        
+        
+    def bs_frame_stan_data(self, st_row, plot_df, antibiotic_conc_list, 
+                      lig_list, fit_fitness_difference_params, 
+                      old_style_columns=False, initial="b", plasmid="pVER",
+                      is_gp_model=False,
+                      min_err=0.1):
+        
+        return get_stan_data(st_row=st_row, plot_df=plot_df, antibiotic_conc_list=antibiotic_conc_list, 
+                             lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
+                             old_style_columns=old_style_columns, initial=initial, plasmid=plasmid,
+                             is_gp_model=is_gp_model,
+                             min_err=min_err)
 
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)
