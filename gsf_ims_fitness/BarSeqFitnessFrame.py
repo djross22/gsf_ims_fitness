@@ -3279,6 +3279,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 df = plot_df
                 df = df[(df.ligand==lig)|(df.ligand=='none')]
                 df = df[df.antibiotic_conc==tet]
+                df = df.sort_values(by=lig)
                 x = np.array(df[lig])
                 # Correction factor for non-constant ref fitness (i.e., fitness decreases with [ligand]
                 ref_correction = np.array([fitness.ref_fit_correction(z, plasmid) for z in x])
@@ -3290,7 +3291,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 s = np.sqrt(s**2 + min_err**2)
                 
                 if plasmid == 'pRamR':
-                    early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df_layout.sample_id])
+                    early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
                     # Additive correction for RamR system at high [ligand]
                     y_corr = fitness.fitness_corection(x, early_fitness, raw_fitness, crit_conc=200)
                     y = y - y_corr
@@ -3379,7 +3380,45 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              mid_g_std_high_tet=fit_fitness_difference_params[1][4],
                              fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
                              )
-    
+        
+        elif (len(lig_list) == 3) and (len(tet_list) == 1):
+            # Case for three-ligand experiment (e.g., RamR)
+            # x_y_s_list: 1st index is the ligand (0, 1, or 2)
+            #             2nd index is the antibiotic concentration (always 0 here)
+            #             3rd index is 0 for x, 1 for y, 2 for s
+            #             4th index is for individual data points
+            
+            x_1, y_1, s_1 = tuple(x_y_s_list[0][0][n] for n in range(3))
+            y_0 = y_1[x_1==0]
+            s_0 = s_1[x_1==0]
+            y_1 = y_1[x_1>0]
+            s_1 = s_1[x_1>0]
+            x_1 = x_1[x_1>0]
+            
+            x_2, y_2, s_2 = tuple(x_y_s_list[1][0][n] for n in range(3))
+            y_2 = y_2[x_2>0]
+            s_2 = s_2[x_2>0]
+            x_2 = x_2[x_2>0]
+            
+            x_3, y_3, s_3 = tuple(x_y_s_list[2][0][n] for n in range(3))
+            y_3 = y_3[x_3>0]
+            s_3 = s_3[x_3>0]
+            x_3 = x_3[x_3>0]
+            
+            stan_data = dict(N_lig=len(x_1),
+                             y_0=y_0, y_0_err=s_0,
+                             x_1=x_1, y_1=y_1, y_1_err=s_1,
+                             x_2=x_2, y_2=y_2, y_2_err=s_2,
+                             x_3=x_3, y_3=y_3, y_3_err=s_3,
+                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
+                             high_fitness_mu=fit_fitness_difference_params[0],
+                             mid_g_mu=fit_fitness_difference_params[1],
+                             fitness_n_mu=fit_fitness_difference_params[2],
+                             low_fitness_std=fit_fitness_difference_params[3],
+                             mid_g_std=fit_fitness_difference_params[4],
+                             fitness_n_std=fit_fitness_difference_params[5],
+                             )
+                             
     return stan_data
 
 
