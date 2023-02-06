@@ -1205,8 +1205,9 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
     
 
 def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=False):
-    # params are: low_fitness, mid_g, fitness_n, low_fitness_err, mid_g_err, fitness_n_err, 
+    
     if plasmid == "pVER":
+        # For LacI, params are: low_fitness, mid_g, fitness_n, low_fitness_err, mid_g_err, fitness_n_err, 
         if use_geo_mean:
             if tet_conc==20:
                 params = np.array([-0.72246,  13328,  3.2374])
@@ -1230,6 +1231,9 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
                 params = np.array([-0.7681, 311.1, 1.127, 0.03107, 25.54, 0.04042]) 
             elif tet_conc==20:
                 params = np.array([-0.72246,  13328,  3.2374]) #place-holder values, for testing
+    elif plasmid == 'pRamR':
+        # For RamR, params are: high_fitness, mid_g, fitness_n, high_fitness_err, mid_g_err, fitness_n_err, 
+        params = [-1.604, 1.017e+03, 1.495, 0.02018, 44.55, 0.06434]
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
@@ -1262,6 +1266,11 @@ def log_g_limits(plasmid="pVER"):
         log_g_max = 4.7
         log_g_prior_scale = 0.15
         wild_type_ginf = 2.44697108e+04
+    elif plasmid == "pRamR":
+        log_g_min = 1
+        log_g_max = 5
+        log_g_prior_scale = 0.15
+        wild_type_ginf = 4e+04
     else:
         log_g_min = 1
         log_g_max = 4.5
