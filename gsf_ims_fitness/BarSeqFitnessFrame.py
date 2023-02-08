@@ -3337,6 +3337,17 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     y_corr = fitness.fitness_corection(x, early_fitness, raw_fitness, crit_conc=200)
                     y = y - y_corr
                 
+                if is_gp_model:
+                    # For GP model, can't have missing data. So, if either y or s is nan, replace with values that won't affect GP model results (i.e. s=100)
+                    invalid = (np.isnan(y) | np.isnan(s))
+                    y[invalid] = low_fitness/2
+                    s[invalid] = 100
+                else:
+                    valid = ~(np.isnan(y) | np.isnan(s))
+                    x = x[valid]
+                    y = y[valid]
+                    s = s[valid]
+                
                 sub_list.append([x, y, s])
             x_y_s_list.append(sub_list)
             
@@ -3347,22 +3358,9 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             mid_g = fit_fitness_difference_params[1]
             fitness_n = fit_fitness_difference_params[2]
             
-            x_fit = x_y_s_list[0][0][0]
+            x = x_y_s_list[0][0][0]
             y = x_y_s_list[0][0][1]
-            s = x_y_s_list[0][0][2]
-            
-            if is_gp_model:
-                # For GP model, can't have missing data. So, if either y or s is nan, replace with values that won't affect GP model results (i.e. s=100)
-                invalid = (np.isnan(y) | np.isnan(s))
-                y[invalid] = low_fitness/2
-                s[invalid] = 100
-                x = x_fit
-                y_err = s
-            else:
-                valid = ~(np.isnan(y) | np.isnan(s))
-                x = x_fit[valid]
-                y = y[valid]
-                y_err = s[valid]
+            y_err = x_y_s_list[0][0][2]
             
             stan_data = dict(x=x, y=y, N=len(y), y_err=y_err,
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
