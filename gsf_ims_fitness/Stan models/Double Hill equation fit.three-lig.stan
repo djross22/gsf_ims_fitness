@@ -165,6 +165,6 @@ generated quantities {
   log_sensor_n_2 = log10(sensor_n_2);
   log_sensor_n_3 = log10(sensor_n_3);
   
-  rms_resid = sqrt((y_0[0] - mean_y_0)^2 + (y_0[1] - mean_y_0)^2 + distance(y_1, mean_y_1)^2 + distance(y_2, mean_y_2)^2 + distance(y_3, mean_y_3)^2)/sqrt(3*N_lig + 2);
+  rms_resid = sqrt((y_0[1] - mean_y_0)^2 + (y_0[2] - mean_y_0)^2 + distance(y_1, mean_y_1)^2 + distance(y_2, mean_y_2)^2 + distance(y_3, mean_y_3)^2)/sqrt(3*N_lig + 2);
   
 }
