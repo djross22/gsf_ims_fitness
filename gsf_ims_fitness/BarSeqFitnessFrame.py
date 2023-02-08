@@ -1508,9 +1508,17 @@ class BarSeqFitnessFrame:
                                        auto_save=True,
                                        refit_index=None,
                                        return_fit=False,
-                                       initial='b'):
+                                       initial=None):
         
         plasmid = self.plasmid
+        
+        if plasmid == 'pVER':
+            if initial is None:
+                initial = 'b'
+        elif plasmid == 'pRamR':
+            if initial is None:
+                initial = 'sp01'
+            
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
         print("      Version from 2022-11-25")
@@ -1717,9 +1725,17 @@ class BarSeqFitnessFrame:
                        auto_save=True,
                        refit_index=None,
                        return_fit=False,
-                       initial='b'):
+                       initial=None):
         
         plasmid = self.plasmid
+        
+        if plasmid == 'pVER':
+            if initial is None:
+                initial = 'b'
+        elif plasmid == 'pRamR':
+            if initial is None:
+                initial = 'sp01'
+                
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
         print("      Method version from 2022-11-25")
