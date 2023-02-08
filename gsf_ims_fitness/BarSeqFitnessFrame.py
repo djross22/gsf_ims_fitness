@@ -2342,7 +2342,8 @@ class BarSeqFitnessFrame:
                             show_bc_str=False,
                             real_fitness_units=False,
                             plot_initials=None,
-                            plot_slope_not_fitness=False):
+                            plot_slope_not_fitness=False,
+                            plot_stan_data=[False, False]):
         
         if plot_initials is None:
             if self.plasmid == 'pVER':
@@ -2397,7 +2398,7 @@ class BarSeqFitnessFrame:
         antibiotic_conc_list = self.antibiotic_conc_list
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
-            for initial, fill_style in zip(plot_initials, ['full', 'none', 'right', 'left']):
+            for initial, fill_style, plot_st in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data):
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
@@ -2407,7 +2408,7 @@ class BarSeqFitnessFrame:
                             ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                 else:
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
-                        for lig, color in zip(ligand_list, fit_plot_colors):
+                        for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
@@ -2416,8 +2417,17 @@ class BarSeqFitnessFrame:
                                 y = [row[f"fit_slope_S{i}_{initial}"]*fit_scale for i in df.sample_id]
                                 s = [row[f"fit_slope_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             else:
-                                y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
-                                s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
+                                if plot_st and (tet > 0):
+                                    stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
+                                                              ligand_list, self.fit_fitness_difference_params, 
+                                                              initial=initial, plasmid=self.plasmid)
+                                    st_y_0 = list(stan_data[f'y_0'])
+                                    x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
+                                    s = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{j+1}_err']))
+                                else:
+                                    y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
+                                    s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             with warnings.catch_warnings():
                                 warnings.simplefilter("ignore")
                                 ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
@@ -3338,7 +3348,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             
             stan_data = dict(x=x, y=y, N=len(y), y_err=y_err,
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
-                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale)
+                             log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
+                             y_ref=y_ref)
         
         elif (len(lig_list) == 2) and (len(tet_list) == 2):
             # Case for two-tet, two-ligand (e.g., LacI with high and low tet)
@@ -3392,6 +3403,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              low_fitness_std_high_tet=fit_fitness_difference_params[1][3],
                              mid_g_std_high_tet=fit_fitness_difference_params[1][4],
                              fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
+                             y_ref=y_ref,
                              )
         
         elif (len(lig_list) == 3) and (len(tet_list) == 1):
@@ -3430,6 +3442,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              low_fitness_std=fit_fitness_difference_params[3],
                              mid_g_std=fit_fitness_difference_params[4],
                              fitness_n_std=fit_fitness_difference_params[5],
+                             y_ref=y_ref,
                              )
                              
     return stan_data
