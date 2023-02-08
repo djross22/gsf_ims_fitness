@@ -1511,6 +1511,7 @@ class BarSeqFitnessFrame:
                                        initial=None):
         
         plasmid = self.plasmid
+        fit_fitness_difference_params = self.fit_fitness_difference_params
         
         if plasmid == 'pVER':
             if initial is None:
@@ -1520,8 +1521,9 @@ class BarSeqFitnessFrame:
                 initial = 'sp01'
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
-        print(f"  Using fitness parameters for {plasmid}")
-        print("      Version from 2022-11-25")
+        print(f"  Using fitness parameters for {plasmid}:")
+        print(f"      {fit_fitness_difference_params}")
+        print("      Method version from 2023-02-08")
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
@@ -1539,7 +1541,6 @@ class BarSeqFitnessFrame:
             old_style_columns, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
         
         antibiotic_conc_list = self.antibiotic_conc_list
-        fit_fitness_difference_params = self.fit_fitness_difference_params
         
         if len(ligand_list) == 1:
             sm_file = 'Double Hill equation fit.stan'
@@ -1729,6 +1730,8 @@ class BarSeqFitnessFrame:
         
         plasmid = self.plasmid
         
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
         if plasmid == 'pVER':
             if initial is None:
                 initial = 'b'
@@ -1738,6 +1741,7 @@ class BarSeqFitnessFrame:
                 
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
+        print(f"      {fit_fitness_difference_params}")
         print("      Method version from 2022-11-25")
         
         barcode_frame = self.barcode_frame
@@ -1745,8 +1749,6 @@ class BarSeqFitnessFrame:
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
         fitness_columns_setup = self.get_fitness_columns_setup()
-        
-        fit_fitness_difference_params = self.fit_fitness_difference_params
         
         ligand_list = self.ligand_list
         
