@@ -1501,15 +1501,14 @@ class BarSeqFitnessFrame:
         
     
     def stan_fitness_difference_curves(self,
-                                      includeChimeras=False,
-                                      control=dict(adapt_delta=0.9),
-                                      iterations=1000,
-                                      chains=4,
-                                      auto_save=True,
-                                      refit_index=None,
-                                      return_fit=False,
-                                      include_lactose_zero=False,
-                                      initial='b'):
+                                       includeChimeras=False,
+                                       control=dict(adapt_delta=0.9),
+                                       iterations=1000,
+                                       chains=4,
+                                       auto_save=True,
+                                       refit_index=None,
+                                       return_fit=False,
+                                       initial='b'):
         
         plasmid = self.plasmid
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
@@ -3271,13 +3270,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
         y = (y_high - y_zero)/y_zero
         s = np.sqrt( s_high**2 + s_zero**2 )/y_zero
         
-        if include_lactose_zero:
-            print(f"      including zero lactose data for {st_index}")
-            y = np.insert(y, 0, st_row['lactose_fitness_diff'])
-            s = np.insert(s, 0, st_row['lactose_fitness_err'])
-            x_fit = np.insert(x, 0, 0)
-        else:
-            x_fit = x
+        x_fit = x
         x_y_s_list = [[x_fit, y, s]]
     else:
         df = plot_df
