@@ -3139,9 +3139,16 @@ class BarSeqFitnessFrame:
         
     def bs_frame_stan_data(self, st_row, plot_df, antibiotic_conc_list, 
                       lig_list, fit_fitness_difference_params, 
-                      old_style_columns=False, initial="b", plasmid="pVER",
+                      old_style_columns=False, initial=None, plasmid="pVER",
                       is_gp_model=False,
                       min_err=0.1):
+                      
+        if plasmid == 'pVER':
+            if initial is None:
+                initial = 'b'
+        elif plasmid == 'pRamR':
+            if initial is None:
+                initial = 'sp01'
         
         return get_stan_data(st_row=st_row, plot_df=plot_df, antibiotic_conc_list=antibiotic_conc_list, 
                              lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
