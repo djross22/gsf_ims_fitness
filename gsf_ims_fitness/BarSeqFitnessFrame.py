@@ -1566,6 +1566,16 @@ class BarSeqFitnessFrame:
         elif len(ligand_list) == 3:
             sm_file = 'Double Hill equation fit.three-lig.stan'
             
+            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
+                           'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2',
+                           'log_ginf_3', 'log_ec50_3', 'sensor_n_3', 'log_ginf_g0_ratio_3',
+                           'high_fitness', 'mid_g', 'fitness_n']
+            log_g0_ind = params_list.index('log_g0')
+            log_ginf_g0_ind_1 = params_list.index('log_ginf_g0_ratio_1')
+            log_ginf_g0_ind_2 = params_list.index('log_ginf_g0_ratio_2')
+            log_ginf_g0_ind_3 = params_list.index('log_ginf_g0_ratio_3')
+            params_dim = len(params_list)
+            
         quantile_params_list = [x for x in params_list if 'log_' in x]
         quantile_params_dim = len(quantile_params_list)
                 
@@ -1586,8 +1596,10 @@ class BarSeqFitnessFrame:
             try:
                 if len(lig_list) == 1:
                     stan_init = [ init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params) for i in range(chains) ]
-                else:
+                elif len(lig_list) == 2:
                     stan_init = [ init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params) for i in range(chains) ]
+                elif len(lig_list) == 3:
+                    stan_init = [ init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params) for i in range(chains) ]
                 
                 #print("stan_data:")
                 #for k, v in stan_data.items():
@@ -1613,8 +1625,11 @@ class BarSeqFitnessFrame:
                 if len(lig_list) == 1:
                     g_ratio_samples = stan_samples_arr[log_ginf_g0_ind]
                     hill_invert_prob = len(g_ratio_samples[g_ratio_samples<0])/len(g_ratio_samples)
-                else:
+                elif len(ligand_list) == 2:
                     g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2]]
+                    hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
+                elif len(ligand_list) == 3:
+                    g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2, log_ginf_g0_ind_3]]
                     hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
             
             except:
@@ -1628,7 +1643,7 @@ class BarSeqFitnessFrame:
                 if len(lig_list) == 1:
                     hill_invert_prob = np.nan
                 else:
-                    hill_invert_prob = [np.nan, np.nan]
+                    hill_invert_prob = [np.nan]*len(lig_list)
             
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, st_index)
@@ -3242,6 +3257,36 @@ def init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params):
                 mid_g_high_tet=fit_fitness_difference_params[1][1],
                 fitness_n_high_tet=fit_fitness_difference_params[1][2],
                 )
+                
+def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid='pRamR'):
+    min_ic = np.log10(min(stan_data['x_1']))
+    max_ic = np.log10(max(stan_data['x_1']))
+    log_ec50_1 = np.random.uniform(min_ic, max_ic)
+    log_ec50_2 = np.random.uniform(min_ic, max_ic)
+    log_ec50_3 = np.random.uniform(min_ic, max_ic)
+    
+    n_1 = np.random.uniform(1.3, 1.7)
+    n_2 = np.random.uniform(1.3, 1.7)
+    n_3 = np.random.uniform(1.3, 1.7)
+    
+    sig = np.random.uniform(1, 3)
+    
+    # Indices for x_y_s_list[ligand][tet][x,y,s][n]
+    return dict(log_g0=log_level(np.mean(stan_data['y_0']), plasmid=plasmid), 
+                log_ginf_1=log_level(np.mean(stan_data['y_1'][-2:]), plasmid=plasmid), 
+                log_ginf_2=log_level(np.mean(stan_data['y_2'][-2:]), plasmid=plasmid), 
+                log_ginf_3=log_level(np.mean(stan_data['y_3'][-2:]), plasmid=plasmid), 
+                log_ec50_1=log_ec50_1, 
+                log_ec50_2=log_ec50_2, 
+                log_ec50_3=log_ec50_3, 
+                sensor_n_1=n_1, 
+                sensor_n_2=n_2, 
+                sensor_n_3=n_3, 
+                sigma=sig, 
+                high_fitness=fit_fitness_difference_params[0],
+                mid_g=fit_fitness_difference_params[1],
+                fitness_n=fit_fitness_difference_params[2],
+                )
     
 def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand):
     sig = np.random.uniform(1, 3)
@@ -3265,14 +3310,23 @@ def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand):
                     )
     
     
-def log_level(fitness_difference):
-    log_g = 1.439*fitness_difference + 3.32
-    log_g = log_g*np.random.uniform(0.9,1.1)
-    if log_g<1.5:
-        log_g = 1.5
-    if log_g>4:
-        log_g = 4
-    return log_g
+def log_level(fitness_difference, plasmid='pVER'):
+    if plasmid == 'pVER':
+        log_g = 1.439*fitness_difference + 3.32
+        log_g = log_g*np.random.uniform(0.9,1.1)
+        if log_g<1.5:
+            log_g = 1.5
+        if log_g>4:
+            log_g = 4
+        return log_g
+    elif plasmid == 'pRamR':
+        log_g = -2.1*fitness_difference/1.5 + 2
+        log_g = log_g*np.random.uniform(0.9,1.1)
+        if log_g<2:
+            log_g = 2
+        if log_g>4.5:
+            log_g = 4.5
+        return log_g
         
 def get_stan_data(st_row, plot_df, antibiotic_conc_list, 
                   lig_list, fit_fitness_difference_params, 
@@ -3455,7 +3509,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              high_fitness_mu=fit_fitness_difference_params[0],
                              mid_g_mu=fit_fitness_difference_params[1],
                              fitness_n_mu=fit_fitness_difference_params[2],
-                             low_fitness_std=fit_fitness_difference_params[3],
+                             high_fitness_std=fit_fitness_difference_params[3],
                              mid_g_std=fit_fitness_difference_params[4],
                              fitness_n_std=fit_fitness_difference_params[5],
                              y_ref=y_ref,
