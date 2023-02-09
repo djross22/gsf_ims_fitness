@@ -2555,7 +2555,14 @@ class BarSeqFitnessFrame:
                             show_GP=False,
                             log_g_scale=False,
                             box_size=6,
-                            show_bc_str=False):
+                            show_bc_str=False,
+                            plot_initials=None):
+        
+        if plot_initials is None:
+            if self.plasmid == 'pVAR':
+                plot_initials = ['b', 'e']
+            elif self.plasmid == 'pRamR':
+                plot_initials = ['sp01']
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -2618,9 +2625,14 @@ class BarSeqFitnessFrame:
                         return double_hill_funct(x, g_min, g_max, x_50, nx, fit_fitness_difference_params[0], 0,
                                                  fit_fitness_difference_params[1], fit_fitness_difference_params[2])
             else:
-                def fit_funct(x, log_g0, log_ginf, log_ec50, nx, low_fitness, mid_g, fitness_n):
-                    return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
-                                             low_fitness, 0, mid_g, fitness_n)
+                if self.plasmid == 'pVER':
+                    def fit_funct(x, log_g0, log_ginf, log_ec50, nx, low_fitness, mid_g, fitness_n):
+                        return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
+                                                 low_fitness, 0, mid_g, fitness_n)
+                elif self.plasmid == 'pRamR':
+                    def fit_funct(x, log_g0, log_ginf, log_ec50, nx, high_fitness, mid_g, fitness_n):
+                        return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
+                                                 0, high_fitness, mid_g, fitness_n)
         
         
         fig_axs_list = []
@@ -2644,8 +2656,8 @@ class BarSeqFitnessFrame:
                 x_lab = '], ['.join(ligand_list)
                 ax.set_xlabel(f'[{x_lab}] (umol/L)', size=14)
             
-            for initial in ["b", "e"]:
-                fill_style = "full" if initial=="b" else "none"
+            for initial in plot_initials:
+                fill_style = "full" if initial==plot_initials[0] else "none"
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]
@@ -2659,7 +2671,7 @@ class BarSeqFitnessFrame:
                     
                     y = (y_high - y_zero)/y_zero.mean()
                     s = np.sqrt( s_high**2 + s_zero**2 )/y_zero.mean()
-                    fill_style = "full" if initial=="b" else "none"
+                    fill_style = "full" if initial==plot_initials[0] else "none"
                     axr.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 else:
                     y_ref_list = []
@@ -2685,19 +2697,18 @@ class BarSeqFitnessFrame:
                     v_2 = np.sum(w**2)
                     s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
-                        for lig, color in zip(ligand_list, fit_plot_colors):
-                            df = plot_df
-                            df = df[(df.ligand==lig)|(df.ligand=='none')]
-                            df = df[df.antibiotic_conc==tet]
-                            x = df[lig]
-                            y = np.array([row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
-                            y = (y - y_ref)/y_ref
-                            s = np.array([row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
-                            s = np.sqrt(s**2 + s_ref**2)/y_ref
+                        for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
+                            stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
+                                                      ligand_list, fit_fitness_difference_params, 
+                                                      initial=initial, plasmid=self.plasmid)
+                            st_y_0 = list(stan_data[f'y_0'])
+                            x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                            y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
+                            s = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{j+1}_err']))
                             marker = marker if show_fits else '-' + marker
                             axr.errorbar(x, y, s, fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
-                if initial == "b":
+                if initial == plot_initials[0]:
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name']
@@ -2713,7 +2724,7 @@ class BarSeqFitnessFrame:
                             transform=axl.transAxes, fontsize=13, fontfamily=fontfamily)
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
                     axl.tick_params(labelsize=12);
-                    axr.set_ylabel('Fitness with Tet - Fitness without Tet', size=14)
+                    axr.set_ylabel(f'Fitness effect of {self.antibiotic}', size=14)
                     axr.tick_params(labelsize=12);
                     if ylim is not None:
                         axl.set_ylim(ylim);
@@ -2735,9 +2746,14 @@ class BarSeqFitnessFrame:
                             x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
                             x_fit = np.insert(x_fit, 0, 0)
                             
-                            # fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n)
-                            params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
-                                           f'low_fitness_{tet}_tet', f'mid_g_{tet}_tet', f'fitness_n_{tet}_tet']
+                            # LacI: fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n)
+                            # RamR: fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, high_fitness, mid_g, fitness_n)
+                            if self.plasmid == 'pVER':
+                                params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
+                                               f'low_fitness_{tet}_tet', f'mid_g_{tet}_tet', f'fitness_n_{tet}_tet']
+                            elif self.plasmid == 'pRamR':
+                                params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
+                                               f'high_fitness', f'mid_g', f'fitness_n']
                             
                             params = [row[p] for p in params_list]
                             y_fit = fit_funct(x_fit, *params)
@@ -2781,14 +2797,20 @@ class BarSeqFitnessFrame:
                         
                         df = plot_df
                         df = df[(df.ligand==lig)|(df.ligand=='none')]
+                        df = df[df.with_tet]
                         x = np.unique(df[lig])
                     
                         axg.plot(x, stan_g[2], '--', color=color, lw=3, label=lig)
                         axdg.plot(x, stan_dg[2], '--', color=color, lw=3)
                         
-                        for tet in tet_level_list:
-                            stan_f = row[f"GP_y_{lig}_{tet}_tet"]
-                            axr.plot(x, stan_f[2], '--', color=color, lw=3)
+                        if self.plasmid == 'pVER':
+                            for tet in tet_level_list:
+                                stan_f = row[f"GP_y_{lig}_{tet}_tet"]
+                                axr.plot(x, stan_f[2], '--', color=color, lw=3)
+                        elif self.plasmid == 'pRamR':
+                            for tet in tet_level_list:
+                                stan_f = row[f"GP_y_{lig}"]
+                                axr.plot(x, stan_f[2], '--', color=color, lw=3)
                             
                         axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
                         axg.tick_params(labelsize=12);
