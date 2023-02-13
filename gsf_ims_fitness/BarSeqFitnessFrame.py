@@ -544,9 +544,9 @@ class BarSeqFitnessFrame:
                 log_ratio_q_dict[key] = [params[3]]
             
             print_interval = 10**(np.round(np.log10(len(fit_frame))) - 1)
-            for ind in fit_frame.iloc[1:].index:
-                if ind%print_interval == 0:
-                    print(ind)
+            for j, ind in enumerate(fit_frame.iloc[1:].index):
+                if j%print_interval == 0:
+                    print(j, ind)
                 ret_dict = self.stan_barcode_slope_index(index=ind, **arg_dict)
                 for key in key_list:
                     params = ret_dict[key]
@@ -736,8 +736,9 @@ class BarSeqFitnessFrame:
             non_ref_without_tet = []
         else:
             non_ref_without_tet = list(set(samples_without_tet) - set(ref_samples))
-            
-        print(f'Using these samples as reference samples: {ref_samples}')
+        
+        if verbose:
+            print(f'Using these samples as reference samples: {ref_samples}')
         
         row = barcode_frame.loc[index]
         
