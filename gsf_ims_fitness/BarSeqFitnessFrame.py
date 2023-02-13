@@ -2464,10 +2464,26 @@ class BarSeqFitnessFrame:
                                     stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
                                                               ligand_list, self.fit_fitness_difference_params, 
                                                               initial=initial, plasmid=self.plasmid)
-                                    st_y_0 = list(stan_data[f'y_0'])
-                                    x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
-                                    s = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{j+1}_err']))
+                                    if len(antibiotic_conc_list) == 2:
+                                        # Single non-zero antibiotic concentration
+                                        st_y_0 = list(stan_data[f'y_0'])
+                                        st_y_0_err = list(stan_data[f'y_0_err'])
+                                        x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                        y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
+                                        s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                    elif len(antibiotic_conc_list) == 3:
+                                        # Two non-zero antibiotic concentrations
+                                        if tet == antibiotic_conc_list[1]:
+                                            tet_str = 'low'
+                                            st_y_0 = [stan_data[f'y_0_low_tet']]
+                                            st_y_0_err = [stan_data[f'y_0_low_tet_err']]
+                                        else:
+                                            tet_str = 'high'
+                                            st_y_0 = []
+                                            st_y_0_err = []
+                                        x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                        y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet'])) + stan_data['y_ref']
+                                        s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
                                 else:
                                     y = [row[f"fitness_S{i}_{initial}"]*fit_scale for i in df.sample_id]
                                     s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
@@ -3434,7 +3450,11 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 if is_gp_model:
                     # For GP model, can't have missing data. So, if either y or s is nan, replace with values that won't affect GP model results (i.e. s=100)
                     invalid = (np.isnan(y) | np.isnan(s))
-                    y[invalid] = fit_fitness_difference_params[0]/2
+                    if len(tet_list) == 1:
+                        middle_fitness = fit_fitness_difference_params[0]/2
+                    elif len(tet_list) == 2:
+                        middle_fitness = (fit_fitness_difference_params[0][0] + fit_fitness_difference_params[1][0])/4
+                    y[invalid] = middle_fitness
                     s[invalid] = 100
                 else:
                     valid = ~(np.isnan(y) | np.isnan(s))
