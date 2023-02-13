@@ -1448,7 +1448,7 @@ class BarSeqFitnessFrame:
                 x = x[s]
                 if len(x) == 0:
                     pass
-                elif len(x) > 100:
+                elif len(x) > 1000:
                     ax.hist2d(np.log10(x), y, bins=50, norm=colors.LogNorm())
                 else:
                     ax.plot(np.log10(x), y, 'o', alpha=0.3)
