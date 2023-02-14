@@ -1592,7 +1592,7 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid)
+            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid, ref_samples=self.ref_samples)
 
             try:
                 if len(lig_list) == 1:
@@ -1827,7 +1827,7 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid, is_gp_model=True)
+            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid, is_gp_model=True, ref_samples=self.ref_samples)
         
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
@@ -2464,7 +2464,7 @@ class BarSeqFitnessFrame:
                                 if plot_st and (tet > 0):
                                     stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
                                                               ligand_list, self.fit_fitness_difference_params, 
-                                                              initial=initial, plasmid=self.plasmid)
+                                                              initial=initial, plasmid=self.plasmid, ref_samples=self.ref_samples)
                                     if len(antibiotic_conc_list) == 2:
                                         # Single non-zero antibiotic concentration
                                         st_y_0 = list(stan_data[f'y_0'])
@@ -2576,7 +2576,7 @@ class BarSeqFitnessFrame:
                             plot_initials=None):
         
         if plot_initials is None:
-            if self.plasmid == 'pVAR':
+            if self.plasmid == 'pVER':
                 plot_initials = ['b', 'e']
             elif self.plasmid == 'pRamR':
                 plot_initials = ['sp01']
@@ -2691,8 +2691,6 @@ class BarSeqFitnessFrame:
                     fill_style = "full" if initial==plot_initials[0] else "none"
                     axr.errorbar(x, y, s, marker='o', ms=8, color=fit_plot_colors[0], fillstyle=fill_style)
                 else:
-                    y_ref_list = []
-                    s_ref_list = []
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
                         for lig, color in zip(ligand_list, fit_plot_colors):
                             df = plot_df
@@ -2702,28 +2700,37 @@ class BarSeqFitnessFrame:
                             y = [row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
                             s = [row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
                             axl.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
-                            if tet == 0:
-                                y_ref_list += list(y)
-                                s_ref_list += list(s)
                     
-                    y_ref_list = np.array(y_ref_list)
-                    w = 1/np.array(s_ref_list)**2
-                    y_ref = np.average(y_ref_list, weights=w)
-                    s_ref = np.average((y_ref_list-y_ref)**2, weights=w)
-                    v_1 = np.sum(w)
-                    v_2 = np.sum(w**2)
-                    s_ref = np.sqrt(s_ref/(1 - (v_2/v_1**2)))
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
-                        for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
-                            stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
-                                                      ligand_list, fit_fitness_difference_params, 
-                                                      initial=initial, plasmid=self.plasmid)
-                            st_y_0 = list(stan_data[f'y_0'])
-                            x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                            y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
-                            s = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{j+1}_err']))
-                            marker = marker if show_fits else '-' + marker
-                            axr.errorbar(x, y, s, fmt=marker, ms=8, color=color, fillstyle=fill_style)
+                        if tet > 0:
+                            for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
+                                stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
+                                                          ligand_list, fit_fitness_difference_params, 
+                                                          initial=initial, plasmid=self.plasmid, ref_samples=self.ref_samples)
+                                
+                                if len(antibiotic_conc_list) == 2:
+                                    # Single non-zero antibiotic concentration
+                                    st_y_0 = list(stan_data[f'y_0'])
+                                    st_y_0_err = list(stan_data[f'y_0_err'])
+                                    x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
+                                    s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                elif len(antibiotic_conc_list) == 3:
+                                    # Two non-zero antibiotic concentrations
+                                    if tet == antibiotic_conc_list[1]:
+                                        tet_str = 'low'
+                                        st_y_0 = [stan_data[f'y_0_low_tet']]
+                                        st_y_0_err = [stan_data[f'y_0_low_tet_err']]
+                                    else:
+                                        tet_str = 'high'
+                                        st_y_0 = []
+                                        st_y_0_err = []
+                                    x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet']))
+                                    s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
+                                    
+                                marker = marker if show_fits else '-' + marker
+                                axr.errorbar(x, y, s, fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
                 if initial == plot_initials[0]:
                     barcode_str = str(index) + ': '
@@ -2736,7 +2743,8 @@ class BarSeqFitnessFrame:
                     else:
                         fontfamily = None
                     if not old_style_plots:
-                        barcode_str += f"\ny_ref: {y_ref:.3f} +- {s_ref:.3f}"
+                        y_ref = stan_data['y_ref']
+                        barcode_str += f"\ny_ref: {y_ref:.3f}"
                     axl.text(x=1, y=1.025, s=barcode_str, horizontalalignment='center', verticalalignment='bottom',
                             transform=axl.transAxes, fontsize=13, fontfamily=fontfamily)
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
@@ -3219,7 +3227,7 @@ class BarSeqFitnessFrame:
                              lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
                              old_style_columns=old_style_columns, initial=initial, plasmid=plasmid,
                              is_gp_model=is_gp_model,
-                             min_err=min_err)
+                             min_err=min_err, ref_samples=self.ref_samples)
 
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)
@@ -3389,7 +3397,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                   lig_list, fit_fitness_difference_params, 
                   old_style_columns=False, initial="b", plasmid="pVER",
                   is_gp_model=False,
-                  min_err = 0.1):
+                  min_err=0.1,
+                  ref_samples=None):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
     
@@ -3409,10 +3418,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
         x_fit = x
         x_y_s_list = [[x_fit, y, s]]
     else:
-        df = plot_df
-        df = df[df.antibiotic_conc==0] # use all data at zero tet for reference fitness
-        y = [st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
-        s = [st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
+        y = [st_row[f"fitness_S{i}_{initial}"] for i in ref_samples]
+        s = [st_row[f"fitness_S{i}_err_{initial}"] for i in ref_samples]
         y_ref_list = np.array(y)
         s_ref_list = np.array(s)
         
