@@ -2033,6 +2033,8 @@ class BarSeqFitnessFrame:
         print(f"    after all merges are completed!!!")
         
         barcode_frame = self.barcode_frame.copy()
+        if 'was_merged' not in barcode_frame.columns:
+            barcode_frame['was_merged'] = False
         
         merge_ind_list = [big_bc_index] + list(small_bc_index_list)
         merge_df = barcode_frame.loc[merge_ind_list]
@@ -2041,6 +2043,7 @@ class BarSeqFitnessFrame:
         for w in fitness.wells():
             new_row[w] = merge_df[w].sum()
         new_row['total_counts'] = merge_df['total_counts'].sum()
+        new_row['was_merged'] = True
         
         # reset nearest_neighbor_dist since it is probably no longer corect after merge
         if 'nearest_neighbor_dist' in new_row.keys():
