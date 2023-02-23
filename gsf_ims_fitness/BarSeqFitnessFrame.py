@@ -37,7 +37,7 @@ sns.set_style("white")
 sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.direction':'in', 'ytick.right':True})
 
 class BarSeqFitnessFrame:
-        
+    
     def __init__(self, notebook_dir, experiment=None, barcode_file=None, 
                  antibiotic_conc_list=[0, 20], 
                  inducer_conc_lists=None, 
@@ -2024,44 +2024,37 @@ class BarSeqFitnessFrame:
             self.save_as_pickle()
             
         
-    ''' The merge_barcodes() needs to be updated. comment it out for now
-    def merge_barcodes(self, small_bc_index, big_bc_index, auto_refit=True, auto_save=True):
-        # merge small barcode into big barcode (add read counts)
-        # remove small barcode from dataframe
+    def merge_barcodes(self, small_bc_index_list, big_bc_index, auto_save=True):
+        # merge each row/barcode in small_bc_index_list into row with big_bc_index (add read counts)
+        # remove small rows/barcodes from dataframe
         
-        barcode_frame = self.barcode_frame
-        high_tet = self.high_tet
+        print(f"Merging {small_bc_index_list} into {big_bc_index}")
+        print(f"Remember to run trim_and_sum_barcodes() and set_sample_plate_map()")
+        print(f"    after all merges are completed!!!")
         
-        columns_to_sum = fitness.wells()
-        columns_to_sum += [ 'total_counts', 'fraction_total', 'total_counts_plate_2', 'fraction_total_p2' ]
-        columns_to_sum += [ f'fraction_{w}' for w in fitness.wells() ]
-        columns_to_sum += [ f'read_count_{0}_{plate_num}' for plate_num in range(2,6) ]
-        columns_to_sum += [ f'read_count_{high_tet}_{plate_num}' for plate_num in range(2,6) ]
+        barcode_frame = self.barcode_frame.copy()
         
+        merge_ind_list = [big_bc_index] + list(small_bc_index_list)
+        merge_df = barcode_frame.loc[merge_ind_list]
         
-        print(f"merging {small_bc_index} into {big_bc_index}")
+        new_row = barcode_frame.loc[big_bc_index].copy()
+        for w in fitness.wells():
+            new_row[w] = merge_df[w].sum()
+        new_row['total_counts'] = merge_df['total_counts'].sum()
         
-        for col in columns_to_sum:
-            if col in barcode_frame.columns:
-                if type(barcode_frame.loc[big_bc_index, col]) != type(np.array([1])):
-                    barcode_frame.loc[big_bc_index, col] += barcode_frame.loc[small_bc_index, col]
-                else:
-                    big_bc_arr = barcode_frame.loc[big_bc_index, col]
-                    small_bc_arr = barcode_frame.loc[small_bc_index, col]
-                    big_bc_arr += small_bc_arr
+        # reset nearest_neighbor_dist since it is probably no longer corect after merge
+        if 'nearest_neighbor_dist' in new_row.keys():
+            new_row['nearest_neighbor_dist'] = np.nan
+        
+        barcode_frame.loc[big_bc_index] = new_row
                 
-        barcode_frame.drop(small_bc_index, inplace=True)
-        print(f"dropping {small_bc_index}")
+        for bc in small_bc_index_list:
+            barcode_frame.drop(bc, inplace=True)
         
         self.barcode_frame = barcode_frame
         
         if auto_save:
             self.save_as_pickle()
-            
-        if auto_refit:
-            self.fit_barcode_slope(auto_save=auto_save, refit_index=big_bc_index)
-            self.stan_fitness_difference_curves(auto_save=auto_save, refit_index=big_bc_index)
-    '''
         
             
     def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None):
