@@ -2865,6 +2865,242 @@ class BarSeqFitnessFrame:
             
         return fig_axs_list
     
+    
+    def calibrate_fitness_difference_params(self,
+                                            all_cytometry_Hill_fits,
+                                            spike_in_initial=None,
+                                            run_stan_fit=False,
+                                            save_fitness_difference_params=False,
+                                            rs_exclude_list=[],
+                                            use_only_rs_variants=False,
+                                            RS_list=None,
+                                            wt_cutoff=5000,
+                                            min_err=0.05,
+                                            show_old_fit=True):
+        plasmid = self.plasmid
+        if plasmid == 'pVER':
+            stan_model_file = "Hill equation fit-zero high.stan"
+            
+            ligand_plot_list = self.ligand_list[:1]
+            
+            def init_fitness_fit(y_data):
+                low = -0.8 #np.mean(y_data[:2])
+                mid = 1000 #np.random.normal(1, 0.2) * 10000
+                n = 1.1 #np.random.normal(1, 0.2) * 3
+                sig = np.random.normal(1, 0.2) * 0.1
+                return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
+        elif plasmid == 'pRamR':
+            stan_model_file = "Hill equation fit-zero low.stan"
+            
+            ligand_plot_list = self.ligand_list
+            
+            def init_fitness_fit(y_data):
+                low = -1.5 #np.mean(y_data[:2])
+                high = -0.5
+                mid = 1000 #np.random.normal(1, 0.2) * 10000
+                n = 1.1 #np.random.normal(1, 0.2) * 3
+                sig = np.random.normal(1, 0.2) * 0.1
+                return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig, high_level=high)
+        
+        if run_stan_fit:
+            fitness_model = stan_utility.compile_model(stan_model_file)
+        
+        bs_frame = self.barcode_frame
+        if RS_list is None:
+            RS_list = [x for x in bs_frame.RS_name if (x != '')]
+            if use_only_rs_variants:
+                RS_list = [x for x in RS_list if ('RS' in x)]
+            RS_list = np.unique(RS_list)
+        
+        sample_plate_map = self.sample_plate_map
+        lig_list = list(np.unique(sample_plate_map.ligand))
+        if 'none' in lig_list:
+            lig_list.remove('none')
+        
+        plot_df = sample_plate_map
+        plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=lig_list)
+        
+        x_list = np.array([np.array(plot_df[x]) for x in lig_list]).flatten()
+        linthresh = min(x_list[x_list>0])
+        
+        fit_plot_colors = sns.color_palette()
+        
+        def cytom_plasmid_from_rs_name(rs_name):
+            if plasmid == 'pVER':
+                if 'RS' in rs_name:
+                    plas = 'pVER-RS-' + rs_name[2:]
+                elif 'wt' in rs_name:
+                    plas = 'pVER-IPTG-WT'
+                else:
+                    plas = rs_name.replace('DT_IPTG_', 'pVER-IPTG-')
+                if '(' in rs_name:
+                    plas = rs_name.replace('WT', 'pVER-IPTG-WT')
+                    
+            elif plasmid == 'pRamR':
+                if 'RS' in rs_name:
+                    plas = 'RamR-' + rs_name
+                elif 'wt' in rs_name:
+                    plas = None
+                else:
+                    plas = None
+                    
+            return plas
+            
+        # Fitness calibration function is Hill function with either low or high value to zero:
+        def hill_funct(x, low, high, mid, n):
+            return low + (high-low)*( x**n )/( mid**n + x**n )
+
+        if plasmid == 'pVER':
+            def fit_funct(x, low, mid, n):
+                return hill_funct(x, low, 0, mid, n)
+        elif plasmid == 'pRamR':
+            def fit_funct(x, high, mid, n):
+                return hill_funct(x, 0, high, mid, n)
+        
+        plot_antibiotic_list = self.antibiotic_conc_list[1:]
+        plt.rcParams["figure.figsize"] = [12, 6]
+        if len(plot_antibiotic_list)==1:
+            fig, axs = plt.subplots()
+            axs = [axs]
+        elif len(plot_antibiotic_list)==2:
+            fig, axs = plt.subplots(1, 2)
+        
+        if show_old_fit:
+            if self.fit_fitness_difference_params is None:
+                plot_fit_params = [None]*len(plot_antibiotic_list)
+            else:
+                plot_fit_params = self.fit_fitness_difference_params
+        stan_params_list = []
+        for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, plot_fit_params):
+            fmt = 'o'
+            alpha = 0.7
+            ms = 8
+            color_ind = -1
+            x_fit_list = []
+            y_fit_list = []
+            y_err_list = []
+            for RS_name in RS_list:
+                for i, lig in enumerate(ligand_plot_list):
+                    plas = cytom_plasmid_from_rs_name(RS_name)
+
+                    df = all_cytometry_Hill_fits
+                    df = df[df.variant==plas]
+                    if len(ligand_plot_list)>1:
+                        df = df[df.ligand==lig]
+
+                    lab = f'{RS_name}, {lig}'
+
+                    if len(df)==1:
+                        cytom_row = df.iloc[0]
+                                          
+                        hill_params = [10**cytom_row[x] for x in ['log_g0', 'log_ginf', 'log_ec50']] + [cytom_row['n']]
+                        if not np.any(np.isnan(hill_params)):
+                            HiSeq_df = bs_frame[bs_frame['RS_name']==RS_name]
+                            if 'wt' in RS_name:
+                                HiSeq_df = HiSeq_df[HiSeq_df.total_counts>wt_cutoff]
+                                
+                            if len(HiSeq_df) > 0:
+                                color_ind += 1
+                                if color_ind >= len(fit_plot_colors):
+                                    color_ind=0
+                                    if fmt=='o':
+                                        fmt = '^'
+                                    elif fmt=='^':
+                                        fmt = 'v'
+                                    elif fmt=='v':
+                                        fmt = '<'
+                                    elif fmt=='<':
+                                        fmt = '>'
+                                    elif fmt=='>':
+                                        fmt = 'd'
+                                color=fit_plot_colors[color_ind]
+                                
+                                var_labeled = False
+                                for ind, HiSeq_row in HiSeq_df.iterrows():
+                                    if var_labeled:
+                                        lab = None
+                                    var_labeled = True
+                                    
+                                    stan_data = self.bs_frame_stan_data(HiSeq_row, 
+                                                                        initial=spike_in_initial,
+                                                                        min_err=min_err)
+                                    
+                                    if len(ligand_plot_list) > 1:
+                                        # For RamR
+                                        lig_conc = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
+                                        y = np.array(list(stan_data[f'y_0']) + list(stan_data[f'y_{i+1}']))
+                                        y_err = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{i+1}_err']))
+                                    else:
+                                        # For LacI
+                                        if tet == plot_antibiotic_list[0]:
+                                            lig_conc = np.array([0] + list(stan_data[f'x_{i+1}']))
+                                            y = np.array([stan_data[f'y_0_low_tet']] + list(stan_data[f'y_{i+1}_low_tet']))
+                                            y_err = np.array([stan_data[f'y_0_low_tet_err']] + list(stan_data[f'y_{i+1}_low_tet_err']))
+                                        elif tet == plot_antibiotic_list[1]:
+                                            lig_conc = np.array(stan_data[f'x_{i+1}'])
+                                            y = np.array(stan_data[f'y_{i+1}_high_tet'])
+                                            y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
+                                                  
+                                    x = hill_funct(lig_conc, *hill_params)
+
+                                    sel = RS_name in rs_exclude_list
+                                    if sel:
+                                        fill_style = 'none'  
+                                    else:
+                                        fill_style = None
+                                        x_fit_list += list(x)
+                                        y_fit_list += list(y)
+                                        y_err_list += list(y_err)
+                                    ax.errorbar(x, y, y_err, fmt=fmt, ms=ms, color=color, 
+                                                fillstyle=fill_style, label=lab, alpha=alpha)
+                                    
+                    elif len(df) == 0:
+                        pass
+                    else:
+                        raise ValueError('length of df != 1')
+                    
+            ylim = ax.get_ylim()
+            ax.set_xscale("log")
+            ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
+            ax.set_xlabel('Sensor Output (MEF)');
+            
+            x_fit_list = np.array(x_fit_list)
+            y_fit_list = np.array(y_fit_list)
+            y_err_list = np.array(y_err_list)
+            
+            if show_old_fit and (old_fit_params is not None):
+                x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
+                y_plot_fit = fit_funct(x_plot_fit, *old_fit_params[:3])
+                ax.plot(x_plot_fit, y_plot_fit, '--r', zorder=100, label='old fit');
+            
+            
+            if run_stan_fit:
+                stan_data = dict(x=x_fit_list, y = y_fit_list, y_err = y_err_list, N=len(x_fit_list))
+                stan_init = [ init_fitness_fit(y) for n in range(4) ]
+                stan_fit = fitness_model.sampling(data=stan_data, iter=1000, init=stan_init, chains=4)
+                if plasmid == 'pVER':
+                    stan_popt = [ np.mean(stan_fit[p])  for p in ["low_level", "IC_50", "hill_n"]]
+                    stan_perr = [ np.std(stan_fit[p])  for p in ["low_level", "IC_50", "hill_n"]]
+                elif plasmid == 'pRamR':
+                    stan_popt = [ np.mean(stan_fit[p])  for p in ["high_level", "IC_50", "hill_n"]]
+                    stan_perr = [ np.std(stan_fit[p])  for p in ["high_level", "IC_50", "hill_n"]]
+                
+                num_str = [ f"{x:.4}" for x in stan_popt]
+                print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
+                num_str = [ f"{x:.4}" for x in stan_perr ]
+                print(f"                 Error estimate: {num_str}")
+                stan_params_list.append(list(stan_popt) + list(stan_perr))
+                
+                x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
+                y_plot_fit = fit_funct(x_plot_fit, *stan_popt)
+                ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='new fit');
+                    
+        
+        axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=3, borderaxespad=0, frameon=True);
+        if run_stan_fit and save_fitness_difference_params:
+            self.fit_fitness_difference_params = stan_params_list
+        
+    
     def plot_count_ratios_vs_time(self, plot_range=None,
                                   with_tet=None,
                                   mark_samples=[],
@@ -3206,12 +3442,25 @@ class BarSeqFitnessFrame:
         return frame
         
         
-    def bs_frame_stan_data(self, st_row, plot_df, antibiotic_conc_list, 
-                      lig_list, fit_fitness_difference_params, 
-                      old_style_columns=False, initial=None, plasmid="pVER",
-                      is_gp_model=False,
-                      min_err=0.1):
+    def bs_frame_stan_data(self, st_row,
+                           old_style_columns=False, 
+                           initial=None,
+                           is_gp_model=False,
+                           min_err=0.05):
                       
+        sample_plate_map = self.sample_plate_map
+        lig_list = list(np.unique(sample_plate_map.ligand))
+        if 'none' in lig_list:
+            lig_list.remove('none')
+        
+        plot_df = sample_plate_map
+        plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=lig_list)
+        
+        
+        plasmid = self.plasmid
+        antibiotic_conc_list = self.antibiotic_conc_list
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
         if plasmid == 'pVER':
             if initial is None:
                 initial = 'b'
