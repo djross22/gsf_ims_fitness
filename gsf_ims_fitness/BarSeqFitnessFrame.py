@@ -3471,6 +3471,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             
         if len(lig_list) == 1:
             # Case for single ligand and single antibiotic concentration
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = np.full(6, np.nan)
     
             low_fitness = fit_fitness_difference_params[0]
             mid_g = fit_fitness_difference_params[1]
@@ -3487,6 +3489,9 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
         
         elif (len(lig_list) == 2) and (len(tet_list) == 2):
             # Case for two-tet, two-ligand (e.g., LacI with high and low tet)
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = np.full((2, 6), np.nan)
+                
             y_0_med = x_y_s_list[0][0][1][0]
             s_0_med = x_y_s_list[0][0][2][0]
             
@@ -3546,6 +3551,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             #             2nd index is the antibiotic concentration (always 0 here)
             #             3rd index is 0 for x, 1 for y, 2 for s
             #             4th index is for individual data points
+            if fit_fitness_difference_params is None:
+                fit_fitness_difference_params = np.full(6, np.nan)
             
             x_1, y_1, s_1 = tuple(x_y_s_list[0][0][n] for n in range(3))
             y_0 = y_1[x_1==0]
