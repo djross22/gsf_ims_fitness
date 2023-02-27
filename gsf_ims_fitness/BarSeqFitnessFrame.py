@@ -2617,9 +2617,9 @@ class BarSeqFitnessFrame:
                 show_fits = False
         
         if show_GP:
-            plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/2]
+            plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/3]
         else:
-            plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/4]
+            plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/6]
         
         if show_fits:
             fit_fitness_difference_params = self.fit_fitness_difference_params
