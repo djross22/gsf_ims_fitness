@@ -3680,16 +3680,20 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 ref_correction = np.array([fitness.ref_fit_correction(z, plasmid, ligand=lig, spike_in=spike_in) for z in x])
                 y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
                 raw_fitness = y.copy()
-                y = (y - y_ref)/(y_ref*ref_correction)
                 s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
-                s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
-                s = np.sqrt(s**2 + min_err**2)
                 
+                if plasmid == 'pVER':
+                    y = (y - y_ref*ref_correction)/(y_ref*ref_correction)
+                    s = np.sqrt(s**2 + (s_ref*ref_correction)**2)/(y_ref*ref_correction)
                 if plasmid == 'pRamR':
+                    y = (y - y_ref)/(y_ref*ref_correction)
+                    s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
                     early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
                     # Additive correction for RamR system at high [ligand]
                     y_corr = fitness.fitness_corection(x, early_fitness, raw_fitness, crit_conc=200)
                     y = y - y_corr
+                
+                s = np.sqrt(s**2 + min_err**2)
                 
                 if is_gp_model:
                     # For GP model, can't have missing data. So, if either y or s is nan, replace with values that won't affect GP model results (i.e. s=100)
