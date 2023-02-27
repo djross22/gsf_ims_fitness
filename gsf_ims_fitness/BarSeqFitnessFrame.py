@@ -1592,7 +1592,7 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid, ref_samples=self.ref_samples)
+            stan_data = self.bs_frame_stan_data(st_row, initial=initial)
 
             try:
                 if len(lig_list) == 1:
@@ -1827,7 +1827,7 @@ class BarSeqFitnessFrame:
             print()
             print(f"fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = get_stan_data(st_row, plot_df, antibiotic_conc_list, lig_list, fit_fitness_difference_params, old_style_columns=old_style_columns, initial=initial, plasmid=plasmid, is_gp_model=True, ref_samples=self.ref_samples)
+            stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=True)
         
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
@@ -2458,9 +2458,7 @@ class BarSeqFitnessFrame:
                                 s = [row[f"fit_slope_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             else:
                                 if plot_st and (tet > 0):
-                                    stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
-                                                              ligand_list, self.fit_fitness_difference_params, 
-                                                              initial=initial, plasmid=self.plasmid, ref_samples=self.ref_samples)
+                                    stan_data = self.bs_frame_stan_data(row, initial=initial)
                                     if len(antibiotic_conc_list) == 2:
                                         # Single non-zero antibiotic concentration
                                         st_y_0 = list(stan_data[f'y_0'])
@@ -2700,9 +2698,7 @@ class BarSeqFitnessFrame:
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
                         if tet > 0:
                             for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
-                                stan_data = get_stan_data(row, plot_df, antibiotic_conc_list, 
-                                                          ligand_list, fit_fitness_difference_params, 
-                                                          initial=initial, plasmid=self.plasmid, ref_samples=self.ref_samples)
+                                stan_data = self.bs_frame_stan_data(row, initial=initial)
                                 
                                 if len(antibiotic_conc_list) == 2:
                                     # Single non-zero antibiotic concentration
@@ -3686,7 +3682,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 df = df.sort_values(by=lig)
                 x = np.array(df[lig])
                 # Correction factor for non-constant ref fitness (i.e., fitness decreases with [ligand]
-                ref_correction = np.array([fitness.ref_fit_correction(z, plasmid) for z in x])
+                ref_correction = np.array([fitness.ref_fit_correction(z, plasmid, ligand=lig) for z in x])
                 y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
                 raw_fitness = y.copy()
                 y = (y - y_ref)/(y_ref*ref_correction)
