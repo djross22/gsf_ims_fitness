@@ -965,17 +965,10 @@ class BarSeqFitnessFrame:
         if self.plasmid == 'pVER':
             if spike_in_initial is None:
                 spike_in_initial = 'sab'
-            if spike_in_initial[-1] == 'b':
-                spike_in = "AO-B"
-            elif spike_in_initial[-1] == 'e':
-                spike_in = "AO-E"
         elif self.plasmid == 'pRamR':
             if spike_in_initial is None:
                 spike_in_initial = 'sp01'
-            if spike_in_initial[-4:] == 'sp01':
-                spike_in = "ON-01"
-            elif spike_in_initial[-4:] == 'sp02':
-                spike_in = "ON-02"
+        spike_in = fitness.get_spike_in_name_from_inital(plasmid, spike_in_initial)
         
         
         spike_in_row = plot_frame[plot_frame.RS_name==spike_in].iloc[0]
@@ -1358,21 +1351,10 @@ class BarSeqFitnessFrame:
         if plasmid == 'pVER':
             if initial is None:
                 initial = 'b'
-            if initial[-1] == 'b':
-                spike_in = "AO-B"
-            elif initial[-1] == 'e':
-                spike_in = "AO-E"
-            else:
-                raise ValueError(f'spike-in initial not recognized: {initial}')
         elif plasmid == 'pRamR':
             if initial is None:
                 initial = 'sp01'
-            if initial[-4:] == 'sp01':
-                spike_in = "ON-01"
-            elif initial[-4:] == 'sp02':
-                spike_in = "ON-02"
-            else:
-                raise ValueError(f'spike-in initial not recognized: {initial}')
+        spike_in = fitness.get_spike_in_name_from_inital(plasmid, initial)
         
         for samp in sample_list:
             df = sample_plate_map
@@ -3656,6 +3638,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
     
     antibiotic_conc_list = np.array(antibiotic_conc_list)
     
+    spike_in = fitness.get_spike_in_name_from_inital(plasmid, initial)
+    
     if old_style_columns:
         high_tet = antibiotic_conc_list[1]
         
@@ -3843,6 +3827,4 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              )
                              
     return stan_data
-
-
     
