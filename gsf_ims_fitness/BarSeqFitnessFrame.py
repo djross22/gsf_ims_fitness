@@ -2656,13 +2656,17 @@ class BarSeqFitnessFrame:
         fig_axs_list = []
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
             if show_GP:
-                fig, axs_grid = plt.subplots(2, 2)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    fig, axs_grid = plt.subplots(2, 2)
                 axl = axs_grid.flatten()[0]
                 axr = axs_grid.flatten()[2]
                 axg = axs_grid.flatten()[1]
                 axdg = axs_grid.flatten()[3]
             else:
-                fig, axs_grid = plt.subplots(1, 2)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    fig, axs_grid = plt.subplots(1, 2)
                 axl = axs_grid.flatten()[0]
                 axr = axs_grid.flatten()[1]
                 axg = axs_grid.flatten()[0]
