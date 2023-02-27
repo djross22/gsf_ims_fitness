@@ -1161,7 +1161,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 0, "AO-B":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.92379, 0.00168)
             if lig == 'ONPF':
                 return (0.92379*(1 - 0.02933*conc/2000), 0.00168 + 0.00378*conc/2000)
@@ -1169,7 +1169,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 1.25, "AO-B":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.91817, 0.00232)
             if lig == 'ONPF':
                 return (0.91817*(1 - 0.02933*conc/2000), 0.00232 + 0.00314*conc/2000)
@@ -1177,7 +1177,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 10, "AO-B":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.90297, 0.00262)
             if lig == 'ONPF':
                 return (0.90297*(1 - 0.02202*conc/2000), 0.00262 + 0.00314*conc/2000)
@@ -1185,7 +1185,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 20, "AO-B":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.8972*0.9288/0.9637, 0.005)
             if lig == 'ONPF':
                 return (np.nan, np.nan)
@@ -1193,7 +1193,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 0, "AO-E":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.92789, 0.00165)
             if lig == 'ONPF':
                 return (0.92789*(1 - 0.03881*conc/2000), 0.00165 + 0.00367*conc/2000)
@@ -1201,7 +1201,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 1.25, "AO-E":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.92518, 0.00225)
             if lig == 'ONPF':
                 return (0.92518*(1 - 0.03881*conc/2000), 0.00225 + 0.00307*conc/2000)
@@ -1209,7 +1209,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 10, "AO-E":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.89910, 0.00263)
             if lig == 'ONPF':
                 return (0.89910*(1 - 0.01583*conc/2000), 0.00263 + 0.00286*conc/2000)
@@ -1217,7 +1217,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
         
         # Tet = 20, "AO-E":
         def fit_function(lig, conc):
-            if lig == 'IPTG':
+            if (lig == 'IPTG') or (lig == 'none'):
                 return (0.8757*0.9282/0.9666, 0.005)
             if lig == 'ONPF':
                 return (np.nan, np.nan)
