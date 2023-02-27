@@ -1240,9 +1240,11 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
     return params
 
 
-def ref_fit_correction(x, plasmid):
+def ref_fit_correction(x, plasmid, ligand=None):
     if plasmid == "pRamR":
         y = 1 - 0.25*x/500
+    elif (plasmid == "pVER") and (ligand == 'ONPF'):
+        y = 1 - 0.034*x/2000
     else:
         y = 1
     return(y)
