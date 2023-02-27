@@ -1407,21 +1407,21 @@ def density_scatter_cmap():
     return new_cmap
 
     
-    def get_spike_in_name_from_inital(plasmid, initial):
-        if plasmid == 'pVER':
-            if initial[-1] == 'b':
-                spike_in = "AO-B"
-            elif initial[-1] == 'e':
-                spike_in = "AO-E"
-            else:
-                raise ValueError(f'spike-in initial not recognized: {initial}')
-        elif plasmid == 'pRamR':
-            if initial[-4:] == 'sp01':
-                spike_in = "ON-01"
-            elif initial[-4:] == 'sp02':
-                spike_in = "ON-02"
-            else:
-                raise ValueError(f'spike-in initial not recognized: {initial}')
-                
-        return spike_in
+def get_spike_in_name_from_inital(plasmid, initial):
+    if plasmid == 'pVER':
+        if initial[-1] == 'b':
+            spike_in = "AO-B"
+        elif initial[-1] == 'e':
+            spike_in = "AO-E"
+        else:
+            raise ValueError(f'spike-in initial not recognized: {initial}')
+    elif plasmid == 'pRamR':
+        if initial[-4:] == 'sp01':
+            spike_in = "ON-01"
+        elif initial[-4:] == 'sp02':
+            spike_in = "ON-02"
+        else:
+            raise ValueError(f'spike-in initial not recognized: {initial}')
+            
+    return spike_in
 
