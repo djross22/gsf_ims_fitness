@@ -1286,11 +1286,14 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
     return params
 
 
-def ref_fit_correction(lig_conc, plasmid, ligand=None):
+def ref_fit_correction(lig_conc, plasmid, ligand=None, spike_in=None):
     if plasmid == "pRamR":
         y = 1 - 0.25*lig_conc/500
     elif (plasmid == "pVER") and (ligand == 'ONPF'):
-        y = 1 - 0.034*lig_conc/2000
+        fit_dict = fitness_calibration_dict(plasmid=plasmid)
+        y_0 = fit_dict[0][spike_in](ligand, 0)[0]
+        y_conc = fit_dict[0][spike_in](ligand, lig_conc)[0]
+        y = y_conc/y_0
     else:
         y = 1
     return(y)

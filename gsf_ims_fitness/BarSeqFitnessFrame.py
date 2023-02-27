@@ -3677,7 +3677,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 df = df.sort_values(by=lig)
                 x = np.array(df[lig])
                 # Correction factor for non-constant ref fitness (i.e., fitness decreases with [ligand]
-                ref_correction = np.array([fitness.ref_fit_correction(z, plasmid, ligand=lig) for z in x])
+                ref_correction = np.array([fitness.ref_fit_correction(z, plasmid, ligand=lig, spike_in=spike_in) for z in x])
                 y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
                 raw_fitness = y.copy()
                 y = (y - y_ref)/(y_ref*ref_correction)
