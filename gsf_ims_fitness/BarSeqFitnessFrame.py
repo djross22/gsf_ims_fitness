@@ -1067,7 +1067,7 @@ class BarSeqFitnessFrame:
         #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
         #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
         #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
-        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid, barseq_directory=self.notebook_dir)
+        #spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid, barseq_directory=self.notebook_dir)
         
         antibiotic_conc_list = self.antibiotic_conc_list
         high_tet = antibiotic_conc_list[-1]
@@ -1087,7 +1087,8 @@ class BarSeqFitnessFrame:
             early_initial = 'ea.'
         else:
             early_initial = ''
-
+        
+        '''
         if len(antibiotic_conc_list)==2: #Case for one non-zero antibiotic concentration
             ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
             ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
@@ -1099,6 +1100,7 @@ class BarSeqFitnessFrame:
         if not plots_not_fits:
             print(f'Reference fitness values, {spike_1}: {ref_fit_str_B}, {spike_2}: {ref_fit_str_E}')
             print()
+        '''
     
         #ref_index_b = barcode_frame[barcode_frame["RS_name"]==spike_1].index[0]
         #ref_index_e = barcode_frame[barcode_frame["RS_name"]==spike_2].index[0]
@@ -1382,8 +1384,13 @@ class BarSeqFitnessFrame:
                 spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
                 spike_in_fitness_err = 0
             else:
-                spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](lig_conc)
-                spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](lig_conc)
+                if plasmid == 'pVER':
+                    ligand = df.ligand.iloc[0]
+                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](ligand, lig_conc)
+                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](ligand, lig_conc)
+                elif plasmid == 'pRamR':
+                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](lig_conc)
+                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](lig_conc)
             
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")

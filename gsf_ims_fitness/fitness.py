@@ -1139,15 +1139,14 @@ def gray_out(color, s_factor=0.5, v_factor=1):
     return colors.hsv_to_rgb(hsv_color)
 
 def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
-    # Dictionary of dictionaries
+    # Dictionary of dictionaries of 2-tuple of functions
     #     first key is antibiotic concentration
     #     second key is spike-in name
+    #     each function has two arguments: the ligand and the ligand concentration
+    #         return from function is 2-tuple: (spike-in fitness, uncertainty of spike-in fitness)
     #     units for fitness values are 10-fold per plate. 
     #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
-    # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
-    #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
-    #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
-    #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
+    
     spike_in_fitness_dict = {}
     if plasmid == 'pVER':
         tet_list = [0, 1.25, 10, 20]
@@ -1159,28 +1158,75 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
                          
         fitness_dicts = [{"AO-B": 0.9288, "AO-E": 0.9282}, {"AO-B": 0.9199, "AO-E": 0.9244}, 
                          {"AO-B": 0.9063, "AO-E": 0.9014}, {"AO-B": 0.8972*0.9288/0.9637, "AO-E": 0.8757*0.9282/0.9666}]
-        '''
-            pTY1-AO-B, tet: 0.0
-                0.9288 +- 0.0026
-
-            pTY1-AO-B, tet: 1.25
-                0.9199 +- 0.0036
-
-            pTY1-AO-B, tet: 10.0
-                0.9063 +- 0.0055
-
-            pTY1-AO-E, tet: 0.0
-                0.9282 +- 0.0045
-
-            pTY1-AO-E, tet: 1.25
-                0.9244 +- 0.0030
-
-            pTY1-AO-E, tet: 10.0
-                0.9014 +- 0.0040
-        '''
         
-        for t, d in zip(tet_list, fitness_dicts):
+        # Tet = 0, "AO-B":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.92379, 0.00168)
+            if lig == 'ONPF':
+                return (0.92379*(1 - 0.02933*conc/2000), 0.00168 + 0.00378*conc/2000)
+        dict_list = [{"AO-B":fit_function}]
+        
+        # Tet = 1.25, "AO-B":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.91817, 0.00232)
+            if lig == 'ONPF':
+                return (0.91817*(1 - 0.02933*conc/2000), 0.00232 + 0.00314*conc/2000)
+        dict_list += [{"AO-B":fit_function}]
+        
+        # Tet = 10, "AO-B":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.90297, 0.00262)
+            if lig == 'ONPF':
+                return (0.90297*(1 - 0.02202*conc/2000), 0.00262 + 0.00314*conc/2000)
+        dict_list += [{"AO-B":fit_function}]
+        
+        # Tet = 20, "AO-B":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.8972*0.9288/0.9637, 0.005)
+            if lig == 'ONPF':
+                return (np.nan, np.nan)
+        dict_list += [{"AO-B":fit_function}]
+        
+        # Tet = 0, "AO-E":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.92789, 0.00165)
+            if lig == 'ONPF':
+                return (0.92789*(1 - 0.03881*conc/2000), 0.00165 + 0.00367*conc/2000)
+        dict_list[0]["AO-E"] = fit_function
+        
+        # Tet = 1.25, "AO-E":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.92518, 0.00225)
+            if lig == 'ONPF':
+                return (0.92518*(1 - 0.03881*conc/2000), 0.00225 + 0.00307*conc/2000)
+        dict_list[1]["AO-E"] = fit_function
+        
+        # Tet = 10, "AO-E":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.89910, 0.00263)
+            if lig == 'ONPF':
+                return (0.89910*(1 - 0.01583*conc/2000), 0.00263 + 0.00286*conc/2000)
+        dict_list[2]["AO-E"] = fit_function
+        
+        # Tet = 20, "AO-E":
+        def fit_function(lig, conc):
+            if lig == 'IPTG':
+                return (0.8757*0.9282/0.9666, 0.005)
+            if lig == 'ONPF':
+                return (np.nan, np.nan)
+        dict_list[3]["AO-E"] = fit_function
+        
+        
+        for t, d in zip(tet_list, dict_list):
             spike_in_fitness_dict[t] = d
+            
     elif plasmid == 'pRamR':
         zeo_list = [0, 200]
         # Fitness interpolating functions are from data with Hamilton programming error. They are probably close, but need to be updated when we get new data
