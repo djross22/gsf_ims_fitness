@@ -968,7 +968,7 @@ class BarSeqFitnessFrame:
         elif self.plasmid == 'pRamR':
             if spike_in_initial is None:
                 spike_in_initial = 'sp01'
-        spike_in = fitness.get_spike_in_name_from_inital(plasmid, spike_in_initial)
+        spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
         
         
         spike_in_row = plot_frame[plot_frame.RS_name==spike_in].iloc[0]
