@@ -2689,6 +2689,7 @@ class BarSeqFitnessFrame:
                             axl.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
                     
                     for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
+                        marker = marker if show_fits else '-' + marker
                         if tet > 0:
                             for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
                                 stan_data = self.bs_frame_stan_data(row, initial=initial)
@@ -2714,7 +2715,6 @@ class BarSeqFitnessFrame:
                                     y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet']))
                                     s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
                                     
-                                marker = marker if show_fits else '-' + marker
                                 axr.errorbar(x, y, s, fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
                 if initial == plot_initials[0]:
