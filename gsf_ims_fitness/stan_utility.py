@@ -17,6 +17,7 @@ Associated license.txt file contents:
 import pystan
 import pickle
 import numpy as np
+import pandas as pd
 import os
 
 
