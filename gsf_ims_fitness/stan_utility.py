@@ -16,7 +16,7 @@ Associated license.txt file contents:
 
 import pystan
 import pickle
-import numpy
+import numpy as np
 import os
 
 
@@ -59,7 +59,7 @@ def check_energy(fit):
     for chain_num, s in enumerate(sampler_params):
         energies = s['energy__']
         numer = sum((energies[i] - energies[i - 1])**2 for i in range(1, len(energies))) / len(energies)
-        denom = numpy.var(energies)
+        denom = np.var(energies)
         if numer / denom < 0.2:
             print('Chain {}: E-BFMI = {}'.format(chain_num, numer / denom))
             no_warning = False
@@ -126,7 +126,7 @@ def _by_chain(unpermuted_extraction):
     for c in range(num_chains):
         for i in range(len(unpermuted_extraction)):
             result[c].append(unpermuted_extraction[i][c])
-    return numpy.array(result)
+    return np.array(result)
 
 
 def _shaped_ordered_params(fit):
@@ -137,7 +137,7 @@ def _shaped_ordered_params(fit):
     shaped = {}
     idx = 0
     for dim, param_name in zip(fit.par_dims, fit.extract().keys()):
-        length = int(numpy.prod(dim))
+        length = int(np.prod(dim))
         shaped[param_name] = ef[:,idx:idx + length]
         shaped[param_name].reshape(*([-1] + dim))
         idx += length
@@ -147,7 +147,7 @@ def _shaped_ordered_params(fit):
 def partition_div(fit):
     """ Returns parameter arrays separated into divergent and non-divergent transitions"""
     sampler_params = fit.get_sampler_params(inc_warmup=False)
-    div = numpy.concatenate([x['divergent__'] for x in sampler_params]).astype('int')
+    div = np.concatenate([x['divergent__'] for x in sampler_params]).astype('int')
     params = _shaped_ordered_params(fit)
     nondiv_params = dict((key, params[key][div == 0]) for key in params)
     div_params = dict((key, params[key][div == 1]) for key in params)
