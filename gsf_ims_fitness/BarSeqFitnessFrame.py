@@ -2961,6 +2961,8 @@ class BarSeqFitnessFrame:
                 plot_fit_params = [None]*len(plot_antibiotic_list)
             else:
                 plot_fit_params = self.fit_fitness_difference_params
+                if type(plot_fit_params[0]) is not list:
+                    plot_fit_params = [plot_fit_params]
         stan_params_list = []
         for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, plot_fit_params):
             fmt = 'o'
@@ -3459,11 +3461,15 @@ class BarSeqFitnessFrame:
             if initial is None:
                 initial = 'sp01'
         
+        ramr_fitness_corection = getattr(self, 'ramr_fitness_corection', None)
+        
         return get_stan_data(st_row=st_row, plot_df=plot_df, antibiotic_conc_list=antibiotic_conc_list, 
                              lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
                              old_style_columns=old_style_columns, initial=initial, plasmid=plasmid,
                              is_gp_model=is_gp_model,
-                             min_err=min_err, ref_samples=self.ref_samples)
+                             min_err=min_err, 
+                             ref_samples=self.ref_samples,
+                             ramr_fitness_corection=ramr_fitness_corection)
 
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)
@@ -3634,7 +3640,8 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                   old_style_columns=False, initial="b", plasmid="pVER",
                   is_gp_model=False,
                   min_err=0.05,
-                  ref_samples=None):
+                  ref_samples=None,
+                  ramr_fitness_corection=None):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
     
@@ -3692,7 +3699,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
                     early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
                     # Additive correction for RamR system at high [ligand]
-                    y_corr = fitness.fitness_corection(self.ramr_fitness_corection, x, early_fitness, raw_fitness, crit_conc=200)
+                    y_corr = fitness.fitness_corection(ramr_fitness_corection, x, early_fitness, raw_fitness, crit_conc=200)
                     y = y - y_corr
                 
                 s = np.sqrt(s**2 + min_err**2)
