@@ -3456,7 +3456,7 @@ class BarSeqFitnessFrame:
         
         if plasmid == 'pVER':
             if initial is None:
-                initial = 'b'
+                initial = 'sab'
         elif plasmid == 'pRamR':
             if initial is None:
                 initial = 'sp01'
