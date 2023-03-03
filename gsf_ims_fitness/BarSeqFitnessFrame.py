@@ -1486,6 +1486,9 @@ class BarSeqFitnessFrame:
         else:
             fit_fitness_difference_params = [fitness.fit_fitness_difference_params(plasmid=plasmid, tet_conc=x) for x in antibiotic_conc_list[1:]]
         
+        if type(fit_fitness_difference_params[0]) is not list:
+            fit_fitness_difference_params = [fit_fitness_difference_params]
+        
         self.fit_fitness_difference_params = fit_fitness_difference_params
             
         if auto_save:
@@ -3583,9 +3586,9 @@ def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid
                 sensor_n_2=n_2, 
                 sensor_n_3=n_3, 
                 sigma=sig, 
-                high_fitness=fit_fitness_difference_params[0],
-                mid_g=fit_fitness_difference_params[1],
-                fitness_n=fit_fitness_difference_params[2],
+                high_fitness=fit_fitness_difference_params[0][0],
+                mid_g=fit_fitness_difference_params[0][1],
+                fitness_n=fit_fitness_difference_params[0][2],
                 )
     
 def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand, plasmid='pVER'):
@@ -3611,9 +3614,9 @@ def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand, p
                         )
     elif plasmid == 'pRamR':
         return dict(sigma=sig, rho=rho, alpha=alpha,
-                    high_fitness=fit_fitness_difference_params[0],
-                    mid_g=fit_fitness_difference_params[1],
-                    fitness_n=fit_fitness_difference_params[2],
+                    high_fitness=fit_fitness_difference_params[0][0],
+                    mid_g=fit_fitness_difference_params[0][1],
+                    fitness_n=fit_fitness_difference_params[0][2],
                     )
     
     
@@ -3708,7 +3711,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     # For GP model, can't have missing data. So, if either y or s is nan, replace with values that won't affect GP model results (i.e. s=100)
                     invalid = (np.isnan(y) | np.isnan(s))
                     if len(tet_list) == 1:
-                        middle_fitness = fit_fitness_difference_params[0]/2
+                        middle_fitness = fit_fitness_difference_params[0][0]/2
                     elif len(tet_list) == 2:
                         middle_fitness = (fit_fitness_difference_params[0][0] + fit_fitness_difference_params[1][0])/4
                     y[invalid] = middle_fitness
@@ -3805,7 +3808,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             #             3rd index is 0 for x, 1 for y, 2 for s
             #             4th index is for individual data points
             if fit_fitness_difference_params is None:
-                fit_fitness_difference_params = np.full(6, np.nan)
+                fit_fitness_difference_params = np.full((1, 6), np.nan)
             
             x_1, y_1, s_1 = tuple(x_y_s_list[0][0][n] for n in range(3))
             y_0 = y_1[x_1==0]
@@ -3830,12 +3833,12 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              x_2=x_2, y_2=y_2, y_2_err=s_2,
                              x_3=x_3, y_3=y_3, y_3_err=s_3,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
-                             high_fitness_mu=fit_fitness_difference_params[0],
-                             mid_g_mu=fit_fitness_difference_params[1],
-                             fitness_n_mu=fit_fitness_difference_params[2],
-                             high_fitness_std=fit_fitness_difference_params[3],
-                             mid_g_std=fit_fitness_difference_params[4],
-                             fitness_n_std=fit_fitness_difference_params[5],
+                             high_fitness_mu=fit_fitness_difference_params[0][0],
+                             mid_g_mu=fit_fitness_difference_params[0][1],
+                             fitness_n_mu=fit_fitness_difference_params[0][2],
+                             high_fitness_std=fit_fitness_difference_params[0][3],
+                             mid_g_std=fit_fitness_difference_params[0][4],
+                             fitness_n_std=fit_fitness_difference_params[0][5],
                              y_ref=y_ref,
                              )
                              
