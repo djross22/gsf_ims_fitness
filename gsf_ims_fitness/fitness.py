@@ -1299,8 +1299,8 @@ def ref_fit_correction(lig_conc, plasmid, ligand=None, spike_in=None):
     return(y)
 
 
-def fitness_corection(lig_conc, early_fitness, raw_fitness, crit_conc=200):
-    popt_corr = np.array([-0.83155726,  0.59388542])
+def fitness_corection(popt_corr, lig_conc, early_fitness, raw_fitness, crit_conc=200):
+    #popt_corr = np.array([-0.83155726,  0.59388542])
     cor = []
     for c, e, r in zip(lig_conc, early_fitness, raw_fitness):
         if c < crit_conc:
