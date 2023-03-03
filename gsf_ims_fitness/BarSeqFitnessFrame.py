@@ -1009,7 +1009,7 @@ class BarSeqFitnessFrame:
                 
                 log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
                 if len(log_ratio.shape) ==  1:
-                    ax.plot(x[n_reads>0], log_ratio, '--k')
+                    ax.plot(x, log_ratio, '--k')
                 else:
                     for q in log_ratio:
                         ax.plot(x, q);
@@ -1164,6 +1164,7 @@ class BarSeqFitnessFrame:
                     
                     # then, drop data for any samples with zero read count 
                     sel = (n_reads>0)&(spike_in_reads>0)
+                    x_out = x.copy()
                     x = x[sel]
                     y = y[sel]
                     s = s[sel]
@@ -1176,8 +1177,8 @@ class BarSeqFitnessFrame:
                     else:
                         if len(x)>1:
                             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
-                            log_ratio_out = fitness.line_funct(x, *popt)
-                            resids = y - log_ratio_out
+                            log_ratio_out = fitness.line_funct(x_out, *popt)
+                            resids = y - log_ratio_out[sel]
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
                             slope_list.append(popt[0])
@@ -1262,6 +1263,7 @@ class BarSeqFitnessFrame:
                         s = s[1:]
                         sel = sel[1:]
                     
+                    x_out = x.copy()
                     x = x[sel]
                     y = y[sel]
                     s = s[sel]
@@ -1289,8 +1291,8 @@ class BarSeqFitnessFrame:
                                 except:
                                     popt = np.full(2, np.nan)
                                     pcov = np.full([2,2], np.nan)
-                            log_ratio_out = fit_funct(x, *popt)
-                            resids = y - log_ratio_out
+                            log_ratio_out = fit_funct(x_out, *popt)
+                            resids = y - log_ratio_out[sel]
                             if early_slope:
                                 resids = np.array(list(resids) + [np.nan, np.nan])
                                 log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
