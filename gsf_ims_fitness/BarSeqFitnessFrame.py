@@ -2701,7 +2701,7 @@ class BarSeqFitnessFrame:
                                     st_y_0 = list(stan_data[f'y_0'])
                                     st_y_0_err = list(stan_data[f'y_0_err'])
                                     x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
+                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
                                     s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
                                 elif len(antibiotic_conc_list) == 3:
                                     # Two non-zero antibiotic concentrations
