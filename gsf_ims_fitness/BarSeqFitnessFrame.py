@@ -697,6 +697,11 @@ class BarSeqFitnessFrame:
             print(f"samples_without_tet: {samples_without_tet}")
             print()
         
+        if self.sample_plate_map is not None:
+            df_diff = self.sample_plate_map - sample_plate_map
+            if np.any(df_diff.values):
+                raise Exception('The set_sample_plate_map method is attempting to change the previously defined sample_plate_map. If this is what you want to do, manually set sample_plate_map to None, then re-run set_sample_plate_map')
+        
         self.sample_plate_map = sample_plate_map
         self.samples_with_tet = samples_with_tet
         self.samples_without_tet = samples_without_tet
