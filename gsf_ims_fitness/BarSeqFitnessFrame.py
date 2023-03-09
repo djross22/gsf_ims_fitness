@@ -698,7 +698,7 @@ class BarSeqFitnessFrame:
             print()
         
         if self.sample_plate_map is not None:
-            df_diff = self.sample_plate_map - sample_plate_map
+            df_diff = self.sample_plate_map != sample_plate_map
             if np.any(df_diff.values):
                 raise Exception('The set_sample_plate_map method is attempting to change the previously defined sample_plate_map. If this is what you want to do, manually set sample_plate_map to None, then re-run set_sample_plate_map')
         
