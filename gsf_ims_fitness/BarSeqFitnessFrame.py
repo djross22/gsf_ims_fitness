@@ -2871,11 +2871,14 @@ class BarSeqFitnessFrame:
                                             run_stan_fit=False,
                                             save_fitness_difference_params=False,
                                             rs_exclude_list=[],
+                                            show_exclude_data=True,
                                             use_only_rs_variants=False,
                                             RS_list=None,
                                             wt_cutoff=5000,
                                             min_err=0.05,
-                                            show_old_fit=True):
+                                            show_old_fit=True,
+                                            return_fig=False,
+                                            fig_size=[12, 6]):
         plasmid = self.plasmid
         if plasmid == 'pVER':
             stan_model_file = "Hill equation fit-zero high.stan"
@@ -2957,7 +2960,7 @@ class BarSeqFitnessFrame:
                 return hill_funct(x, 0, high, mid, n)
         
         plot_antibiotic_list = self.antibiotic_conc_list[1:]
-        plt.rcParams["figure.figsize"] = [12, 6]
+        plt.rcParams["figure.figsize"] = fig_size
         if len(plot_antibiotic_list)==1:
             fig, axs = plt.subplots()
             axs = [axs]
@@ -3052,8 +3055,10 @@ class BarSeqFitnessFrame:
                                         x_fit_list += list(x)
                                         y_fit_list += list(y)
                                         y_err_list += list(y_err)
-                                    ax.errorbar(x, y, y_err, fmt=fmt, ms=ms, color=color, 
-                                                fillstyle=fill_style, label=lab, alpha=alpha)
+                                    include_data_in_plot = show_exclude_data or (not sel)
+                                    if include_data_in_plot:
+                                        ax.errorbar(x, y, y_err, fmt=fmt, ms=ms, color=color, 
+                                                    fillstyle=fill_style, label=lab, alpha=alpha)
                                     
                     elif len(df) == 0:
                         pass
@@ -3100,6 +3105,9 @@ class BarSeqFitnessFrame:
         axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=3, borderaxespad=0, frameon=True);
         if run_stan_fit and save_fitness_difference_params:
             self.fit_fitness_difference_params = stan_params_list
+        
+        if return_fig:
+            return fig, axs
         
     
     def plot_count_ratios_vs_time(self, plot_range=None,
