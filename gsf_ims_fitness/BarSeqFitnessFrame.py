@@ -9,6 +9,7 @@ import glob  # filenames and pathnames utility
 import os    # operating sytem utility
 import sys
 import warnings
+import datetime
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -3432,6 +3433,8 @@ class BarSeqFitnessFrame:
         with open(pickle_file, 'wb') as f:
             pickle.dump(self, f)
         print(f"BarSeqFitnessFrame saved as: {pickle_file}")
+        now = datetime.datetime.now()
+        print(now)
         
     def cleaned_frame(self, count_threshold=3000, log_high_error_cutoff=0.7, num_good_hill_points=12, exclude_mut_regions=None):
         frame = self.barcode_frame
