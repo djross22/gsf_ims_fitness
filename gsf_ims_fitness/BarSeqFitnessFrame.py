@@ -2490,6 +2490,8 @@ class BarSeqFitnessFrame:
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name']
+                    if 'cytom_variant' in barcode_frame.columns:
+                        barcode_str += ', ' + row['cytom_variant']
                     if show_bc_str:
                         barcode_str += ": " + row['forward_BC'] + ",\n"
                         barcode_str += row['reverse_BC'] + " "
