@@ -1531,7 +1531,7 @@ class BarSeqFitnessFrame:
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
-        fitness_columns_setup = self.get_fitness_columns_setup()
+        fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=[initial])
         ligand_list = self.ligand_list
         
         if fitness_columns_setup[0]:
@@ -1764,7 +1764,7 @@ class BarSeqFitnessFrame:
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
             barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
-        fitness_columns_setup = self.get_fitness_columns_setup()
+        fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=[initial])
         
         ligand_list = self.ligand_list
         
@@ -2429,7 +2429,7 @@ class BarSeqFitnessFrame:
         #if len(barcode_frame)==1:
         #    axs = [ axs ]
         
-        fitness_columns_setup = self.get_fitness_columns_setup()
+        fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=plot_initials)
         if fitness_columns_setup[0]:
             old_style_plots, x, linthresh, fit_plot_colors = fitness_columns_setup
         else:
@@ -2517,7 +2517,7 @@ class BarSeqFitnessFrame:
             
         return fig, axs_grid
         
-    def get_fitness_columns_setup(self):
+    def get_fitness_columns_setup(self, plot_initials):
         barcode_frame = self.barcode_frame
                         
         # old_style_plots indicates whether to use the old style column headings (i.e., f"fitness_{high_tet}_estimate_{initial}")
@@ -2525,7 +2525,7 @@ class BarSeqFitnessFrame:
         # The new style is preferred, so will be used if both are possible
         old_style_plots = False
         if self.plasmid == 'pVER':
-            for initial in ['b', 'e']:
+            for initial in plot_initials:
                 for i  in range(1, 25):
                     c = f"fitness_S{i}_{initial}"
                     old_style_plots = old_style_plots or (c not in barcode_frame.columns)
@@ -2599,7 +2599,7 @@ class BarSeqFitnessFrame:
         ligand_list = self.ligand_list
         
         #plot fitness curves
-        fitness_columns_setup = self.get_fitness_columns_setup()
+        fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=plot_initials)
         if fitness_columns_setup[0]:
             old_style_plots, x, linthresh, fit_plot_colors = fitness_columns_setup
             if "sensor_params" not in barcode_frame.columns:
