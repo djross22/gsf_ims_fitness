@@ -2569,6 +2569,7 @@ class BarSeqFitnessFrame:
                             log_g_scale=False,
                             box_size=6,
                             show_bc_str=False,
+                            show_mut_codes=True,
                             plot_initials=None):
         
         if plot_initials is None:
@@ -2735,6 +2736,8 @@ class BarSeqFitnessFrame:
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name']
+                    if show_mut_codes:
+                        barcode_str += f", {row.mutation_codes}"
                     if show_bc_str:
                         barcode_str += ": " + row['forward_BC'] + ",\n"
                         barcode_str += row['reverse_BC'] + " "
@@ -2744,7 +2747,7 @@ class BarSeqFitnessFrame:
                     if not old_style_plots:
                         y_ref = stan_data['y_ref']
                         barcode_str += f"\ny_ref: {y_ref:.3f}"
-                    axl.text(x=1, y=1.025, s=barcode_str, horizontalalignment='center', verticalalignment='bottom',
+                    axl.text(x=0, y=1.025, s=barcode_str, horizontalalignment='left', verticalalignment='bottom',
                             transform=axl.transAxes, fontsize=13, fontfamily=fontfamily)
                     axl.set_ylabel('Fitness (log(10)/plate)', size=14)
                     axl.tick_params(labelsize=12);
