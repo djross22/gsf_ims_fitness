@@ -2705,7 +2705,8 @@ class BarSeqFitnessFrame:
                         marker = marker if show_fits else '-' + marker
                         if tet > 0:
                             for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
-                                stan_data = self.bs_frame_stan_data(row, initial=initial)
+                                # use is_gp_model=True to get data for all concentrations:
+                                stan_data = self.bs_frame_stan_data(row, initial=initial, is_gp_model=True) 
                                 
                                 if len(antibiotic_conc_list) == 2:
                                     # Single non-zero antibiotic concentration
@@ -2728,7 +2729,7 @@ class BarSeqFitnessFrame:
                                     y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet']))
                                     s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
                                     
-                                axr.errorbar(x, y, s, fmt=marker, ms=8, color=color, fillstyle=fill_style)
+                                axr.errorbar(x[s<10], y[s<10], s[s<10], fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
                 if initial == plot_initials[0]:
                     barcode_str = str(index) + ': '
