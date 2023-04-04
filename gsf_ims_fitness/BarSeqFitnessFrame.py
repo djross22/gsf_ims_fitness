@@ -1011,7 +1011,7 @@ class BarSeqFitnessFrame:
                 spike_in_initial = 'sab'
         elif self.plasmid == 'pRamR':
             if spike_in_initial is None:
-                spike_in_initial = 'sp01'
+                spike_in_initial = 's.ea.sp01'
         spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
         
         
@@ -1400,7 +1400,7 @@ class BarSeqFitnessFrame:
                 initial = 'b'
         elif plasmid == 'pRamR':
             if initial is None:
-                initial = 'sp01'
+                initial = 's.ea.sp01'
         spike_in = fitness.get_spike_in_name_from_inital(plasmid, initial)
         
         for samp in sample_list:
@@ -1437,7 +1437,7 @@ class BarSeqFitnessFrame:
             if self.plasmid == 'pVER':
                 initial = 'b'
             elif self.plasmid == 'pRamR':
-                initial = 'sp01'
+                initial = 's.ea.sp01'
         
         barcode_frame = self.barcode_frame
         
@@ -1558,7 +1558,7 @@ class BarSeqFitnessFrame:
                 initial = 'b'
         elif plasmid == 'pRamR':
             if initial is None:
-                initial = 'sp01'
+                initial = 's.ea.sp01'
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}:")
@@ -1792,7 +1792,7 @@ class BarSeqFitnessFrame:
                 initial = 'b'
         elif plasmid == 'pRamR':
             if initial is None:
-                initial = 'sp01'
+                initial = 's.ea.sp01'
                 
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
@@ -3519,7 +3519,7 @@ class BarSeqFitnessFrame:
                 initial = 'sab'
         elif plasmid == 'pRamR':
             if initial is None:
-                initial = 'sp01'
+                initial = 's.ea.sp01'
         
         ramr_fitness_corection = getattr(self, 'ramr_fitness_corection', None)
         
