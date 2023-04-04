@@ -485,6 +485,7 @@ class BarSeqFitnessFrame:
                            slope_ref_prior_std=0.1,
                            auto_save=True,
                            bi_linear_alpha=np.log(5),
+                           early_slope=False,
                            dilution_factor=10):
         
         if spike_in_name is None:
@@ -508,21 +509,26 @@ class BarSeqFitnessFrame:
                              
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
-            print("Using Stan model to detirmine fitness estimate for all barcodes in dataset")
+            print("Using Stan model to detirmine slope of log(count ratio) for all barcodes in dataset")
             for ig in self.ignore_samples:
                     print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
                     
             arg_dict['return_fits'] = False
             arg_dict['verbose'] = False
+        
+            if early_slope:
+                early_initial = '.ea.'
+            else:
+                early_initial = ''
             
             if spike_in_name == "AO-B":
-                initial = 'b'
+                initial = f'{early_initial}b'
             elif spike_in_name == "AO-E":
-                initial = 'e'
+                initial = f'{early_initial}e'
             elif spike_in_name == "ON-01":
-                initial = 'sp01'
+                initial = f'{early_initial}sp01'
             elif spike_in_name == "ON-02":
-                initial = 'sp02'
+                initial = f'{early_initial}sp02'
             else:
                 raise ValueError(f'spike_in_name not recognized: {spike_in_name}')
             
@@ -726,6 +732,7 @@ class BarSeqFitnessFrame:
                                  use_all_samples_model=True,
                                  slope_ref_prior_std=0.1,
                                  bi_linear_alpha=np.log(5),
+                                 early_slope=False,
                                  dilution_factor=10):
         
         barcode_frame = self.barcode_frame
@@ -843,24 +850,27 @@ class BarSeqFitnessFrame:
                     fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
         
         if not use_all_samples_model:
-            # Run fit again, with counts from all zero-tet samples
-            x = np.array(x_no_tet)
-            n_reads = np.array(n_reads_no_tet)
-            spike_in_reads = np.array(spike_ins_no_tet)
-            tau = np.array(tau_no_tet)*ref_tau_factor
-            
-            stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
-            
-            stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
-            if return_fits:
-                stan_fit_list.append(stan_fit)
-            
-            # Run fits for samples with antibiotic
-            sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
-            stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
-            
-            slope_0_mu = np.mean(stan_fit['log_slope'])
-            slope_0_sig = np.std(stan_fit['log_slope'])
+            if early_slope or (bi_linear_alpha is None):
+                stan_model_with_tet = stan_model_no_tet
+            else:
+                # For bi_linear_alpha != None, run fit again, with counts from all zero-tet samples, and use result as slope_0 for fits to samples with tet
+                x = np.array(x_no_tet)
+                n_reads = np.array(n_reads_no_tet)
+                spike_in_reads = np.array(spike_ins_no_tet)
+                tau = np.array(tau_no_tet)*ref_tau_factor
+                
+                stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
+                
+                stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                if return_fits:
+                    stan_fit_list.append(stan_fit)
+                
+                # Run fits for samples with antibiotic
+                sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
+                stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
+                
+                slope_0_mu = np.mean(stan_fit['log_slope'])
+                slope_0_sig = np.std(stan_fit['log_slope'])
         
         for samp in samples_with_tet:
             df = sample_plate_map
@@ -881,9 +891,35 @@ class BarSeqFitnessFrame:
                 n_spike_with_tet.append(spike_in_reads)
                 tau_with_tet.append(tau)
             else:
-                stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau,
-                                 slope_0_mu=slope_0_mu, slope_0_sig=slope_0_sig, 
-                                 alpha=bi_linear_alpha, dilution_factor=dilution_factor, lower_bound_width=0.3)
+                x = x0
+                # If early_slope == True, use only the first two time points (x = 2, 3)
+                if early_slope:
+                    x = x[:2]
+                    n_reads = n_reads[:2]
+                    spike_in_reads = spike_in_reads[:2]
+                    tau = tau[:2]
+                # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
+                elif bi_linear_alpha is None:
+                    x = x[1:]
+                    n_reads = n_reads[1:]
+                    spike_in_reads = spike_in_reads[1:]
+                    tau = tau[1:]
+                
+                if early_slope or (bi_linear_alpha is None):
+                    stan_data = dict(N=len(x), x=x, 
+                                     n_reads=n_reads, 
+                                     spike_in_reads=spike_in_reads, 
+                                     tau=tau)
+                else:
+                    stan_data = dict(N=len(x), x=x, 
+                                     n_reads=n_reads, 
+                                     spike_in_reads=spike_in_reads, 
+                                     tau=tau,
+                                     slope_0_mu=slope_0_mu, 
+                                     slope_0_sig=slope_0_sig, 
+                                     alpha=bi_linear_alpha, 
+                                     dilution_factor=dilution_factor, 
+                                     lower_bound_width=0.3)
                 
                 stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
                 if return_fits:
@@ -891,7 +927,9 @@ class BarSeqFitnessFrame:
                     
                 fit_mu = np.median(stan_fit['log_slope'])
                 fit_sig = np.std(stan_fit['log_slope'])
-                fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
                 log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
                 
                 fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
