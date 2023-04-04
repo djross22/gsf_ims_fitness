@@ -862,9 +862,9 @@ class BarSeqFitnessFrame:
                 stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                 
                 stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                
                 if return_fits:
                     stan_fit_list.append(stan_fit)
-                
                 # Run fits for samples with antibiotic
                 sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
                 stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
@@ -872,6 +872,7 @@ class BarSeqFitnessFrame:
                 slope_0_mu = np.mean(stan_fit['log_slope'])
                 slope_0_sig = np.std(stan_fit['log_slope'])
         
+        rng = np.random.default_rng()
         for samp in samples_with_tet:
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
@@ -921,16 +922,74 @@ class BarSeqFitnessFrame:
                                      dilution_factor=dilution_factor, 
                                      lower_bound_width=0.3)
                 
-                stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                try:
+                    stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                    last_good_stan_fit = stan_fit
+                except RuntimeError as err:
+                    if 'Initialization failed' in f'{err}':
+                        print(f'Stan random init failed, re-trying with defined init.')
+                        print(f'spike_in_reads: {spike_in_reads}')
+                        
+                        n_mean = n_reads.astype(float)
+                        n_mean[n_mean==0] = 0.1
+                        
+                        log_ratios = np.log(n_mean) - np.log(spike_in_reads)
+                        log_starting_ratio = log_ratios[0]
+                        
+                        y = (np.log(n_mean) - np.log(spike_in_reads))
+                        s = np.sqrt(1/n_mean + 1/spike_in_reads)
+                        print(f'x: {x}')
+                        print(f'y: {y}')
+                        print(f's: {s}')
+                        
+                        popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
+                        print(f'popt: {popt}')
+                        log_slope = popt[0]
+                        log_intercept = popt[1] - log_starting_ratio
+                        
+                        
+                        log_err = (log_ratios - log_starting_ratio - log_intercept) - log_slope*x
+                        print(f'log_err: {log_err}')
+                        tau_rev = tau.copy()
+                        tau_rev[n_reads==0] *= 30
+                        log_err_tilda = log_err/tau_rev
+                        
+                        stan_init = {}
+                        stan_init['log_slope'] = log_slope
+                        stan_init['log_intercept'] = log_intercept
+                        stan_init['log_err_tilda'] = log_err_tilda
+                        print(stan_init)
+                        
+                        n_mean_test = spike_in_reads*np.exp(log_starting_ratio + log_intercept + log_slope*x + log_err)
+                        print(f'n_mean_test: {n_mean_test}')
+                        
+                        #print(f'last good stan: {last_good_stan_fit.get_last_position()}')
+                        
+                        try:
+                            stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control, 
+                            init=[stan_init]*chains)
+                            
+                        except Exception as err:
+                            print(f'Stan fit failed again, giving up: {err}')
+                            stan_fit = 'failed'
+                    else:
+                        print(f'Stan fit error: {err}')
+                except:
+                    print('Stan fit failed')
+                    stan_fit = 'failed'
+                    
                 if return_fits:
                     stan_fit_list.append(stan_fit)
                     
-                fit_mu = np.median(stan_fit['log_slope'])
-                fit_sig = np.std(stan_fit['log_slope'])
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
-                log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+                if stan_fit != 'failed':
+                    fit_mu = np.median(stan_fit['log_slope'])
+                    fit_sig = np.std(stan_fit['log_slope'])
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
+                    log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+                else:
+                    return
                 
                 fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
         
