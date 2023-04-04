@@ -1138,7 +1138,7 @@ def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
     return colors.hsv_to_rgb(hsv_color)
 
-def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
+def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=False):
     # Dictionary of dictionaries of 2-tuple of functions
     #     first key is antibiotic concentration
     #     second key is spike-in name
@@ -1230,13 +1230,14 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None):
     elif plasmid == 'pRamR':
         zeo_list = [0, 200]
         # Fitness interpolating functions are from data with Hamilton programming error. They are probably close, but need to be updated when we get new data
-        fitness_exp_id = '2023-01-27_three_inducers_OD-test-5-plates'
-        os.chdir(barseq_directory)
-        direct = os.getcwd()
-        while direct[-4:] != 'RamR':
-            os.chdir('..')
+        if not is_on_aws:
+            fitness_exp_id = '2023-01-27_three_inducers_OD-test-5-plates'
+            os.chdir(barseq_directory)
             direct = os.getcwd()
-        os.chdir(fitness_exp_id)
+            while direct[-4:] != 'RamR':
+                os.chdir('..')
+                direct = os.getcwd()
+            os.chdir(fitness_exp_id)
         
         fit_files = glob.glob('fitness_vs_ligand_pRamR*.pkl')
         keys = [x[x.find('ON'):-4] for x in fit_files]

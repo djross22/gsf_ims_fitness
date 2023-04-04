@@ -1334,7 +1334,8 @@ class BarSeqFitnessFrame:
     
     def add_fitness_from_slopes(self,
                                 initial=None,
-                                auto_save=True):
+                                auto_save=True,
+                                is_on_aws=False):
         
         fit_frame = self.barcode_frame
         plasmid = self.plasmid
@@ -1350,7 +1351,7 @@ class BarSeqFitnessFrame:
         #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
         #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
         #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
-        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid, barseq_directory=self.notebook_dir)
+        spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=plasmid, barseq_directory=self.notebook_dir, is_on_aws=is_on_aws)
         
         k1 = list(spike_in_fitness_dict.keys())[0]
         k2 = list(spike_in_fitness_dict[k1].keys())[0]
