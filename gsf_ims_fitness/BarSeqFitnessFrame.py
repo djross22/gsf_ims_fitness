@@ -540,7 +540,7 @@ class BarSeqFitnessFrame:
             log_ratio_q_dict = {}
             
             ind = fit_frame.index[0]
-            print(ind)
+            print(0, ind)
             ret_dict = self.stan_barcode_slope_index(index=ind, **arg_dict)
             key_list = [k for k in ret_dict.keys()]
             for key in key_list:
@@ -553,7 +553,7 @@ class BarSeqFitnessFrame:
             print_interval = 10**(np.round(np.log10(len(fit_frame))) - 1)
             for j, ind in enumerate(fit_frame.iloc[1:].index):
                 if j%print_interval == 0:
-                    print(j, ind)
+                    print(j+1, ind)
                 ret_dict = self.stan_barcode_slope_index(index=ind, **arg_dict)
                 for key in key_list:
                     params = ret_dict[key]
@@ -1049,7 +1049,7 @@ class BarSeqFitnessFrame:
                     warnings.simplefilter("ignore")
                     y = np.log(n_reads) - np.log(spike_in_reads)
                     s = np.sqrt(1/n_reads + 1/spike_in_reads)
-                ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o');
+                ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o', ms=10);
                 
                 log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
                 if len(log_ratio.shape) ==  1:
