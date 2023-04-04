@@ -1055,8 +1055,12 @@ class BarSeqFitnessFrame:
                 if len(log_ratio.shape) ==  1:
                     ax.plot(x, log_ratio, '--k')
                 else:
+                    if log_ratio.shape == (5, 3):
+                        x_plt = x[1:]
+                    else:
+                        x_plt = x
                     for q in log_ratio:
-                        ax.plot(x, q);
+                        ax.plot(x_plt, q);
                 
                 ax.set_title(f'sample {samp}')
     
