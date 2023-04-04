@@ -14,7 +14,11 @@ data {
 transformed data {
   real log_starting_ratio;
   
-  log_starting_ratio = log(n_reads[1]) - log(spike_in_reads[1]);
+  if (n_reads[1] == 0) {
+    log_starting_ratio = log(0.1) - log(spike_in_reads[1]);
+  } else {
+    log_starting_ratio = log(n_reads[1]) - log(spike_in_reads[1]);
+  }
 }
 
 parameters {
