@@ -1043,7 +1043,8 @@ class BarSeqFitnessFrame:
                           ref_slope_to_average=True,
                           bi_linear_alpha=np.log(5),
                           bi_linear_x0=None,
-                          early_slope=False):
+                          early_slope=False,
+                          float_replace_zero=0.1):
                             
         for ig in self.ignore_samples:
             print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
@@ -1054,7 +1055,8 @@ class BarSeqFitnessFrame:
                                                bi_linear_alpha=bi_linear_alpha,
                                                bi_linear_x0=bi_linear_x0,
                                                plots_not_fits=False,
-                                               early_slope=early_slope)
+                                               early_slope=early_slope,
+                                               float_replace_zero=float_replace_zero)
         
     
     def plot_count_ratio_per_sample(self,
@@ -1137,7 +1139,8 @@ class BarSeqFitnessFrame:
                                    show_spike_ins=None,
                                    show_bc_str=False,
                                    plot_samples=None,
-                                   early_slope=False):
+                                   early_slope=False,
+                                   float_replace_zero=0.1):
         
         barcode_frame = self.barcode_frame
         
@@ -1347,6 +1350,10 @@ class BarSeqFitnessFrame:
                     n_reads = np.array(row[well_list], dtype='int64')
                     
                     x = x0
+                    if early_slope or (bi_linear_alpha is None):
+                        # For purely linear fits, use 0.1 instead of zero for n_reads - so it will still give an estimate for the slope. 
+                        n_reads = n_reads.astype(float)
+                        n_reads[n_reads==0] = float_replace_zero
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         y = (np.log(n_reads) - np.log(spike_in_reads))
