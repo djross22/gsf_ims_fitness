@@ -807,6 +807,7 @@ class BarSeqFitnessFrame:
         fitness_out_dict = {}
         for samp_list in [ref_samples, non_ref_without_tet]:
             for samp in samp_list:
+                print(f'    sample {samp}')
                 df = sample_plate_map
                 df = df[df["sample_id"]==samp]
                 df = df.sort_values('growth_plate')
@@ -874,6 +875,7 @@ class BarSeqFitnessFrame:
         
         rng = np.random.default_rng()
         for samp in samples_with_tet:
+            print(f'    sample {samp}')
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
             df = df.sort_values('growth_plate')
