@@ -24,6 +24,8 @@ from scipy.optimize import curve_fit
 #import pystan
 import pickle
 
+import cmocean
+
 import seaborn as sns
 sns.set()
 
@@ -3571,7 +3573,103 @@ class BarSeqFitnessFrame:
     
         return frame
         
+    
+    def plot_hill_param_density_scatter(self, plot_frame=None, log_z=True, log_g=True, ligand='IPTG', box_size=4):
+        if plot_frame is None:
+            plot_frame = self.barcode_frame
         
+        cmap = fitness.density_scatter_cmap()
+        cmap = cmocean.tools.crop_by_percent(cmap, 10, which='min', N=None)
+
+        bins = 51
+
+        plt.rcParams["figure.figsize"] = [2*box_size, 2*box_size]
+        fig, axs_grid = plt.subplots(2, 2)
+        fig.suptitle(f'Hill Fit Parameters for {ligand}', size=20, y=0.92)
+        axs = axs_grid.flatten()
+
+        cb_ax = fig.add_axes([0.95, 0.12, 0.02, 0.75])
+
+        log_params = ["log_g0", f"log_ginf_{ligand}", f"log_ginf_g0_ratio_{ligand}", f"log_ginf_{ligand}"]
+        x_params = [f"log_ec50_{ligand}"]*3 + ["log_g0"]
+
+        if log_g:
+            y_axs_labels = ["$G_{0}$ (MEF)", "$G_{∞}$ (MEF)", "$G_{∞}$/$G_{0}$", "$G_{∞}$ (MEF)"]
+            x_axs_labels = ["$EC_{50}$ (µmol/L)"]*3 + ["$G_{0}$ (MEF)"]
+        else:
+            y_axs_labels = ["$G_{0}$ (kMEF)", "$G_{∞}$ (kMEF)", "$G_{∞}$/$G_{0}$", "$G_{∞}$ (kMEF)"]
+            x_axs_labels = ["$EC_{50}$ (µmol/L)"]*3 + ["$G_{0}$ (kMEF)"]
+
+        log_y = True
+
+        for zip_tuple in zip(axs, x_params, log_params, x_axs_labels, y_axs_labels):
+            ax, x_par, log_par, x_axs_label, y_axs_label = zip_tuple
+
+            thresh = 1000 #threshold_dict[log_par]
+            x_thresh = 1000# threshold_dict[x_par]
+
+            params_x = 10**plot_frame[x_par]
+            sel = ~params_x.isnull()
+            params_x = params_x[sel]
+
+            params_y = 10**plot_frame[log_par]
+            params_y = params_y[sel]
+
+            err = plot_frame[f"{log_par}_err"][sel]
+            x_err = plot_frame[f"{x_par}_err"][sel]
+
+            sel = (err<thresh)&(x_err<x_thresh)
+            params_x = np.array(params_x[sel])
+            params_y = np.array(params_y[sel])
+
+            hist_ret = fitness.density_scatter_plot(params_x, params_y, ax=ax, sort=True, bins=bins, log_y=log_y,
+                                                    cmap=cmap, z_cutoff=8, alpha=0.5, rasterized=True)
+            if ax==axs[1]:
+                cbar = fig.colorbar(hist_ret[1], cax=cb_ax)#, ticks=[])
+                cbar.solids.set(alpha=1)
+
+                cb_ax.set_axisbelow(False)
+                cb_ax.set_ylabel('Relative Density', rotation=270, labelpad=22)
+                cb_ax.yaxis.set_ticks_position('right')
+                cb_ax.yaxis.set_label_position('right')
+
+            ax.set_xlabel(x_axs_label)
+            ax.set_ylabel(y_axs_label)
+            
+            if log_g | (x_par==f"log_ec50_{ligand}"):
+                ax.set_xscale("log")
+            if log_g | (log_par==f"log_g0_ginf_ratio_{ligand}"):
+                ax.set_yscale("log")
+            
+        if not log_g:
+            axs[0].set_yticks([i*10000 for i in range(6)])
+            axs[1].set_yticks([i*10000 for i in range(6)])
+            axs[3].set_yticks([i*10000 for i in range(6)])
+            axs[3].set_xticks([i*10000 for i in range(6)])
+            axs[0].set_yticklabels([i*10 for i in range(6)])
+            axs[1].set_yticklabels([i*10 for i in range(6)])
+            axs[3].set_yticklabels([i*10 for i in range(6)])
+            axs[3].set_xticklabels([i*10 for i in range(6)])
+            
+        x_shift = 0.05
+        y_shift = 0.05
+        for j, ax_row in enumerate(axs_grid):
+            for i, ax in enumerate(ax_row):
+                box = ax.get_position()
+                box.x0 = box.x0 + x_shift*i
+                box.x1 = box.x1 + x_shift*i
+                box.y0 = box.y0 - y_shift*j
+                box.y1 = box.y1 - y_shift*j
+                ax.set_position(box)
+        
+        box = cb_ax.get_position()
+        box.x0 = box.x0 + x_shift
+        box.x1 = box.x1 + x_shift
+        cb_ax.set_position(box)
+        
+        return axs, fig
+    
+    
     def bs_frame_stan_data(self, st_row,
                            old_style_columns=False, 
                            initial=None,
