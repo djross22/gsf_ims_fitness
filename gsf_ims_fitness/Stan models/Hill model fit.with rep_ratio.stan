@@ -46,7 +46,6 @@ parameters {
   
   real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
   real<lower=0> offset_sigma;  // scale factor for standard deviation of replicate variability in g_min
-  real<lower=0> g_min_sigma;  // scale factor for standard deviation of noise in g_min
   
   vector[num_reps] log_rep_ratio;              // log10 of multiplicative correction factor for different replicates
   vector[num_contr_reps] log_rep_ratio_contr;  // log10 of multiplicative correction factor for control replicates
@@ -54,7 +53,6 @@ parameters {
   
   vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;              // additional g_min shift for different replicates
   vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_contr_reps] rep_offset_contr;  // additional g_min shift for control replicates
-  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_g_min_reps] rep_offset_g_min;  // g_min shift for zero-fluorescence control replicates
   
 }
 
@@ -75,7 +73,6 @@ transformed parameters {
   // measured values with g_min subtracted
   vector[N] y_shifted;
   vector[N_contr] y_contr_shifted;
-  vector[N_g_min] y_g_min_shifted;
   
   logit_g0_var[1] = logit_g0_wt;
   logit_ginf_var[1] = logit_ginf_wt;
@@ -131,10 +128,6 @@ transformed parameters {
     y_contr_shifted[i] = y_contr[i] - g_min - rep_offset_contr[rep_contr[i]];
   }
   
-  for (i in 1:N_g_min) {
-    y_g_min_shifted[i] = y_g_min[i] - g_min - rep_offset_g_min[rep_g_min[i]];
-  }
-  
 }
 
 model {
@@ -170,12 +163,6 @@ model {
   
   // model of the control strain data (constant, max output)
   y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
-  
-  // model of the g_min strain data (constant, min output)
-  g_min_sigma ~ normal(0, g_min_prior_std);
-  y_g_min_shifted ~ normal(0, g_min_sigma);
-  rep_offset_g_min  ~ normal(0, offset_sigma);
-  offset_sigma ~ normal(0, rep_offset_scale);
   
   // prior on scale hyper-parameter for log_rep_ratio
   rep_ratio_sigma ~ normal(0, rep_ratio_scale);

@@ -28,7 +28,7 @@
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
-  // prior on min output level
+  // informative prior on min output level
   g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
@@ -39,10 +39,6 @@
   
   // model of the control strain data (constant, max output)
   y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
-  
-  // model of the g_min strain data (constant, min output)
-  g_min_sigma ~ normal(0, g_min_prior_std);
-  y_g_min_shifted ~ normal(0, g_min_sigma);
   
 //}
 

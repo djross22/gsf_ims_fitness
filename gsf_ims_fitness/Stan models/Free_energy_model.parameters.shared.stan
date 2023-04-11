@@ -21,7 +21,6 @@
   real g_min;           // minimum possible fluorescence (non-fluor control level)
   
   real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
-  real<lower=0> g_min_sigma;  // scale factor for standard deviation of noise in g_min
   
 //}
 

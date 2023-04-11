@@ -9,7 +9,6 @@
   
   vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_reps] rep_offset;              // additional g_min shift for different replicates
   vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_contr_reps] rep_offset_contr;  // additional g_min shift for control replicates
-  vector<lower=-3*rep_offset_scale, upper=3*rep_offset_scale>[num_g_min_reps] rep_offset_g_min;  // g_min shift for zero-fluorescence control replicates
   
 //}
 

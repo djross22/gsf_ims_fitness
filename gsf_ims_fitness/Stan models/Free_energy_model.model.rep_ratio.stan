@@ -9,10 +9,9 @@
   log_rep_ratio ~ normal(0, rep_ratio_sigma);
   log_rep_ratio_contr ~ normal(0, rep_ratio_sigma);
   
-  // priors on rep_offset, rep_offset_contr, and rep_offset_g_min
+  // priors on rep_offset, rep_offset_contr
   rep_offset ~ normal(0, offset_sigma);
   rep_offset_contr ~ normal(0, offset_sigma);
-  rep_offset_g_min  ~ normal(0, offset_sigma);
   
 //}
 

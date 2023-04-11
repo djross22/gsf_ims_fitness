@@ -18,8 +18,6 @@
   
   int<lower=1> N_g_min;          // number of data points for g_min control strains (no YFP)
   vector[N_g_min] y_g_min;       // gene expression (from cytometry) for g_min control strains
-  int rep_g_min[N_g_min];        // integer to indicate the measurement replicate for zero-fluoprescence controls
-  int<lower=1> num_g_min_reps;   // number of measurement replicates for zero-fluoprescence controls
   
   real y_max;             // geometric mean for prior on maximum gene expression value
   real g_max_prior_width; // geometric std for prior on maximum gene expression value

@@ -55,7 +55,6 @@ parameters {
   real g_min;           // minimum possible fluorescence (non-fluor control level)
   
   real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
-  real<lower=0> g_min_sigma;  // scale factor for standard deviation of noise in g_min
 // ******
 
 #include Free_energy_model.parameters.multi_operator.stan
@@ -135,10 +134,6 @@ model {
   
   // model of the control strain data (constant, max output)
   y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
-  
-  // model of the g_min strain data (constant, min output)
-  g_min_sigma ~ normal(0, g_min_prior_std);
-  y_g_min_shifted ~ normal(0, g_min_sigma);
 // ******
 
 #include Free_energy_model.model.rep_ratio.stan
