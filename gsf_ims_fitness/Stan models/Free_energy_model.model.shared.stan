@@ -28,8 +28,6 @@
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
-  // informative prior on min output level
-  g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);

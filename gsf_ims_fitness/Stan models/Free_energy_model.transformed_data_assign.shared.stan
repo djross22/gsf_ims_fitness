@@ -15,5 +15,7 @@
   
   min_y = min(y);
   
+  g_min = g_min_prior_mu;
+  
 //}
 

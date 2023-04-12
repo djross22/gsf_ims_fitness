@@ -18,7 +18,6 @@
   vector[num_epi_var] delta_eps_RA_epi;
   
   real log_g_max;       // log10 of maximum possible gene expression
-  real g_min;           // minimum possible fluorescence (non-fluor control level)
   
   real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
   

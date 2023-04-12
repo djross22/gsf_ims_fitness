@@ -52,7 +52,6 @@ parameters {
   vector[num_mut] delta_eps_RA_mut;
   
   real log_g_max;       // log10 of maximum possible gene expression
-  real g_min;           // minimum possible fluorescence (non-fluor control level)
   
   real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
 // ******
@@ -123,8 +122,6 @@ model {
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
-  // prior on min output level
-  g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
