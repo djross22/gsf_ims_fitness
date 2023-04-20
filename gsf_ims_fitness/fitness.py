@@ -7,6 +7,7 @@ Created on Tue Nov 19 12:31:07 2019
 
 import glob  # filenames and pathnames utility
 import os    # operating sytem utility
+import gzip
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -1426,3 +1427,51 @@ def get_spike_in_name_from_inital(plasmid, initial):
             
     return spike_in
 
+def decode_phred(c):
+    return ord(c) - 33
+
+def quality_from_line(line):
+    return list(map(decode_phred, line))
+
+def id_from_line(line):
+    if line[0] =='@':
+        id = line[1:line.find(' ')]
+        return id
+    else:
+        raise ValueError('ID line does not start with @')
+        
+def parse_fastq_to_df(filename):
+    if filename[-3:] == '.gz':
+        open_funct = gzip.open
+    else:
+        open_funct = open
+    
+    with open_funct(filename, 'rt') as f:
+        id_list = []
+        seq_list = []
+        qual_list = []
+        min_q = []
+        mean_q = []
+        for i, line in enumerate(f):
+            line_type = i%4
+            if line_type == 0:
+                line = line.rstrip()
+                id_list.append(id_from_line(line))
+            elif line_type == 1:
+                line = line.rstrip()
+                seq_list.append(line)
+            elif line_type == 3:
+                line = line.rstrip()
+                q = quality_from_line(line)
+                qual_list.append(q)
+                min_q.append(min(q))
+                mean_q.append(np.mean(q))
+                
+    df = pd.DataFrame({'seq_name':id_list, 
+                       'seq':seq_list, 
+                       'quality_score':qual_list, 
+                       'min_quality':min_q, 
+                       'mean_quality':mean_q})
+        
+    return df
+    
