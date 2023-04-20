@@ -46,10 +46,8 @@ parameters {
   real delta_eps_RA_wt;    // free energy for Active TF to operator
   
   real log_g_max;       // log10 of maximum possible gene expression
-  real g_min;           // minimum possible fluorescence (non-fluor control level)
   
   real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
-  real<lower=0> offset_sigma;  // scale factor for standard deviation of noise in g_min
 
 // *****
 
@@ -129,8 +127,6 @@ model {
   
   // prior on max output level
   log_g_max ~ normal(log10(y_max), g_max_prior_width);
-  // prior on min output level
-  g_min ~ normal(g_min_prior_mu, g_min_prior_std);
   
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
@@ -140,10 +136,6 @@ model {
   
   // model of the control strain data (constant, max output)
   y_contr_shifted ~ lognormal(log_mean_y_contr, sigma);
-  
-  // model of the g_min strain data (constant, min output)
-  y_g_min ~ normal(g_min, offset_sigma);
-  offset_sigma ~ normal(0, rep_offset_scale);
 // ***** 
 
 #include Free_energy_model.model.rep_ratio.stan
