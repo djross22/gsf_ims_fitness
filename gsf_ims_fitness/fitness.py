@@ -1108,30 +1108,33 @@ def levenshtein_distance(seq1, seq2):
     return (matrix[size_x - 1, size_y - 1])
 
 def hamming_distance(SEQ1, SEQ2, MAX = float("inf"), IGNORE_N = False ):
-	"""Returns the number of mismatches between two strings.
-	MAX sets the number of max number of mismatches that are reported.
-	Lowering MAX increases performance.
-	IGNORE_N = 1 will ignore mismatches with N."""
-	mismatches = 0
-	if SEQ1 != SEQ2: #first check for exact match
-		if IGNORE_N:
-			for i in range(len(SEQ1)):
-				if SEQ1[i] != 'N' and SEQ2[i] != 'N':
-					if SEQ1[i] != SEQ2[i]:
-						mismatches += 1
-				if mismatches >= MAX:
-					break
-			return mismatches
-		else:
-			for i in range(len(SEQ1)):
-				if SEQ1[i] != SEQ2[i]:
-					mismatches += 1
-				if mismatches >= MAX:
-					break
-			return mismatches
-	else:
-		return mismatches
+    """Returns the number of mismatches between two strings.
+    MAX sets the number of max number of mismatches that are reported.
+    Lowering MAX increases performance.
+    IGNORE_N = 1 will ignore mismatches with N."""
     
+    if len(SEQ1) != len(SEQ2): #first check for exact match
+        raise ValueError("Sequences are not the same length")
+        
+    mismatches = 0
+    if SEQ1 != SEQ2: #first check for exact match
+        if IGNORE_N:
+            for i in range(len(SEQ1)):
+                if SEQ1[i] != 'N' and SEQ2[i] != 'N':
+                    if SEQ1[i] != SEQ2[i]:
+                        mismatches += 1
+                if mismatches >= MAX:
+                    break
+            return mismatches
+        else:
+            for i in range(len(SEQ1)):
+                if SEQ1[i] != SEQ2[i]:
+                    mismatches += 1
+                if mismatches >= MAX:
+                    break
+            return mismatches
+    else:
+        return mismatches
 def fitness_scale():
     return np.log(10)/165*60
             
