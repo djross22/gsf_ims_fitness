@@ -1139,7 +1139,13 @@ def hamming_distance(SEQ1, SEQ2, MAX = float("inf"), IGNORE_N = False ):
 
 def general_distance(s1, s2):
     if len(s1) == len(s2):
-        return hamming_distance(s1, s2)
+        hamm_dist = hamming_distance(s1, s2)
+        if hamm_dist > 2:
+            lev_dist = levenshtein_distance(s1, s2)
+            dist = min(hamm_dist, lev_dist)
+        else:
+            dist = hamm_dist
+        return dist
     else:
         return levenshtein_distance(s1, s2)
 
