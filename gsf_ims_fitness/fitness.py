@@ -1135,6 +1135,14 @@ def hamming_distance(SEQ1, SEQ2, MAX = float("inf"), IGNORE_N = False ):
             return mismatches
     else:
         return mismatches
+    
+
+def general_distance(s1, s2):
+    if len(s1) == len(s2):
+        return hamming_distance(s1, s2)
+    else:
+        return levenshtein_distance(s1, s2)
+
 def fitness_scale():
     return np.log(10)/165*60
             
