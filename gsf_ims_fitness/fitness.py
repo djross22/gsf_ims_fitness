@@ -1105,7 +1105,7 @@ def levenshtein_distance(seq1, seq2):
                     matrix[x,y-1] + 1
                 )
     #print (matrix)
-    return (matrix[size_x - 1, size_y - 1])
+    return int(matrix[size_x - 1, size_y - 1])
 
 def hamming_distance(SEQ1, SEQ2, MAX = float("inf"), IGNORE_N = False ):
     """Returns the number of mismatches between two strings.
