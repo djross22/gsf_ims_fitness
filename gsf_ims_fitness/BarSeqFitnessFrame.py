@@ -3593,8 +3593,7 @@ class BarSeqFitnessFrame:
             #This is for the newer LacI experiment; we want to only keep variants with confident sequence assignments and zero mutations in each of the regions
             #    The older method (frame["pacbio_" + reg + "_mutations"]<=0) only minamally increases the number of variants with confident LacI CDS assignments 
             for reg in exclude_mut_regions:
-                frame = frame[frame[f"{reg}_confident_seq"]]
-                frame = frame[frame[f'{reg}_mutations']==0]
+                frame = frame[frame[(~f"{reg}_confident_seq"])|(frame[f'{reg}_mutations']==0)]
         elif "amp_barcode_confident_seq" in frame.columns:
             #This is for the RamR experiments
             #TODO: fill in here for RamR
