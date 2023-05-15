@@ -3579,7 +3579,7 @@ class BarSeqFitnessFrame:
                 #exclude_mut_regions = ['empty_1', 'empty_4', 'insulator', 'KAN_1', 'KAN_2', 'Ori_1', 'Ori_2', 'tetA_1', 'tetA_2', 'YFP_1', 'YFP_2']
                 exclude_mut_regions = ['insulator', 'tetA_1', 'tetA_2']
             elif "amp_barcode_confident_seq" in frame.columns:
-                exclude_mut_regions = [] #TODO: fill in here for RamR
+                exclude_mut_regions = ['ramr_promoter']
         
         if len(exclude_mut_regions)>0:
             print(f'excluding the following regions with mutations: {exclude_mut_regions}')
@@ -3591,13 +3591,13 @@ class BarSeqFitnessFrame:
                 frame = frame[frame["pacbio_" + reg + "_mutations"]<=0]
         elif "KAN_1_confident_seq" in frame.columns:
             #This is for the newer LacI experiment; we want to only keep variants with confident sequence assignments and zero mutations in each of the regions
-            #    The older method (frame["pacbio_" + reg + "_mutations"]<=0) only minamally increases the number of variants with confident LacI CDS assignments 
+            #    The older method (frame["pacbio_" + reg + "_mutations"]<=0) only minimally increases the number of variants with confident LacI CDS assignments 
             for reg in exclude_mut_regions:
                 frame = frame[(~frame[f"{reg}_confident_seq"])|(frame[f'{reg}_mutations']==0)]
         elif "amp_barcode_confident_seq" in frame.columns:
             #This is for the RamR experiments
-            #TODO: fill in here for RamR
-            pass
+            for reg in exclude_mut_regions:
+                frame = frame[(~frame[f"{reg}_confident_seq"])|(frame[f'{reg}_mutations']==0)]
     
         return frame
         
