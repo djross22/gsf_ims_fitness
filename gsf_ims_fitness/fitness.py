@@ -1379,7 +1379,7 @@ def density_scatter_plot(x , y, ax=None, sort=True, bins=50, log_x=True, log_y=F
     # Sort the points by density, so that the densest points are plotted last
     if sort :
         idx = z.argsort()
-        x, y, z = x[idx], y[idx], z[idx]
+        x, y, z = np.array(x)[idx], np.array(y)[idx], z[idx]
     
     if z_cutoff is not None:
         z[z<z_cutoff] = z_cutoff/10
