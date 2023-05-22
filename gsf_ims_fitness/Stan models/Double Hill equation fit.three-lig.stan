@@ -120,10 +120,10 @@ model {
   mid_g ~ normal(mid_g_mu, mid_g_std);
   fitness_n ~ normal(fitness_n_mu, fitness_n_std);
   
-  // Prior on sensor_n; <gamma> = alpha/beta = 1.5; std = sqrt(alpha)/beta = 0.5
-  sensor_n_1 ~ gamma(9.0, 6.0);
-  sensor_n_2 ~ gamma(9.0, 6.0);
-  sensor_n_3 ~ gamma(9.0, 6.0);
+  // Prior on sensor_n; <gamma> = alpha/beta = 2.2; std = sqrt(alpha)/beta = 0.8
+  sensor_n_1 ~ gamma(7.7, 3.5);
+  sensor_n_2 ~ gamma(7.7, 3.5);
+  sensor_n_3 ~ gamma(7.7, 3.5);
   
   // Prior on log_ec50; flat prior with erf boundaries
   target += log1m(erf((log_x_min + 0.7 - log_ec50_1)/0.5));
