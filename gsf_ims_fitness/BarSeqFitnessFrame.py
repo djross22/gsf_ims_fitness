@@ -1638,7 +1638,7 @@ class BarSeqFitnessFrame:
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}:")
         print(f"      {fit_fitness_difference_params}")
-        print("      Method version from 2023-02-08")
+        print("      Method version from 2023-06-04")
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
@@ -1669,7 +1669,8 @@ class BarSeqFitnessFrame:
         elif len(ligand_list) == 2:
             sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
             
-            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
+            params_list = ['log_g0', 
+                           'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
                            'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2',
                            'low_fitness_low_tet', 'mid_g_low_tet', 'fitness_n_low_tet',
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet']
@@ -1681,7 +1682,8 @@ class BarSeqFitnessFrame:
         elif len(ligand_list) == 3:
             sm_file = 'Double Hill equation fit.three-lig.stan'
             
-            params_list = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
+            params_list = ['log_g0', 
+                           'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
                            'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2',
                            'log_ginf_3', 'log_ec50_3', 'sensor_n_3', 'log_ginf_g0_ratio_3',
                            'high_fitness', 'mid_g', 'fitness_n']
@@ -1690,8 +1692,10 @@ class BarSeqFitnessFrame:
             log_ginf_g0_ind_2 = params_list.index('log_ginf_g0_ratio_2')
             log_ginf_g0_ind_3 = params_list.index('log_ginf_g0_ratio_3')
             params_dim = len(params_list)
-            
-        quantile_params_list = [x for x in params_list if 'log_' in x]
+        
+        fit_ind = np.where(['fitness' in x for x in params_list])[0][0]
+        
+        quantile_params_list = params_list[:fit_ind]
         quantile_params_dim = len(quantile_params_list)
                 
         stan_model = stan_utility.compile_model(sm_file)
