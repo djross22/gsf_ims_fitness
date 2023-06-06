@@ -27,23 +27,7 @@ parameters {
   // In this version of the model, the base parameters belong to the first variant (the wild-type)
   //     and there is a delta_param associated with each mutation (with additive effects)
   
-// ****** #include Free_energy_model.parameters.shared.stan
-  real log_k_a_wt;         // log10 of IPTG binding affinity to active state
-  vector[num_mut] log_k_a_mut;
-  
-  real log_k_i_wt;         // log10 of IPTG binding affinity to inactive state
-  vector[num_mut] log_k_i_mut;
-  
-  real delta_eps_AI_wt;    // free energy difference between active and inactive states
-  vector[num_mut] delta_eps_AI_mut;
-  
-  real delta_eps_RA_wt;    // free energy for Active TF to operator
-  vector[num_mut] delta_eps_RA_mut;
-  
-  real log_g_max;       // log10 of maximum possible gene expression
-  
-  real<lower=0> sigma;      // scale factor for standard deviation of noise in log_y
-// ******
+#include Free_energy_model.no_epi.parameters.shared.stan
 
 #include Free_energy_model.parameters.multi_operator.stan
 
