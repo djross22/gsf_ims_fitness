@@ -161,6 +161,7 @@ class BarSeqFitnessFrame:
                 #rev_merge_list = []
                 for bc_id in np.unique(barcode_frame.for_BC_ID):
                     df = barcode_frame[barcode_frame.for_BC_ID==bc_id]
+                    for_bc = df.iloc[0].forward_BC
                     if len(df) == 1:
                         new_row = df.iloc[0].copy()
                         new_row['reverse_BC'] = ''
@@ -172,12 +173,12 @@ class BarSeqFitnessFrame:
                         merge_warning = [False]*len(df)
                         
                         rev_bc_list = df.reverse_BC
-                        # If the rows in df have different reverse barcodes, consider merging based on distance between forward and reverse barcodes
+                        # If the rows in df have different reverse barcodes, consider merging based on distance between forward and RC of reverse barcodes
+                        #     the case for all rows in df having the same reverse barcode was covered in the previous setp (merging forward BCs)
+                        
+                        # Check rev comp against forw BC
+                        rc_rev_bc = [fitness.rev_complement(s) for s in rev_bc_list]
                         if len(np.unique(rev_bc_list)) > 1:
-                            # Check rev comp against forw BC
-                            for_bc = df.iloc[0].forward_BC
-                            rc_rev_bc = [fitness.rev_complement(s) for s in rev_bc_list]
-                            
                             merge = []
                             metric_list = []
                             dist_list = []
@@ -193,6 +194,9 @@ class BarSeqFitnessFrame:
                                 merge.append(dist - len_diff <= merge_dist_cutoff)
                                 metric_list.append(dist_metric)
                                 dist_list.append(dist)
+                        else:
+                            metric_list = ['NA']*len(merge)
+                            dist_list = ['NA']*len(merge)
                         
                         
                         if np.any(merge):
