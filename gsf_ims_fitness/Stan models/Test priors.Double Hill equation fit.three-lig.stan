@@ -2,21 +2,11 @@
 //
 
 data {
-  int<lower=1> N_lig;                // number of non-zero ligand concentrations for each ligand
+  int<lower=0> N_lig;                // number of non-zero ligand concentrations for each ligand
   
   vector[N_lig] x_1;                 // non-zero ligand 1 concentrations
   vector[N_lig] x_2;                 // non-zero ligand 2 concentrations
   vector[N_lig] x_3;                 // non-zero ligand 3 concentrations
-  
-  vector[2] y_0;                  // fitness difference with zero ligand and with antibiotic; the experiment has two replicate wells for this condition
-  vector[2] y_0_err;              // estimated error of fitness difference
-  
-  vector[N_lig] y_1;         // fitness difference with ligand 1 and with antibiotic
-  vector[N_lig] y_1_err;     // estimated error of fitness difference
-  vector[N_lig] y_2;         // fitness difference with ligand 2 and with antibiotic
-  vector[N_lig] y_2_err;     // estimated error of fitness difference
-  vector[N_lig] y_3;         // fitness difference with ligand 3 and with antibiotic
-  vector[N_lig] y_3_err;     // estimated error of fitness difference
   
   real log_g_min;                    // lower bound on log_g0 and log_ginf
   real log_g_max;                    // upper bound on log_g0 and log_ginf
@@ -75,42 +65,6 @@ parameters {
 }
 
 transformed parameters {
-  real g0;
-  real ginf_1; 
-  real ec50_1;
-  real ginf_2; 
-  real ec50_2;
-  real ginf_3; 
-  real ec50_3;
-  
-  real mean_y_0;
-  
-  vector[N_lig] mean_y_1;
-  vector[N_lig] g_1;                // gene expression level at each non-zero concentration of ligand 1
-  vector[N_lig] mean_y_2;
-  vector[N_lig] g_2;                // gene expression level at each non-zero concentration of ligand 2
-  vector[N_lig] mean_y_3;
-  vector[N_lig] g_3;                // gene expression level at each non-zero concentration of ligand 3
-  
-  g0 = 10^log_g0;
-  ginf_1 = 10^log_ginf_1;
-  ec50_1 = 10^log_ec50_1;
-  ginf_2 = 10^log_ginf_2;
-  ec50_2 = 10^log_ec50_2;
-  ginf_3 = 10^log_ginf_3;
-  ec50_3 = 10^log_ec50_3;
-  
-  mean_y_0 = low_fitness + (high_fitness - low_fitness)*(g0^fitness_n)/(mid_g^fitness_n + g0^fitness_n);
-  
-  for (i in 1:N_lig) {
-    g_1[i] = g0 + (ginf_1 - g0)*(x_1[i]^sensor_n_1)/(ec50_1^sensor_n_1 + x_1[i]^sensor_n_1);
-    g_2[i] = g0 + (ginf_2 - g0)*(x_2[i]^sensor_n_2)/(ec50_2^sensor_n_2 + x_2[i]^sensor_n_2);
-    g_3[i] = g0 + (ginf_3 - g0)*(x_3[i]^sensor_n_3)/(ec50_3^sensor_n_3 + x_3[i]^sensor_n_3);
-	
-    mean_y_1[i] = low_fitness + (high_fitness - low_fitness)*(g_1[i]^fitness_n)/(mid_g^fitness_n + g_1[i]^fitness_n);
-    mean_y_2[i] = low_fitness + (high_fitness - low_fitness)*(g_2[i]^fitness_n)/(mid_g^fitness_n + g_2[i]^fitness_n);
-    mean_y_3[i] = low_fitness + (high_fitness - low_fitness)*(g_3[i]^fitness_n)/(mid_g^fitness_n + g_3[i]^fitness_n);
-  }
   
 }
 
@@ -138,33 +92,8 @@ model {
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
   
-  y_0 ~ normal(mean_y_0, sigma*y_0_err);
-  
-  y_1 ~ normal(mean_y_1, sigma*y_1_err);
-  y_2 ~ normal(mean_y_2, sigma*y_2_err);
-  y_3 ~ normal(mean_y_3, sigma*y_3_err);
-  
 }
 
 generated quantities {
-  real log_sensor_n_1;
-  real log_sensor_n_2;
-  real log_sensor_n_3;
-  
-  real log_ginf_g0_ratio_1;
-  real log_ginf_g0_ratio_2;
-  real log_ginf_g0_ratio_3;
-  
-  real rms_resid;
-  
-  log_ginf_g0_ratio_1 = log_ginf_1 - log_g0;
-  log_ginf_g0_ratio_2 = log_ginf_2 - log_g0;
-  log_ginf_g0_ratio_3 = log_ginf_3 - log_g0;
-  
-  log_sensor_n_1 = log10(sensor_n_1);
-  log_sensor_n_2 = log10(sensor_n_2);
-  log_sensor_n_3 = log10(sensor_n_3);
-  
-  rms_resid = sqrt((y_0[1] - mean_y_0)^2 + (y_0[2] - mean_y_0)^2 + distance(y_1, mean_y_1)^2 + distance(y_2, mean_y_2)^2 + distance(y_3, mean_y_3)^2)/sqrt(3*N_lig + 2);
   
 }
