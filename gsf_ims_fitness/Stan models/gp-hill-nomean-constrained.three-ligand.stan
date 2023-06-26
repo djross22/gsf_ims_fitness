@@ -119,7 +119,7 @@ transformed parameters {
 
     L_K = cholesky_decompose(K);
 
-    log_g = center_log_g + L_K * eta;
+    log_g = L_K * eta;
 	
     constr_log_g = log_g_min + (log_g_max - log_g_min)*inv_logit(log_g);
 
