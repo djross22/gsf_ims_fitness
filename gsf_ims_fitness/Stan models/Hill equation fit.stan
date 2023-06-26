@@ -73,12 +73,12 @@ model {
   target += log1m(erf((log_IC_50 - log_x_max + 0.8)/0.3));
   
   // Prior on log_low_level
-  target += log1m(erf((log_g_min + 0.9 - log_low_level)/0.3));
-  target += log1m(erf((log_low_level - log_g_max + 0.9)/0.3));
+  //target += log1m(erf((log_g_min + 0.9 - log_low_level)/0.3));
+  //target += log1m(erf((log_low_level - log_g_max + 0.9)/0.3));
   
   // Prior on log_high_level
-  target += log1m(erf((log_g_min + 0.9 - log_high_level)/0.3));
-  target += log1m(erf((log_high_level - log_g_max + 0.9)/0.3));
+  //target += log1m(erf((log_g_min + 0.9 - log_high_level)/0.3));
+  //target += log1m(erf((log_high_level - log_g_max + 0.9)/0.3));
   
   y ~ normal(mean_y, sigma*y_err);
 
