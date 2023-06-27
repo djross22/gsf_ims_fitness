@@ -2679,6 +2679,76 @@ class BarSeqFitnessFrame:
             
             return old_style_plots, linthresh, fit_plot_colors, plot_df
     
+    
+    def plot_dose_response(self,
+                           plot_index,
+                           show_GP=True,
+                           log_g_scale=True,
+                           box_size=6,
+                           show_mut_codes=True):
+        
+        plot_row = self.barcode_frame.loc[plot_index]
+        
+        antibiotic_conc_list = self.antibiotic_conc_list
+        ligand_list = self.ligand_list
+        
+        plt.rcParams["figure.figsize"] = [box_size, box_size*2/3]
+        fig, axg = plt.subplots()
+        
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
+        if self.plasmid == 'pVER':
+            plot_initials = ['b', 'e']
+        elif self.plasmid == 'pRamR':
+            plot_initials = ['sp01']
+        
+        fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=plot_initials)
+        old_style_plots, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
+        
+        if self.plasmid == 'pVER':
+            def fit_funct(x, log_g0, log_ginf, log_ec50, nx, low_fitness, mid_g, fitness_n):
+                return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
+                                         low_fitness, 0, mid_g, fitness_n)
+        elif self.plasmid == 'pRamR':
+            def fit_funct(x, log_g0, log_ginf, log_ec50, nx, high_fitness, mid_g, fitness_n):
+                return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
+                                         0, high_fitness, mid_g, fitness_n)
+        
+
+        fill_alpha = 0.2
+        
+        tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
+        for lig, color in zip(ligand_list, fit_plot_colors):
+            stan_g = 10**plot_row[f"GP_log_g_{lig}"]
+            stan_dg = plot_row[f"GP_dlog_g_{lig}"]
+            
+            df = plot_df
+            df = df[(df.ligand==lig)|(df.ligand=='none')]
+            df = df[df.with_tet]
+            x = np.unique(df[lig])
+        
+            axg.plot(x, stan_g[2], '--', color=color, lw=3, label=lig)
+                
+            axg.set_ylabel('GP Gene Epxression Estimate (MEF)', size=14)
+            axg.tick_params(labelsize=12);
+            if log_g_scale: axg.set_yscale("log")
+            
+            for i in range(1,3):
+                axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=fill_alpha, color=color);
+            axg.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=10)
+            
+            # Also plot Hill fit result for g
+            x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+            x_fit = np.insert(x_fit, 0, 0)
+            params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}']
+            hill_params = [10**plot_row[p] for p in params_list[:-1]] + [plot_row[params_list[-1]]]
+            y_fit = hill_funct(x_fit, *hill_params)
+            axg.plot(x_fit, y_fit, c=color, zorder=1000)
+        
+        axg.set_xscale('symlog', linthresh=linthresh)
+        
+        return fig, axg
+    
 
     def plot_fitness_and_difference_curves(self,
                             save_plots=False,
