@@ -1708,6 +1708,7 @@ class BarSeqFitnessFrame:
         quantile_dim = len(quantile_list)
         
         log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+        print(f'log_g_limits: {log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf}')
         
         rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
@@ -1943,6 +1944,7 @@ class BarSeqFitnessFrame:
         stan_model = stan_utility.compile_model(stan_GP_model)
         
         log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+        print(f'log_g_limits: {log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf}')
         
         rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
