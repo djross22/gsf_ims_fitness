@@ -2770,7 +2770,7 @@ class BarSeqFitnessFrame:
             if self.plasmid == 'pVER':
                 plot_initials = ['b', 'e']
             elif self.plasmid == 'pRamR':
-                plot_initials = ['sp01']
+                plot_initials = ['sp01', 'ea.sp01']
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -2896,35 +2896,36 @@ class BarSeqFitnessFrame:
                             s = [row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
                             axl.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
                     
-                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
-                        marker = marker if show_fits else '-' + marker
-                        if tet > 0:
-                            for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
-                                # use is_gp_model=True to get data for all concentrations:
-                                stan_data = self.bs_frame_stan_data(row, initial=initial, is_gp_model=True) 
-                                
-                                if len(antibiotic_conc_list) == 2:
-                                    # Single non-zero antibiotic concentration
-                                    st_y_0 = list(stan_data[f'y_0'])
-                                    st_y_0_err = list(stan_data[f'y_0_err'])
-                                    x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
-                                    s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
-                                elif len(antibiotic_conc_list) == 3:
-                                    # Two non-zero antibiotic concentrations
-                                    if tet == antibiotic_conc_list[1]:
-                                        tet_str = 'low'
-                                        st_y_0 = [stan_data[f'y_0_low_tet']]
-                                        st_y_0_err = [stan_data[f'y_0_low_tet_err']]
-                                    else:
-                                        tet_str = 'high'
-                                        st_y_0 = []
-                                        st_y_0_err = []
-                                    x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                                    y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet']))
-                                    s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
+                    if 'ea' not in initial:
+                        for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
+                            marker = marker if show_fits else '-' + marker
+                            if tet > 0:
+                                for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
+                                    # use is_gp_model=True to get data for all concentrations:
+                                    stan_data = self.bs_frame_stan_data(row, initial=initial, is_gp_model=True) 
                                     
-                                axr.errorbar(x[s<10], y[s<10], s[s<10], fmt=marker, ms=8, color=color, fillstyle=fill_style)
+                                    if len(antibiotic_conc_list) == 2:
+                                        # Single non-zero antibiotic concentration
+                                        st_y_0 = list(stan_data[f'y_0'])
+                                        st_y_0_err = list(stan_data[f'y_0_err'])
+                                        x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                        y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
+                                        s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                    elif len(antibiotic_conc_list) == 3:
+                                        # Two non-zero antibiotic concentrations
+                                        if tet == antibiotic_conc_list[1]:
+                                            tet_str = 'low'
+                                            st_y_0 = [stan_data[f'y_0_low_tet']]
+                                            st_y_0_err = [stan_data[f'y_0_low_tet_err']]
+                                        else:
+                                            tet_str = 'high'
+                                            st_y_0 = []
+                                            st_y_0_err = []
+                                        x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                        y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet']))
+                                        s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
+                                        
+                                    axr.errorbar(x[s<10], y[s<10], s[s<10], fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
                 if initial == plot_initials[0]:
                     barcode_str = str(index) + ': '
