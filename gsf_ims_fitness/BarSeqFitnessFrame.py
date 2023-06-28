@@ -1073,7 +1073,6 @@ class BarSeqFitnessFrame:
                                     
         plt.rcParams["figure.figsize"] = [26, 13]
 
-        plot_frame = self.barcode_frame
         
         
         if self.plasmid == 'pVER':
@@ -1085,9 +1084,11 @@ class BarSeqFitnessFrame:
         spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
         
         
-        spike_in_row = plot_frame[plot_frame.RS_name==spike_in].iloc[0]
+        spike_in_row = self.barcode_frame[self.barcode_frame.RS_name==spike_in].iloc[0]
+        
+        plot_frame = self.barcode_frame
         if plot_range is not None:
-            plot_frame = plot_frame.loc[plot_range[0], plot_range[1]]
+            plot_frame = plot_frame.loc[plot_range[0]:plot_range[1]]
         if len(plot_frame) > max_plots:
             plot_frame = plot_frame.iloc[:max_plots]
 
