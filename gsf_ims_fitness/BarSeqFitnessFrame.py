@@ -3660,8 +3660,11 @@ class BarSeqFitnessFrame:
             elif "KAN_1_confident_seq" in frame.columns:
                 #exclude_mut_regions = ['empty_1', 'empty_4', 'insulator', 'KAN_1', 'KAN_2', 'Ori_1', 'Ori_2', 'tetA_1', 'tetA_2', 'YFP_1', 'YFP_2']
                 exclude_mut_regions = ['insulator', 'tetA_1', 'tetA_2']
-            elif "amp_barcode_confident_seq" in frame.columns:
+            elif "ramr_promoter_confident_seq" in frame.columns:
                 exclude_mut_regions = ['ramr_promoter']
+            else:
+                exclude_mut_regions = []
+            
         
         if len(exclude_mut_regions)>0:
             print(f'excluding the following regions with mutations: {exclude_mut_regions}')
