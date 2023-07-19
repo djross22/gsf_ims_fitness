@@ -3622,7 +3622,7 @@ class BarSeqFitnessFrame:
         
         return axs
     
-    def save_as_pickle(self, notebook_dir=None, experiment=None, pickle_file=None):
+    def save_as_pickle(self, notebook_dir=None, experiment=None, pickle_file=None, overwrite=False):
         if notebook_dir is None:
             notebook_dir = self.notebook_dir
         if experiment is None:
@@ -3631,6 +3631,19 @@ class BarSeqFitnessFrame:
             pickle_file = experiment + '_BarSeqFitnessFrame.pkl'
             
         os.chdir(notebook_dir)
+        
+        # If file already exists, default is to rename old version instead of overwriting it.
+        file_exists = os.path.isfile(pickle_file)
+        if file_exists and (not overwrite):
+            t = os.path.getmtime(pickle_file)
+            t = datetime.datetime.fromtimestamp(t)
+            t = f'{t}'
+            t = t.replace(' ', '.')
+            t = t.replace(':', '.')
+            t = t[:16]
+            old_pickle_file = pickle_file.replace('_BarSeqFitnessFrame.pkl', f'_BSF_{t}.pkl')
+            os.rename(pickle_file, old_pickle_file)
+            print(f"Previous version of BarSeqFitnessFrame renamed as: {old_pickle_file}")
         
         with open(pickle_file, 'wb') as f:
             pickle.dump(self, f)
