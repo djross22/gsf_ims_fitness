@@ -3332,14 +3332,14 @@ class BarSeqFitnessFrame:
             
             if run_stan_fit:
                 stan_data = dict(x=x_fit_list, y = y_fit_list, y_err = y_err_list, N=len(x_fit_list))
-                stan_init = [ init_fitness_fit(y) for n in range(4) ]
-                stan_fit = fitness_model.sample(data=stan_data, iter_warmup=500, iter_sampling=500, init=stan_init, chains=4)
+                stan_init = init_fitness_fit(y)
+                stan_fit = fitness_model.sample(data=stan_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4)
                 if plasmid == 'pVER':
-                    stan_popt = [ np.mean(stan_fit[p])  for p in ["low_level", "IC_50", "hill_n"]]
-                    stan_perr = [ np.std(stan_fit[p])  for p in ["low_level", "IC_50", "hill_n"]]
+                    stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
+                    stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
                 elif plasmid == 'pRamR':
-                    stan_popt = [ np.mean(stan_fit[p])  for p in ["high_level", "IC_50", "hill_n"]]
-                    stan_perr = [ np.std(stan_fit[p])  for p in ["high_level", "IC_50", "hill_n"]]
+                    stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
+                    stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
                 
                 num_str = [ f"{x:.4}" for x in stan_popt]
                 print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
