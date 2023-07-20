@@ -494,7 +494,8 @@ class BarSeqFitnessFrame:
                            auto_save=True,
                            bi_linear_alpha=np.log(5),
                            early_slope=False,
-                           dilution_factor=10):
+                           dilution_factor=10,
+                           show_progress=False):
         
         if iter_warmup is None:
             iter_warmup = int(iterations/2)
@@ -519,7 +520,8 @@ class BarSeqFitnessFrame:
                         use_all_samples_model=use_all_samples_model,
                         slope_ref_prior_std=slope_ref_prior_std,
                         bi_linear_alpha=bi_linear_alpha,
-                        dilution_factor=dilution_factor)
+                        dilution_factor=dilution_factor,
+                        show_progress=show_progress)
                              
         if index is None:
             # run Stan fits for all barcodes in barcode_frame
@@ -750,7 +752,8 @@ class BarSeqFitnessFrame:
                                  slope_ref_prior_std=0.1,
                                  bi_linear_alpha=np.log(5),
                                  early_slope=False,
-                                 dilution_factor=10):
+                                 dilution_factor=10,
+                                 show_progress=True):
         
         if iter_warmup is None:
             iter_warmup = int(iterations/2)
@@ -829,7 +832,7 @@ class BarSeqFitnessFrame:
         fitness_out_dict = {}
         for samp_list in [ref_samples, non_ref_without_tet]:
             for samp in samp_list:
-                print(f'    sample {samp}')
+                if verbose: print(f'    sample {samp}')
                 df = sample_plate_map
                 df = df[df["sample_id"]==samp]
                 df = df.sort_values('growth_plate')
@@ -856,7 +859,7 @@ class BarSeqFitnessFrame:
                     stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                     
                     stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                                        adapt_delta=adapt_delta)
+                                                        adapt_delta=adapt_delta, show_progress=show_progress)
                     if return_fits:
                         stan_fit_list.append(stan_fit)
                 
@@ -888,7 +891,8 @@ class BarSeqFitnessFrame:
                 
                 stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                 
-                stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, adapt_delta=adapt_delta)
+                stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
+                                                    adapt_delta=adapt_delta, show_progress=show_progress)
                 
                 if return_fits:
                     stan_fit_list.append(stan_fit)
@@ -902,7 +906,7 @@ class BarSeqFitnessFrame:
         
         rng = np.random.default_rng()
         for samp in samples_with_tet:
-            print(f'    sample {samp}')
+            if verbose: print(f'    sample {samp}')
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
             df = df.sort_values('growth_plate')
@@ -1036,7 +1040,8 @@ class BarSeqFitnessFrame:
             stan_data['n_spike_with_tet'] = np.array(n_spike_with_tet).transpose()
             stan_data['tau_with_tet'] = np.array(tau_with_tet).transpose()
             
-            stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, adapt_delta=adapt_delta)
+            stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
+                                         adapt_delta=adapt_delta, show_progress=show_progress)
             
             if not return_fits:
                 if len(non_ref_without_tet) == 0:
