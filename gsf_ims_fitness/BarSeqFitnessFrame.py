@@ -866,10 +866,13 @@ class BarSeqFitnessFrame:
                         tau_no_tet += list(tau)
                         spike_ins_no_tet += list(spike_in_reads)
                     
-                    fit_mu = np.median(stan_fit['log_slope'])
-                    fit_sig = np.std(stan_fit['log_slope'])
-                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'])
-                    log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+                    fit_result = stan_fit.stan_variable('log_slope')
+                    fit_mu = np.median(fit_result)
+                    fit_sig = np.std(fit_result)
+                    
+                    fit_result = stan_fit.stan_variable('log_ratio_out')
+                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(fit_result)
+                    log_ratio_out_quantiles = np.quantile(fit_result, [0.05, .25, .5, .75, .95], axis=0)
                     
                     fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
         
@@ -893,8 +896,9 @@ class BarSeqFitnessFrame:
                 sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
                 stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
                 
-                slope_0_mu = np.mean(stan_fit['log_slope'])
-                slope_0_sig = np.std(stan_fit['log_slope'])
+                fit_result = stan_fit.stan_variable('log_slope')
+                slope_0_mu = np.mean(fit_result)
+                slope_0_sig = np.std(fit_result)
         
         rng = np.random.default_rng()
         for samp in samples_with_tet:
@@ -1042,13 +1046,18 @@ class BarSeqFitnessFrame:
                     sample_lists = [ref_samples, non_ref_without_tet, samples_with_tet]
                     sample_str_list = ['ref', 'no_tet', 'with_tet']
                 for samp_list, samp_str in zip(sample_lists, sample_str_list):
-                    fit_mu_list = np.median(stan_fit[f'slope_{samp_str}'], axis=0)
-                    fit_sig_list = np.std(stan_fit[f'slope_{samp_str}'], axis=0)
+                    fit_result = stan_fit.stan_variable(f'slope_{samp_str}')
+                    fit_mu_list = np.median(fit_result, axis=0)
+                    fit_sig_list = np.std(fit_result, axis=0)
                     if samp_list is ref_samples:
                         fit_mu_list = [fit_mu_list]*len(ref_samples)
                         fit_sig_list = [fit_sig_list]*len(ref_samples)
-                    fit_resid_list = np.median(stan_fit[f'residuals_{samp_str}'], axis=0).transpose()
-                    log_ratio_out_list = np.quantile(stan_fit[f'log_ratio_out_{samp_str}'], [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
+                    
+                    fit_result = stan_fit.stan_variable(f'residuals_{samp_str}')
+                    fit_resid_list = np.median(fit_result, axis=0).transpose()
+                    
+                    fit_result = stan_fit.stan_variable(f'log_ratio_out_{samp_str}')
+                    log_ratio_out_list = np.quantile(fit_result, [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
                     for samp, mu, sig, res, log_rat in zip(samp_list, fit_mu_list, fit_sig_list, fit_resid_list, log_ratio_out_list):
                         fitness_out_dict[samp] = [mu, sig, res, log_rat]
                     
