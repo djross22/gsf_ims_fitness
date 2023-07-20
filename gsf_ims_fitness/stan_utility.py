@@ -14,7 +14,7 @@ Associated license.txt file contents:
 
 """
 
-import pystan
+import cmdstanpy
 import pickle
 import numpy as np
 import pandas as pd
@@ -156,42 +156,13 @@ def partition_div(fit):
 
 
 def compile_model(filename, model_name=None, force_recompile=False, verbose=True):
-    """This will automatically cache models - great if you're just running a
-    script on the command line.
-
-    See http://pystan.readthedocs.io/en/latest/avoiding_recompilation.html"""
-    from hashlib import md5
 
     return_directory = os.getcwd()
     os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
+    
+    sm = cmdstanpy.CmdStanModel(stan_file=filename)
 
-    with open(filename) as f:
-        model_code = f.read()
-        code_hash = md5(model_code.encode('ascii')).hexdigest()
-        if model_name is None:
-            cache_fn = 'cached-model-{}.pkl'.format(code_hash)
-        else:
-            cache_fn = 'cached-{}-{}.pkl'.format(model_name, code_hash)
-        if force_recompile:
-            print(f"Compiling StanModel from file: {filename}")
-            sm = pystan.StanModel(model_code=model_code)
-            with open(cache_fn, 'wb') as f:
-                pickle.dump(sm, f)
-        else:
-            try:
-                sm = pickle.load(open(cache_fn, 'rb'))
-            except:
-                print(f"Compiling StanModel from file: {filename}")
-                sm = pystan.StanModel(model_code=model_code)
-                with open(cache_fn, 'wb') as f:
-                    pickle.dump(sm, f)
-            else:
-                if verbose:
-                    print("Using cached StanModel")
-
-        os.chdir(return_directory)
-
-        return sm
+    return sm
 
 
 def rhat_from_dataframe(df, split_chains=True):
