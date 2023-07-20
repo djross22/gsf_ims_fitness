@@ -481,6 +481,8 @@ class BarSeqFitnessFrame:
                            index=None,
                            spike_in_name=None,
                            iterations=1000,
+                           iter_warmup=None,
+                           iter_sampling=None,
                            chains=4,
                            control=dict(adapt_delta=0.9),
                            tau_default=0.01,
@@ -494,6 +496,11 @@ class BarSeqFitnessFrame:
                            early_slope=False,
                            dilution_factor=10):
         
+        if iter_warmup is None:
+            iter_warmup = int(iterations/2)
+        if iter_sampling is None:
+            iter_sampling = int(iterations/2)
+        
         if spike_in_name is None:
             if self.plasmid == 'pVER':
                 spike_in_name = "AO-B"
@@ -501,7 +508,8 @@ class BarSeqFitnessFrame:
                 spike_in_name = "ON-01"
         
         arg_dict = dict(spike_in_name=spike_in_name,
-                        iterations=iterations,
+                        iter_warmup=iter_warmup,
+                        iter_sampling=iter_sampling,
                         chains=chains,
                         control=control,
                         tau_default=tau_default,
@@ -729,6 +737,8 @@ class BarSeqFitnessFrame:
                                  index,
                                  spike_in_name=None,
                                  iterations=1000,
+                                 iter_warmup=None,
+                                 iter_sampling=None,
                                  chains=4,
                                  control=dict(adapt_delta=0.9),
                                  tau_default=0.01,
@@ -741,6 +751,11 @@ class BarSeqFitnessFrame:
                                  bi_linear_alpha=np.log(5),
                                  early_slope=False,
                                  dilution_factor=10):
+        
+        if iter_warmup is None:
+            iter_warmup = int(iterations/2)
+        if iter_sampling is None:
+            iter_sampling = int(iterations/2)
         
         barcode_frame = self.barcode_frame
         
@@ -840,7 +855,7 @@ class BarSeqFitnessFrame:
                 else:
                     stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                     
-                    stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                    stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, control=control)
                     if return_fits:
                         stan_fit_list.append(stan_fit)
                 
@@ -869,7 +884,7 @@ class BarSeqFitnessFrame:
                 
                 stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                 
-                stan_fit = stan_model_no_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, control=control)
                 
                 if return_fits:
                     stan_fit_list.append(stan_fit)
@@ -932,7 +947,7 @@ class BarSeqFitnessFrame:
                                      lower_bound_width=0.3)
                 
                 try:
-                    stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+                    stan_fit = stan_model_with_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, control=control)
                     last_good_stan_fit = stan_fit
                 except RuntimeError as err:
                     if 'Initialization failed' in f'{err}':
@@ -975,7 +990,7 @@ class BarSeqFitnessFrame:
                         #print(f'last good stan: {last_good_stan_fit.get_last_position()}')
                         
                         try:
-                            stan_fit = stan_model_with_tet.sampling(data=stan_data, iter=iterations, chains=chains, control=control, 
+                            stan_fit = stan_model_with_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, control=control, 
                             init=[stan_init]*chains)
                             
                         except Exception as err:
@@ -1015,7 +1030,7 @@ class BarSeqFitnessFrame:
             stan_data['n_spike_with_tet'] = np.array(n_spike_with_tet).transpose()
             stan_data['tau_with_tet'] = np.array(tau_with_tet).transpose()
             
-            stan_fit = stan_model.sampling(data=stan_data, iter=iterations, chains=chains, control=control)
+            stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, control=control)
             
             if not return_fits:
                 if len(non_ref_without_tet) == 0:
@@ -1624,6 +1639,8 @@ class BarSeqFitnessFrame:
                                        includeChimeras=False,
                                        control=dict(adapt_delta=0.9),
                                        iterations=1000,
+                                       iter_warmup=None,
+                                       iter_sampling=None,
                                        chains=4,
                                        auto_save=True,
                                        refit_index=None,
@@ -1632,6 +1649,11 @@ class BarSeqFitnessFrame:
         
         plasmid = self.plasmid
         fit_fitness_difference_params = self.fit_fitness_difference_params
+        
+        if iter_warmup is None:
+            iter_warmup = int(iterations/2)
+        if iter_sampling is None:
+            iter_sampling = int(iterations/2)
         
         if plasmid == 'pVER':
             if initial is None:
@@ -1730,7 +1752,8 @@ class BarSeqFitnessFrame:
                 #for k, v in stan_data.items():
                 #    print(f"{k}: {v}")
                 #print()
-                stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
+                stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup,
+                                             init=stan_init, chains=chains, control=control)
                 if return_fit:
                     return stan_fit
         
@@ -1862,6 +1885,8 @@ class BarSeqFitnessFrame:
                        stan_GP_model='gp-hill-nomean-constrained.stan',
                        control=dict(adapt_delta=0.9),
                        iterations=1000,
+                       iter_warmup=None,
+                       iter_sampling=None,
                        chains=4,
                        auto_save=True,
                        refit_index=None,
@@ -1871,6 +1896,11 @@ class BarSeqFitnessFrame:
         plasmid = self.plasmid
         
         fit_fitness_difference_params = self.fit_fitness_difference_params
+        
+        if iter_warmup is None:
+            iter_warmup = int(iterations/2)
+        if iter_sampling is None:
+            iter_sampling = int(iterations/2)
         
         if plasmid == 'pVER':
             if initial is None:
@@ -1959,7 +1989,7 @@ class BarSeqFitnessFrame:
             try:
                 stan_init = [ init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid) for i in range(chains) ]
                 
-                stan_fit = stan_model.sampling(data=stan_data, iter=iterations, init=stan_init, chains=chains, control=control)
+                stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, init=stan_init, chains=chains, control=control)
                 if return_fit:
                     return stan_fit
                     
@@ -3286,7 +3316,7 @@ class BarSeqFitnessFrame:
             if run_stan_fit:
                 stan_data = dict(x=x_fit_list, y = y_fit_list, y_err = y_err_list, N=len(x_fit_list))
                 stan_init = [ init_fitness_fit(y) for n in range(4) ]
-                stan_fit = fitness_model.sampling(data=stan_data, iter=1000, init=stan_init, chains=4)
+                stan_fit = fitness_model.sample(data=stan_data, iter_warmup=500, iter_sampling=500, init=stan_init, chains=4)
                 if plasmid == 'pVER':
                     stan_popt = [ np.mean(stan_fit[p])  for p in ["low_level", "IC_50", "hill_n"]]
                     stan_perr = [ np.std(stan_fit[p])  for p in ["low_level", "IC_50", "hill_n"]]
