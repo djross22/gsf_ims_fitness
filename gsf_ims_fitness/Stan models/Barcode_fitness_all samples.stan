@@ -15,16 +15,16 @@ data {
   
   int x[N];                 // time points (i.e. plate number - 2)
   
-  int n_reads_ref[N, M_ref];           // ref sample barcode read counts for each time point
-  int n_spike_ref[N, M_ref];           // ref sample spike-in read count for each time point
-  int n_reads_no_tet[N, M_no_tet];     // no_tet barcode read count for each time point
-  int n_spike_no_tet[N, M_no_tet];     // no_tet spike-in read count for each time point
-  int n_reads_with_tet[N, M_with_tet]; // with_tet barcode read count for each time point
-  int n_spike_with_tet[N, M_with_tet]; // with_tet spike-in read count for each time point
+  array[N, M_ref] int n_reads_ref;           // ref sample barcode read counts for each time point
+  array[N, M_ref] int n_spike_ref;           // ref sample spike-in read count for each time point
+  array[N, M_no_tet] int n_reads_no_tet;     // no_tet barcode read count for each time point
+  array[N, M_no_tet] int n_spike_no_tet;     // no_tet spike-in read count for each time point
+  array[N, M_with_tet] int n_reads_with_tet; // with_tet barcode read count for each time point
+  array[N, M_with_tet] int n_spike_with_tet; // with_tet spike-in read count for each time point
   
-  vector[M_ref] tau_ref[N];            // extra error term, used for de-weighting/ignoring samples
-  vector[M_no_tet] tau_no_tet[N];      // extra error term, used for de-weighting/ignoring samples
-  vector[M_with_tet] tau_with_tet[N];  // extra error term, used for de-weighting/ignoring samples
+  array[N] vector[M_ref] tau_ref;            // extra error term, used for de-weighting/ignoring samples
+  array[N] vector[M_no_tet] tau_no_tet;      // extra error term, used for de-weighting/ignoring samples
+  array[N] vector[M_with_tet] tau_with_tet;  // extra error term, used for de-weighting/ignoring samples
   
   real slope_ref_prior_std;  // scale for normal prior on ref_slope
   
@@ -40,13 +40,13 @@ transformed data {
   vector[M_no_tet] log_ratio_0_no_tet;
   vector[M_with_tet] log_ratio_0_with_tet;
   
-  vector[M_ref] log_ratio_in_ref[N];
-  vector[M_no_tet] log_ratio_in_no_tet[N];
-  vector[M_with_tet] log_ratio_in_with_tet[N];
+  array[N] vector[M_ref] log_ratio_in_ref;
+  array[N] vector[M_no_tet] log_ratio_in_no_tet;
+  array[N] vector[M_with_tet] log_ratio_in_with_tet;
   
-  vector[M_ref] log_spike_ref[N];  // log of spike-in counts
-  vector[M_no_tet] log_spike_no_tet[N];  // log of spike-in counts
-  vector[M_with_tet] log_spike_with_tet[N];  // log of spike-in counts
+  array[N] vector[M_ref] log_spike_ref;  // log of spike-in counts
+  array[N] vector[M_no_tet] log_spike_no_tet;  // log of spike-in counts
+  array[N] vector[M_with_tet] log_spike_with_tet;  // log of spike-in counts
   
   real min_delta_slope;
   
@@ -78,27 +78,27 @@ transformed data {
 parameters {
   real slope_ref;                      // reference slope
   vector[M_ref] intrc_ref;             // intercept of ref samples
-  vector[M_ref] log_err_tilda_ref[N];  // additional error term, ref samples, normalized
+  array[N] vector[M_ref] log_err_tilda_ref;  // additional error term, ref samples, normalized
   
   vector[M_no_tet] slope_no_tet;             // slope of no_tet samples
   vector[M_no_tet] intrc_no_tet;             // intercept of no_tet samples
-  vector[M_no_tet] log_err_tilda_no_tet[N];  // additional error term, no_tet samples, normalized
+  array[N] vector[M_no_tet] log_err_tilda_no_tet;  // additional error term, no_tet samples, normalized
   
   vector[M_with_tet] delta_slope_with_tet;       // slope_with_tet - slope_ref for with_tet samples
   vector[M_with_tet] intrc_with_tet;             // intercept of with_tet samples
-  vector[M_with_tet] log_err_tilda_with_tet[N];  // additional error term, with_tet samples, normalized
+  array[N] vector[M_with_tet] log_err_tilda_with_tet;  // additional error term, with_tet samples, normalized
   
 }
 
 transformed parameters {
-  vector[M_ref] n_mean_ref[N];   // mean expected value for n_reads_ref
-  vector[M_ref] log_err_ref[N];  // additional error term, ref samples
+  array[N] vector[M_ref] n_mean_ref;   // mean expected value for n_reads_ref
+  array[N] vector[M_ref] log_err_ref;  // additional error term, ref samples
   
-  vector[M_no_tet] n_mean_no_tet[N];   // mean expected value for n_reads_no_tet
-  vector[M_no_tet] log_err_no_tet[N];  // additional error term, ref samples
+  array[N] vector[M_no_tet] n_mean_no_tet;   // mean expected value for n_reads_no_tet
+  array[N] vector[M_no_tet] log_err_no_tet;  // additional error term, ref samples
   
-  vector[M_with_tet] n_mean_with_tet[N];   // mean expected value for n_reads_with_tet
-  vector[M_with_tet] log_err_with_tet[N];  // additional error term, ref samples
+  array[N] vector[M_with_tet] n_mean_with_tet;   // mean expected value for n_reads_with_tet
+  array[N] vector[M_with_tet] log_err_with_tet;  // additional error term, ref samples
   
   vector[M_with_tet] slope_with_tet;       // final slope of with_tet samples (after addition of antibiotic)
   
@@ -148,20 +148,20 @@ model {
 }
 
 generated quantities {
-  vector[M_ref] log_ratio_out_ref[N];
-  vector[M_ref] ratio_out_ref[N];
-  vector[M_ref] n_mean_out_ref[N];
-  vector[M_ref] residuals_ref[N];
+  array[N] vector[M_ref] log_ratio_out_ref;
+  array[N] vector[M_ref] ratio_out_ref;
+  array[N] vector[M_ref] n_mean_out_ref;
+  array[N] vector[M_ref] residuals_ref;
   
-  vector[M_no_tet] log_ratio_out_no_tet[N];
-  vector[M_no_tet] ratio_out_no_tet[N];
-  vector[M_no_tet] n_mean_out_no_tet[N];
-  vector[M_no_tet] residuals_no_tet[N];
+  array[N] vector[M_no_tet] log_ratio_out_no_tet;
+  array[N] vector[M_no_tet] ratio_out_no_tet;
+  array[N] vector[M_no_tet] n_mean_out_no_tet;
+  array[N] vector[M_no_tet] residuals_no_tet;
   
-  vector[M_with_tet] log_ratio_out_with_tet[N];
-  vector[M_with_tet] ratio_out_with_tet[N];
-  vector[M_with_tet] n_mean_out_with_tet[N];
-  vector[M_with_tet] residuals_with_tet[N];
+  array[N] vector[M_with_tet] log_ratio_out_with_tet;
+  array[N] vector[M_with_tet] ratio_out_with_tet;
+  array[N] vector[M_with_tet] n_mean_out_with_tet;
+  array[N] vector[M_with_tet] residuals_with_tet;
   
   for (n in 1:N) {
     log_ratio_out_ref[n] = log(n_mean_ref[n]) - log_spike_ref[n] - log_err_ref[n];
