@@ -1001,7 +1001,7 @@ class BarSeqFitnessFrame:
                         
                         try:
                             stan_fit = stan_model_with_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                                                  adapt_delta=adapt_delta, init=[stan_init]*chains)
+                                                                  adapt_delta=adapt_delta, inits=stan_init)
                             
                         except Exception as err:
                             print(f'Stan fit failed again, giving up: {err}')
@@ -1016,12 +1016,12 @@ class BarSeqFitnessFrame:
                     stan_fit_list.append(stan_fit)
                     
                 if stan_fit != 'failed':
-                    fit_mu = np.median(stan_fit['log_slope'])
-                    fit_sig = np.std(stan_fit['log_slope'])
+                    fit_mu = np.median(stan_fit.stan_variable('log_slope'))
+                    fit_sig = np.std(stan_fit.stan_variable('log_slope'))
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
-                        fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit['log_ratio_out'], axis=0)
-                    log_ratio_out_quantiles = np.quantile(stan_fit['log_ratio_out'], [0.05, .25, .5, .75, .95], axis=0)
+                        fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit.stan_variable('log_ratio_out'), axis=0)
+                    log_ratio_out_quantiles = np.quantile(stan_fit.stan_variable('log_ratio_out'), [0.05, .25, .5, .75, .95], axis=0)
                 else:
                     return
                 
@@ -1758,25 +1758,25 @@ class BarSeqFitnessFrame:
 
             try:
                 if len(lig_list) == 1:
-                    stan_init = [ init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params) for i in range(chains) ]
+                    stan_init = init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params)
                 elif len(lig_list) == 2:
-                    stan_init = [ init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params) for i in range(chains) ]
+                    stan_init = init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params)
                 elif len(lig_list) == 3:
-                    stan_init = [ init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params) for i in range(chains) ]
+                    stan_init = init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params)
                 
                 #print("stan_data:")
                 #for k, v in stan_data.items():
                 #    print(f"{k}: {v}")
                 #print()
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup,
-                                             init=stan_init, chains=chains, adapt_delta=adapt_delta)
+                                             inits=stan_init, chains=chains, adapt_delta=adapt_delta)
                 if return_fit:
                     return stan_fit
         
-                stan_samples_arr = np.array([stan_fit[key] for key in params_list ])
+                stan_samples_arr = np.array([stan_fit.stan_variable(key) for key in params_list ])
                 stan_popt = np.array([np.median(s) for s in stan_samples_arr ])
                 stan_pcov = np.cov(stan_samples_arr, rowvar=True)
-                stan_resid = np.median(stan_fit["rms_resid"])
+                stan_resid = np.median(stan_fit.stan_variable("rms_resid"))
                 
                 # Only save the quantiles and samples for the sensor params (not the fitness vs. g params)
                 stan_quant_arr = stan_samples_arr[:quantile_params_dim]
@@ -2003,16 +2003,16 @@ class BarSeqFitnessFrame:
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
             try:
-                stan_init = [ init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid) for i in range(chains) ]
+                stan_init = init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid)
                 
-                stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, init=stan_init, chains=chains, 
+                stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, inits=stan_init, chains=chains, 
                                              adapt_delta=adapt_delta)
                 if return_fit:
                     return stan_fit
                     
-                g_arr = [stan_fit[x] for x in g_arr_list]
-                dg_arr = [stan_fit[x] for x in dg_arr_list]
-                f_arr = [stan_fit[x] for x in f_arr_list]
+                g_arr = [stan_fit.stan_variable(x) for x in g_arr_list]
+                dg_arr = [stan_fit.stan_variable(x) for x in dg_arr_list]
+                f_arr = [stan_fit.stan_variable(x) for x in f_arr_list]
                 
                 stan_g = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in g_arr]
                 stan_dg = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in dg_arr]
@@ -2024,13 +2024,13 @@ class BarSeqFitnessFrame:
                 stan_g_samples = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in g_arr]
                 stan_dg_samples = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in dg_arr]
                     
-                params_arr = np.array([stan_fit[x] for x in params_list])
+                params_arr = np.array([stan_fit.stan_variable(x) for x in params_list])
         
                 stan_popt = np.array([np.median(s) for s in params_arr ])
                 stan_pcov = np.cov(params_arr, rowvar=True)
                 
                 
-                stan_resid = np.median(stan_fit["rms_resid"])
+                stan_resid = np.median(stan_fit.stan_variable("rms_resid"))
             except:
                 stan_g = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
                 stan_dg = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
