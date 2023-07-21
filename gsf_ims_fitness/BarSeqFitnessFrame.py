@@ -1740,7 +1740,8 @@ class BarSeqFitnessFrame:
         
         quantile_params_list = params_list[:fit_ind]
         quantile_params_dim = len(quantile_params_list)
-                
+        
+        print(f'    Using model from file: {sm_file}')
         stan_model = stan_utility.compile_model(sm_file)
         
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
@@ -1988,6 +1989,7 @@ class BarSeqFitnessFrame:
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         quantile_dim = len(quantile_list)
         
+        print(f'    Using model from file: {stan_GP_model}')
         stan_model = stan_utility.compile_model(stan_GP_model)
         
         log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
