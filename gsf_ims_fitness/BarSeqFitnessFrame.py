@@ -1658,6 +1658,7 @@ class BarSeqFitnessFrame:
                                        iter_warmup=None,
                                        iter_sampling=None,
                                        chains=4,
+                                       show_progress=False,
                                        auto_save=True,
                                        refit_index=None,
                                        return_fit=False,
@@ -1770,7 +1771,7 @@ class BarSeqFitnessFrame:
                 #    print(f"{k}: {v}")
                 #print()
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup,
-                                             inits=stan_init, chains=chains, adapt_delta=adapt_delta)
+                                             inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress)
                 if return_fit:
                     return stan_fit
         
@@ -1904,6 +1905,7 @@ class BarSeqFitnessFrame:
                        iterations=1000,
                        iter_warmup=None,
                        iter_sampling=None,
+                       show_progress=False,
                        chains=4,
                        auto_save=True,
                        refit_index=None,
@@ -2008,7 +2010,7 @@ class BarSeqFitnessFrame:
                 stan_init = init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid)
                 
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, inits=stan_init, chains=chains, 
-                                             adapt_delta=adapt_delta)
+                                             adapt_delta=adapt_delta, show_progress=show_progress)
                 if return_fit:
                     return stan_fit
                     
