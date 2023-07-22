@@ -2648,11 +2648,16 @@ class BarSeqFitnessFrame:
                                     stan_data = self.bs_frame_stan_data(row, initial=initial)
                                     if len(antibiotic_conc_list) == 2:
                                         # Single non-zero antibiotic concentration
-                                        st_y_0 = list(stan_data[f'y_0'])
-                                        st_y_0_err = list(stan_data[f'y_0_err'])
-                                        x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                                        y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
-                                        s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                        if 'y_0' in stan_data:
+                                            st_y_0 = list(stan_data[f'y_0'])
+                                            st_y_0_err = list(stan_data[f'y_0_err'])
+                                            x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                            y = np.array(st_y_0 + list(stan_data[f'y_{j+1}'])) + stan_data['y_ref']
+                                            s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                        else:
+                                            x = stan_data['x']
+                                            y = stan_data['y']
+                                            s = stan_data['y_err']
                                     elif len(antibiotic_conc_list) == 3:
                                         # Two non-zero antibiotic concentrations
                                         if tet == antibiotic_conc_list[1]:
@@ -2969,11 +2974,18 @@ class BarSeqFitnessFrame:
                                     
                                     if len(antibiotic_conc_list) == 2:
                                         # Single non-zero antibiotic concentration
-                                        st_y_0 = list(stan_data[f'y_0'])
-                                        st_y_0_err = list(stan_data[f'y_0_err'])
-                                        x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
-                                        y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
-                                        s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                        if 'y_0' in stan_data:
+                                            # case for multiple ligands
+                                            st_y_0 = list(stan_data[f'y_0'])
+                                            st_y_0_err = list(stan_data[f'y_0_err'])
+                                            x = np.array([0]*len(st_y_0) + list(stan_data[f'x_{j+1}']))
+                                            y = np.array(st_y_0 + list(stan_data[f'y_{j+1}']))
+                                            s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_err']))
+                                        else:
+                                            # case for single ligand
+                                            x = stan_data['x']
+                                            y = stan_data['y']
+                                            s = stan_data['y_err']
                                     elif len(antibiotic_conc_list) == 3:
                                         # Two non-zero antibiotic concentrations
                                         if tet == antibiotic_conc_list[1]:
@@ -3302,15 +3314,24 @@ class BarSeqFitnessFrame:
                                     else:
                                         # For LacI
                                         if tet == plot_antibiotic_list[0]:
-                                            lig_conc = np.array([0] + list(stan_data[f'x_{i+1}']))
-                                            y = np.array([stan_data[f'y_0_low_tet']] + list(stan_data[f'y_{i+1}_low_tet']))
-                                            y_err = np.array([stan_data[f'y_0_low_tet_err']] + list(stan_data[f'y_{i+1}_low_tet_err']))
+                                            if f'x_{i+1}' in stan_data:
+                                                lig_conc = np.array([0] + list(stan_data[f'x_{i+1}']))
+                                                y = np.array([stan_data[f'y_0_low_tet']] + list(stan_data[f'y_{i+1}_low_tet']))
+                                                y_err = np.array([stan_data[f'y_0_low_tet_err']] + list(stan_data[f'y_{i+1}_low_tet_err']))
+                                            else:
+                                                lig_conc = np.array(stan_data['x'])
+                                                y = np.array(stan_data['y'])
+                                                y_err = np.array(stan_data[f'y_err'])
                                         elif tet == plot_antibiotic_list[1]:
                                             lig_conc = np.array(stan_data[f'x_{i+1}'])
                                             y = np.array(stan_data[f'y_{i+1}_high_tet'])
                                             y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
                                                   
                                     x = hill_funct(lig_conc, *hill_params)
+                                    if plas == 'pVER-RS-01':
+                                        print(f'hill_params: {hill_params}')
+                                        print(f'lig_conc: {lig_conc}')
+                                        print(f'x: {x}')
 
                                     sel = RS_name in rs_exclude_list
                                     if sel:
@@ -3944,9 +3965,9 @@ def init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params):
     
     sig = np.random.uniform(1, 3)
     
-    low_fitness = fit_fitness_difference_params[0]
-    mid_g = fit_fitness_difference_params[1]
-    fitness_n = fit_fitness_difference_params[2]
+    low_fitness = fit_fitness_difference_params[0][0]
+    mid_g = fit_fitness_difference_params[0][1]
+    fitness_n = fit_fitness_difference_params[0][2]
     
     return dict(log_g0=log_g0, log_ginf=log_ginf, log_ec50=log_ec50,
                 sensor_n=n, sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n)
@@ -4018,9 +4039,9 @@ def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand, p
     
     if plasmid == 'pVER':
         if single_tet:
-            low_fitness = fit_fitness_difference_params[0]
-            mid_g = fit_fitness_difference_params[1]
-            fitness_n = fit_fitness_difference_params[2]
+            low_fitness = fit_fitness_difference_params[0][0]
+            mid_g = fit_fitness_difference_params[0][1]
+            fitness_n = fit_fitness_difference_params[0][2]
             
             return dict(sigma=sig, low_fitness=low_fitness, mid_g=mid_g, fitness_n=fitness_n, rho=rho, alpha=alpha)
         else:
@@ -4148,11 +4169,11 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
         if len(lig_list) == 1:
             # Case for single ligand and single antibiotic concentration
             if fit_fitness_difference_params is None:
-                fit_fitness_difference_params = np.full(6, np.nan)
+                fit_fitness_difference_params = np.full((1, 6), np.nan)
     
-            low_fitness = fit_fitness_difference_params[0]
-            mid_g = fit_fitness_difference_params[1]
-            fitness_n = fit_fitness_difference_params[2]
+            low_fitness = fit_fitness_difference_params[0][0]
+            mid_g = fit_fitness_difference_params[0][1]
+            fitness_n = fit_fitness_difference_params[0][2]
             
             x = x_y_s_list[0][0][0]
             y = x_y_s_list[0][0][1]
