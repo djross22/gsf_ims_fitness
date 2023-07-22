@@ -34,6 +34,8 @@ import cmocean
 #from ipywidgets import interact#, interact_manual
 
 def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, inducer_conc_lists=None, tet_conc_list=None):
+    print(f'Running get_sample_plate_map() with inducer_conc_lists: {inducer_conc_lists}')
+    print(f'                               and  growth_plate_layout_file: {growth_plate_layout_file}')
 
     """
     This method returns a dataframe that has the growth conditions for each well in the BarSeq output plate.
