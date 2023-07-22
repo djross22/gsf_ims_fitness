@@ -290,7 +290,7 @@ class BarSeqFitnessFrame:
         self.ref_samples = ref_samples
         
     
-    def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True):
+    def trim_and_sum_barcodes(self, cutoff=None, export_trimmed_file=False, trimmed_export_file=None, auto_save=True, overwrite=False):
         
         barcode_frame = self.barcode_frame
         
@@ -329,9 +329,9 @@ class BarSeqFitnessFrame:
             barcode_frame.to_csv(trimmed_export_file)
             
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
             
-    def label_reference_sequences(self, ref_seq_file_path=None, show_output=True, auto_save=True):
+    def label_reference_sequences(self, ref_seq_file_path=None, show_output=True, auto_save=True, overwrite=False):
         
         barcode_frame = self.barcode_frame
         
@@ -397,7 +397,7 @@ class BarSeqFitnessFrame:
         self.barcode_frame = barcode_frame
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
             
     def mark_chimera_parents(self):
         
@@ -459,7 +459,7 @@ class BarSeqFitnessFrame:
         
         self.barcode_frame = barcode_frame
         
-    def mark_actual_chimeras(self, chimera_cut_line, auto_save=True):
+    def mark_actual_chimeras(self, chimera_cut_line, auto_save=True, overwrite=False):
         
         barcode_frame = self.barcode_frame
         
@@ -474,7 +474,7 @@ class BarSeqFitnessFrame:
         self.barcode_frame = barcode_frame
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
     
     
     def stan_barcode_slope(self,
@@ -491,7 +491,8 @@ class BarSeqFitnessFrame:
                            return_fits=True,
                            use_all_samples_model=True,
                            slope_ref_prior_std=0.1,
-                           auto_save=True,
+                           auto_save=True, 
+                           overwrite=False,
                            bi_linear_alpha=np.log(5),
                            early_slope=False,
                            dilution_factor=10,
@@ -589,7 +590,7 @@ class BarSeqFitnessFrame:
                 fit_frame[f'fit_slope_S{samp}_log_ratio_out_{stan_str}{initial}'] = list(log_ratio_q_dict[samp])
             
             if auto_save:
-                self.save_as_pickle()
+                self.save_as_pickle(overwrite=overwrite)
             
         else:
             # run Stan fit for a single barcode/index
@@ -643,7 +644,7 @@ class BarSeqFitnessFrame:
         display(plate_layout_frame_3)
     
     
-    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, growth_plate_layout_file=None):
+    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, overwrite=False, growth_plate_layout_file=None):
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
         
@@ -735,7 +736,7 @@ class BarSeqFitnessFrame:
         self.sample_keep_dict = sample_keep_dict
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
     
     
     def stan_barcode_slope_index(self,
@@ -1080,6 +1081,7 @@ class BarSeqFitnessFrame:
     
     def fit_barcode_slope(self,
                           auto_save=True,
+                          overwrite=False,
                           refit_index=None,
                           ref_slope_to_average=True,
                           bi_linear_alpha=np.log(5),
@@ -1091,6 +1093,7 @@ class BarSeqFitnessFrame:
             print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
         
         return self.plot_or_fit_barcode_ratios(auto_save=auto_save,
+                                               overwrite=overwrite,
                                                refit_index=refit_index,
                                                ref_slope_to_average=ref_slope_to_average,
                                                bi_linear_alpha=bi_linear_alpha,
@@ -1172,6 +1175,7 @@ class BarSeqFitnessFrame:
     
     def plot_or_fit_barcode_ratios(self,
                                    auto_save=True,
+                                   overwrite=False,
                                    refit_index=None,
                                    ref_slope_to_average=True,
                                    bi_linear_alpha=np.log(5),
@@ -1481,12 +1485,13 @@ class BarSeqFitnessFrame:
             self.barcode_frame = barcode_frame
                 
             if auto_save:
-                self.save_as_pickle()
+                self.save_as_pickle(overwrite=overwrite)
         
     
     def add_fitness_from_slopes(self,
                                 initial=None,
                                 auto_save=True,
+                                overwrite=False,
                                 is_on_aws=False):
         
         fit_frame = self.barcode_frame
@@ -1543,7 +1548,7 @@ class BarSeqFitnessFrame:
         self.barcode_frame = fit_frame.copy()
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
         
     
     def plot_fit_residuals(self, initial=None):
@@ -1634,7 +1639,8 @@ class BarSeqFitnessFrame:
     def set_fit_fitness_difference_params(self,
                                           fit_fitness_difference_params=None,
                                           params_file=None,
-                                          auto_save=True):
+                                          auto_save=True,
+                                          overwrite=False):
         antibiotic_conc_list = self.antibiotic_conc_list
         plasmid = self.plasmid
         
@@ -1651,7 +1657,7 @@ class BarSeqFitnessFrame:
         self.fit_fitness_difference_params = fit_fitness_difference_params
             
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
         
     
     def stan_fitness_difference_curves(self,
@@ -1663,6 +1669,7 @@ class BarSeqFitnessFrame:
                                        chains=4,
                                        show_progress=False,
                                        auto_save=True,
+                                       overwrite=False,
                                        refit_index=None,
                                        return_fit=False,
                                        initial=None):
@@ -1898,7 +1905,7 @@ class BarSeqFitnessFrame:
         self.barcode_frame = barcode_frame
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
         
             
     def stan_GP_curves(self,
@@ -1911,6 +1918,7 @@ class BarSeqFitnessFrame:
                        show_progress=False,
                        chains=4,
                        auto_save=True,
+                       overwrite=False,
                        refit_index=None,
                        return_fit=False,
                        initial=None):
@@ -2200,10 +2208,10 @@ class BarSeqFitnessFrame:
         self.barcode_frame = barcode_frame
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
             
         
-    def merge_barcodes(self, small_bc_index_list, big_bc_index, auto_save=True):
+    def merge_barcodes(self, small_bc_index_list, big_bc_index, auto_save=True, overwrite=False):
         # merge each row/barcode in small_bc_index_list into row with big_bc_index (add read counts)
         # remove small rows/barcodes from dataframe
         
@@ -2236,7 +2244,7 @@ class BarSeqFitnessFrame:
         self.barcode_frame = barcode_frame
         
         if auto_save:
-            self.save_as_pickle()
+            self.save_as_pickle(overwrite=overwrite)
         
             
     def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None):
