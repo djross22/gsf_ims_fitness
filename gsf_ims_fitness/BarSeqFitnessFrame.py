@@ -2317,7 +2317,7 @@ class BarSeqFitnessFrame:
         axs[0].tick_params(labelsize=16);
     
         axs[1].matshow(BC_total_arr, cmap="inferno", vmin=vmin);
-        axs[1].grid(b=False);
+        axs[1].grid(visible=False);
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             axs[1].set_xticklabels([i+1 for i in range(12)], size=16);
