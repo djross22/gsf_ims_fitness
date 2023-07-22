@@ -79,6 +79,10 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         
         if (len(inducer_list) == 1) and (len(tet_conc_list) == 2):
             # This handles the case for the original plate layout, with 12 inducer concentrations, each measured with and without antibiotic
+            msg = f'Code for defining the plate layout without growth_plate_layout_file is not yet properly implemented for the plate layout, with 12 inducer concentrations, each measured with and without antibiotic. Use a growth_plate_layout_file to auatomatically define the plate layout, or update/fix the code.'
+            raise NotImplementedError(msg)
+            if inducer_conc_list[0] != 0:
+                inducer_conc_list = [0] + list(inducer_conc_list)
             inducer_conc_list_in_plate = np.asarray(np.split(np.asarray(inducer_conc_list),4)).transpose().flatten().tolist()*8
             inducer_conc_list_in_plate = np.asarray([(inducer_conc_list[j::4]*4)*2 for j in range(4)]*1).flatten()
             
