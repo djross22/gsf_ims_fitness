@@ -13,7 +13,7 @@ data {
   int<lower=1> M_no_tet;    // number of no_tet samples
   int<lower=1> M_with_tet;  // number of with_tet samples
   
-  int x[N];                 // time points (i.e. plate number - 2)
+  array[N] int x;                 // time points (i.e. plate number - 2)
   
   array[N, M_ref] int n_reads_ref;           // ref sample barcode read counts for each time point
   array[N, M_ref] int n_spike_ref;           // ref sample spike-in read count for each time point
