@@ -39,7 +39,7 @@ transformed data {
 
 parameters {
   real<lower=log_g_min, upper=log_g_max> log_g0;       // log10 of gene expression level at zero induction
-  real<lower=log_g_min, upper=log_g_max>  log_ginf_1;     // log10 of gene expression level at infinite induction
+  real<lower=log_g_min, upper=log_g_max> log_ginf_1;     // log10 of gene expression level at infinite induction
   
   real<lower=log_x_min, upper=log_x_max> log_ec50_1;           // input level (x) that gives output 1/2 way between g0 and ginf
   real<lower=0> sensor_n_1;                                     // cooperativity exponent of sensor gene expression vs. x curve
