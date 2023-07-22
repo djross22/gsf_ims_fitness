@@ -653,12 +653,15 @@ class BarSeqFitnessFrame:
         ligand_list = getattr(self, 'ligand_list', None)
         inducer_conc_lists = getattr(self, 'inducer_conc_lists', None)
         
-        sample_plate_map, anti_out = fitness.get_sample_plate_map(growth_plate_layout_file=growth_plate_layout_file,
-                                                                  inducer_list=ligand_list, 
-                                                                  inducer_conc_lists=inducer_conc_lists, 
-                                                                  tet_conc_list=antibiotic_conc_list)
-        if anti_out is not None:
-            self.antibiotic = anti_out
+        sample_plate_map = getattr(self, 'sample_plate_map', None)
+        if sample_plate_map is None:
+            sample_plate_map, anti_out = fitness.get_sample_plate_map(growth_plate_layout_file=growth_plate_layout_file,
+                                                                      inducer_list=ligand_list, 
+                                                                      inducer_conc_lists=inducer_conc_lists, 
+                                                                      tet_conc_list=antibiotic_conc_list)
+            if anti_out is not None:
+                self.antibiotic = anti_out
+        
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
         # For backward compatibility, check if the old version is used, and convert it to the new version
