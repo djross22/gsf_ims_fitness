@@ -40,6 +40,8 @@ data {
   real mid_g_std_high_tet;            // gene expression level at 1/2 max fitness difference, high tet
   real fitness_n_std_high_tet;        // cooperativity coefficient of fitness difference curve, high tet
   
+  array[2] real log_x_max;           // maximum possible value for log_ec50, previously set to log10(max(x)) + 1.289;
+  
 }
 
 transformed data {
@@ -52,12 +54,12 @@ transformed data {
   
   x_max = max(x_1);
   x_min = min(x_1);
-  log_x_1_max = log10(x_max) + 1.289;
+  log_x_1_max = log_x_max[1];
   log_x_1_min = log10(x_min) - 1.3;
   
   x_max = max(x_2);
   x_min = min(x_2);
-  log_x_2_max = log10(x_max) + 1.289;
+  log_x_2_max = log_x_max[2];
   log_x_2_min = log10(x_min) - 1.3;
   
 }

@@ -3907,13 +3907,34 @@ class BarSeqFitnessFrame:
         
         ramr_fitness_corection = getattr(self, 'ramr_fitness_corection', None)
         
-        return get_stan_data(st_row=st_row, plot_df=plot_df, antibiotic_conc_list=antibiotic_conc_list, 
-                             lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
-                             old_style_columns=old_style_columns, initial=initial, plasmid=plasmid,
-                             is_gp_model=is_gp_model,
-                             min_err=min_err, 
-                             ref_samples=self.ref_samples,
-                             ramr_fitness_corection=ramr_fitness_corection)
+        stan_data =  get_stan_data(st_row=st_row, plot_df=plot_df, antibiotic_conc_list=antibiotic_conc_list, 
+                                   lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
+                                   old_style_columns=old_style_columns, initial=initial, plasmid=plasmid,
+                                   is_gp_model=is_gp_model,
+                                   min_err=min_err, 
+                                   ref_samples=self.ref_samples,
+                                   ramr_fitness_corection=ramr_fitness_corection)
+        if plasmid == 'pVER':
+            if len(self.antibiotic_conc_list) == 2:
+                # Original 2019 experiment, with single ligand and single antibiotic
+                x_min = stan_data['x']
+                x_min = min(x_min[x_min>0])
+                x_max = max(stan_data['x'])
+                log_x_max = 2*np.log10(x_max) - np.log10(x_min) + 1
+                stan_data['log_x_max'] = np.array([log_x_max])
+            elif len(self.antibiotic_conc_list) == 3:
+                # 2022 experimetn, with two ligands and two antibiotic concentrations
+                log_x_max_arr = []
+                for k  in ['x_1', 'x_2']:
+                    x_min = stan_data[k]
+                    x_min = min(x_min[x_min>0])
+                    x_max = max(stan_data[k])
+                    log_x_max = 2*np.log10(x_max) - np.log10(x_min) + 0.2
+                    log_x_max_arr.append(log_x_max)
+                log_x_max_arr = np.array(log_x_max_arr)
+                stan_data['log_x_max'] = log_x_max_arr
+        
+        return stan_data
 
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)

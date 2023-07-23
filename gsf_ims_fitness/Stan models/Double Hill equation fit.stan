@@ -14,13 +14,15 @@ data {
   real mid_g_mu;            // gene expression level at 1/2 max fitness difference
   real fitness_n_mu;        // cooperativity coefficient of fitness difference curve
   
+  array[1] real log_x_max;  // maximum possible value for log_ec50, previously set to log10(max(x)) + 1.289;
+  
 }
 
 transformed data {
   real x_min;
   real x_max;
-  real log_x_min;
-  real log_x_max;
+  real log_x_1_min;
+  real log_x_1_max;
   
   x_max = max(x);
   x_min = x_max;
@@ -32,8 +34,8 @@ transformed data {
 	}
   }
   
-  log_x_max = log10(x_max) + 1.289;
-  log_x_min = log10(x_min) - 1.3;
+  log_x_1_min = log10(x_min) - 1.3;
+  log_x_1_max = log_x_max[1];
   
 }
 
@@ -41,7 +43,7 @@ parameters {
   real<lower=log_g_min, upper=log_g_max> log_g0;       // log10 of gene expression level at zero induction
   real<lower=log_g_min, upper=log_g_max> log_ginf_1;     // log10 of gene expression level at infinite induction
   
-  real<lower=log_x_min, upper=log_x_max> log_ec50_1;           // input level (x) that gives output 1/2 way between g0 and ginf
+  real<lower=log_x_1_min, upper=log_x_1_max> log_ec50_1;           // input level (x) that gives output 1/2 way between g0 and ginf
   real<lower=0> sensor_n_1;                                     // cooperativity exponent of sensor gene expression vs. x curve
   real<lower=0> sigma;                                        // scale factor for standard deviation of noise in y
   
@@ -87,8 +89,8 @@ model {
   sensor_n_1 ~ gamma(9.0, 6.0);
   
   // Prior on log_ec50_1
-  target += log1m(erf((log_x_min + 0.7 - log_ec50_1)/0.5));
-  target += log1m(erf((log_ec50_1 - log_x_max + 0.8)/0.3));
+  target += log1m(erf((log_x_1_min + 0.7 - log_ec50_1)/0.5));
+  target += log1m(erf((log_ec50_1 - log_x_1_max + 0.8)/0.3));
   
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
