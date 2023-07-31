@@ -299,13 +299,18 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         print()
         
         gp_frame = pd.read_csv(growth_plate_layout_file)
-        print(f'input inducer units: {np.unique(gp_frame.inducerUnits)}')
-        if 'mmol/L' in np.unique(gp_frame.inducerUnits):
-            if 'umol/L' in np.unique(gp_frame.inducerUnits):
-                raise ValueError(f'Growth plate file contains multiple inducer units (inducerUnits), {growth_plate_layout_file}')
-            gp_frame['inducerUnits'] = 'umol/L'
-            gp_frame['inducerConcentration'] = gp_frame['inducerConcentration']*1000
-            print(f'change to inducer units: {np.unique(gp_frame.inducerUnits)}')
+        df = gp_frame
+        df = df[[type(x) is str for x in df.inducerUnits]]
+        if len(df) > 0:
+            print(f'input inducer units: {np.unique(df.inducerUnits)}')
+            if 'mmol/L' in np.unique(df.inducerUnits):
+                if 'umol/L' in np.unique(df.inducerUnits):
+                    raise ValueError(f'Growth plate file contains multiple inducer units (inducerUnits), {growth_plate_layout_file}')
+                df['inducerUnits'] = 'umol/L'
+                df['inducerConcentration'] = df['inducerConcentration']*1000
+                print(f'change to inducer units: {np.unique(df.inducerUnits)}')
+        else:
+            print('Warning: No inducer units found!')
         
         antibiotic = list(np.unique(gp_frame.selectorId))
         if 'none' in antibiotic:
