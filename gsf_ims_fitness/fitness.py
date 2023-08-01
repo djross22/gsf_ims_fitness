@@ -1350,7 +1350,7 @@ def fitness_corection(popt_corr, lig_conc, early_fitness, raw_fitness, crit_conc
 
 def log_g_limits(plasmid="pVER"):
     if plasmid == "pVER":
-        log_g_min = 0
+        log_g_min = 0.5
         log_g_max = 4.7
         log_g_prior_scale = 0.15
         wild_type_ginf = 2.44697108e+04
