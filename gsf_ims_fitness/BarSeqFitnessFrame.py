@@ -1112,12 +1112,9 @@ class BarSeqFitnessFrame:
 
         
         
-        if self.plasmid == 'pVER':
-            if spike_in_initial is None:
-                spike_in_initial = 'sab'
-        elif self.plasmid == 'pRamR':
-            if spike_in_initial is None:
-                spike_in_initial = 'sp01'
+        if spike_in_initial is None:
+            spike_in_initial = self.get_default_initial()
+            
         spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
         
         
@@ -1191,10 +1188,7 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         
         if show_spike_ins is None:
-            if self.plasmid == 'pVER':
-                show_spike_ins = ["b"]
-            elif self.plasmid == 'pRamR':
-                show_spike_ins = ["sp01"]
+            show_spike_ins = [self.get_default_initial()]
         
         if refit_index is None:
             if plots_not_fits:
@@ -1514,12 +1508,8 @@ class BarSeqFitnessFrame:
         k2 = list(spike_in_fitness_dict[k1].keys())[0]
         constant_spike_in = type(spike_in_fitness_dict[k1][k2]) is float
         
-        if plasmid == 'pVER':
-            if initial is None:
-                initial = 'b'
-        elif plasmid == 'pRamR':
-            if initial is None:
-                initial = 'sp01'
+        if initial is None:
+            initial = self.get_default_initial()
         spike_in = fitness.get_spike_in_name_from_inital(plasmid, initial)
         
         for samp in sample_list:
@@ -1553,10 +1543,7 @@ class BarSeqFitnessFrame:
     
     def plot_fit_residuals(self, initial=None):
         if initial is None:
-            if self.plasmid == 'pVER':
-                initial = 'b'
-            elif self.plasmid == 'pRamR':
-                initial = 'sp01'
+            initial = self.get_default_initial()
         
         barcode_frame = self.barcode_frame
         
@@ -1682,12 +1669,8 @@ class BarSeqFitnessFrame:
         if iter_sampling is None:
             iter_sampling = int(iterations/2)
         
-        if plasmid == 'pVER':
-            if initial is None:
-                initial = 'b'
-        elif plasmid == 'pRamR':
-            if initial is None:
-                initial = 'sp01'
+        if initial is None:
+            initial = self.get_default_initial()
             
         print(f"Using Stan to fit to fitness curves to find sensor parameters for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}:")
@@ -1932,12 +1915,8 @@ class BarSeqFitnessFrame:
         if iter_sampling is None:
             iter_sampling = int(iterations/2)
         
-        if plasmid == 'pVER':
-            if initial is None:
-                initial = 'b'
-        elif plasmid == 'pRamR':
-            if initial is None:
-                initial = 'sp01'
+        if initial is None:
+            initial = self.get_default_initial()
                 
         print(f"Using Stan to fit to fitness curves with GP model for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}")
@@ -2836,9 +2815,9 @@ class BarSeqFitnessFrame:
         
         if plot_initials is None:
             if self.plasmid == 'pVER':
-                plot_initials = ['b', 'e']
+                plot_initials = [self.get_default_initial()]
             elif self.plasmid == 'pRamR':
-                plot_initials = ['sp01', 'ea.sp01']
+                plot_initials = [self.get_default_initial(), f'ea.{self.get_default_initial()}']
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -3156,6 +3135,10 @@ class BarSeqFitnessFrame:
                                             show_old_fit=True,
                                             return_fig=False,
                                             fig_size=[12, 6]):
+        if spike_in_initial is None:
+            spike_in_initial = self.get_default_initial()
+        spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
+        print(f'Calibrating with counts normalized to {spike_in}, initial: {spike_in_initial}')
         plasmid = self.plasmid
         if plasmid == 'pVER':
             stan_model_file = "Hill equation fit-zero high.stan"
@@ -3898,12 +3881,8 @@ class BarSeqFitnessFrame:
         antibiotic_conc_list = self.antibiotic_conc_list
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
-        if plasmid == 'pVER':
-            if initial is None:
-                initial = 'sab'
-        elif plasmid == 'pRamR':
-            if initial is None:
-                initial = 'sp01'
+        if initial is None:
+            initial = self.get_default_initial()
         
         ramr_fitness_corection = getattr(self, 'ramr_fitness_corection', None)
         
@@ -3935,6 +3914,17 @@ class BarSeqFitnessFrame:
                 stan_data['log_x_max'] = log_x_max_arr
         
         return stan_data
+    
+    
+    def get_default_initial(self):
+        plasmid = self.plasmid
+        if plasmid == 'pVER':
+            initial = 'b'
+        elif plasmid == 'pRamR':
+            initial = 'sp01'
+        
+        return initial
+
 
 def plot_colors():
     return sns.hls_palette(12, l=.4, s=.8)
