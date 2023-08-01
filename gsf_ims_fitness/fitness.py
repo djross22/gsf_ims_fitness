@@ -306,9 +306,9 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             if 'mmol/L' in np.unique(df.inducerUnits):
                 if 'umol/L' in np.unique(df.inducerUnits):
                     raise ValueError(f'Growth plate file contains multiple inducer units (inducerUnits), {growth_plate_layout_file}')
-                df['inducerUnits'] = 'umol/L'
-                df['inducerConcentration'] = df['inducerConcentration']*1000
-                print(f'change to inducer units: {np.unique(df.inducerUnits)}')
+                gp_frame['inducerUnits'] = 'umol/L'
+                gp_frame['inducerConcentration'] = gp_frame['inducerConcentration']*1000
+                print(f'change to inducer units: umol/L')
         else:
             print('Warning: No inducer units found!')
         
