@@ -3896,8 +3896,13 @@ class BarSeqFitnessFrame:
             if len(self.antibiotic_conc_list) == 2:
                 # Original 2019 experiment, with single ligand and single antibiotic
                 x_min = stan_data['x']
-                x_min = min(x_min[x_min>0])
-                x_max = max(stan_data['x'])
+                x_min = x_min[x_min>0]
+                if len(x_min)>0:
+                    x_min = min(x_min)
+                    x_max = max(stan_data['x'])
+                else:
+                    x_min = 1
+                    x_max = 1000
                 log_x_max = 2*np.log10(x_max) - np.log10(x_min) + 1
                 stan_data['log_x_max'] = np.array([log_x_max])
             elif len(self.antibiotic_conc_list) == 3:
@@ -3905,7 +3910,11 @@ class BarSeqFitnessFrame:
                 log_x_max_arr = []
                 for k  in ['x_1', 'x_2']:
                     x_min = stan_data[k]
-                    x_min = min(x_min[x_min>0])
+                    x_min = x_min[x_min>0]
+                    if len(x_min)>0:
+                        x_min = min(x_min)
+                    else:
+                        x_min = 1
                     x_max = max(stan_data[k])
                     log_x_max = 2*np.log10(x_max) - np.log10(x_min) + 0.2
                     log_x_max_arr.append(log_x_max)
