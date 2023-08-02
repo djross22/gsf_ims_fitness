@@ -747,6 +747,7 @@ class BarSeqFitnessFrame:
                                  iter_sampling=None,
                                  chains=4,
                                  adapt_delta=0.9,
+                                 stan_output_dir=None,
                                  tau_default=0.01,
                                  tau_de_weight=10,
                                  ref_tau_factor=1,
@@ -863,7 +864,7 @@ class BarSeqFitnessFrame:
                     stan_data = dict(N=len(x0), x=x0, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                     
                     stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                                        adapt_delta=adapt_delta, show_progress=show_progress)
+                                                        adapt_delta=adapt_delta, show_progress=show_progress, output_dir=stan_output_dir)
                     if return_fits:
                         stan_fit_list.append(stan_fit)
                 
@@ -896,7 +897,7 @@ class BarSeqFitnessFrame:
                 stan_data = dict(N=len(x), x=x, n_reads=n_reads, spike_in_reads=spike_in_reads, tau=tau)
                 
                 stan_fit = stan_model_no_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                                    adapt_delta=adapt_delta, show_progress=show_progress)
+                                                    adapt_delta=adapt_delta, show_progress=show_progress, output_dir=stan_output_dir)
                 
                 if return_fits:
                     stan_fit_list.append(stan_fit)
@@ -961,7 +962,7 @@ class BarSeqFitnessFrame:
                 
                 try:
                     stan_fit = stan_model_with_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                                          adapt_delta=adapt_delta)
+                                                          adapt_delta=adapt_delta, output_dir=stan_output_dir)
                     last_good_stan_fit = stan_fit
                 except RuntimeError as err:
                     if 'Initialization failed' in f'{err}':
@@ -1005,7 +1006,7 @@ class BarSeqFitnessFrame:
                         
                         try:
                             stan_fit = stan_model_with_tet.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                                                  adapt_delta=adapt_delta, inits=stan_init)
+                                                                  adapt_delta=adapt_delta, inits=stan_init, output_dir=stan_output_dir)
                             
                         except Exception as err:
                             print(f'Stan fit failed again, giving up: {err}')
@@ -1045,7 +1046,7 @@ class BarSeqFitnessFrame:
             stan_data['tau_with_tet'] = np.array(tau_with_tet).transpose()
             
             stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, chains=chains, 
-                                         adapt_delta=adapt_delta, show_progress=show_progress)
+                                         adapt_delta=adapt_delta, show_progress=show_progress, output_dir=stan_output_dir)
             
             if not return_fits:
                 if len(non_ref_without_tet) == 0:
@@ -1654,6 +1655,7 @@ class BarSeqFitnessFrame:
                                        iter_warmup=None,
                                        iter_sampling=None,
                                        chains=4,
+                                       stan_output_dir=None,
                                        show_progress=False,
                                        auto_save=True,
                                        overwrite=False,
@@ -1764,7 +1766,8 @@ class BarSeqFitnessFrame:
                 #    print(f"{k}: {v}")
                 #print()
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup,
-                                             inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress)
+                                             inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
+                                             output_dir=stan_output_dir)
                 if return_fit:
                     return stan_fit
         
@@ -1900,6 +1903,7 @@ class BarSeqFitnessFrame:
                        iter_sampling=None,
                        show_progress=False,
                        chains=4,
+                       stan_output_dir=None,
                        auto_save=True,
                        overwrite=False,
                        refit_index=None,
@@ -2000,7 +2004,7 @@ class BarSeqFitnessFrame:
                 stan_init = init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid)
                 
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, inits=stan_init, chains=chains, 
-                                             adapt_delta=adapt_delta, show_progress=show_progress)
+                                             adapt_delta=adapt_delta, show_progress=show_progress, output_dir=stan_output_dir)
                 if return_fit:
                     return stan_fit
                     
