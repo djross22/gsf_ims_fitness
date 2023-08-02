@@ -3367,7 +3367,10 @@ class BarSeqFitnessFrame:
                 ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='new fit');
                     
         
-        axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=3, borderaxespad=0, frameon=True);
+        ncol = int(len(RS_list)/40)
+        if ncol == 0:
+            ncol = 1
+        axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=ncol, borderaxespad=0, frameon=True);
         if run_stan_fit and save_fitness_difference_params:
             self.fit_fitness_difference_params = stan_params_list
         
