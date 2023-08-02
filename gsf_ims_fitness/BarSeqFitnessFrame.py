@@ -3357,6 +3357,10 @@ class BarSeqFitnessFrame:
                 num_str = [ f"{x:.4}" for x in stan_perr ]
                 print(f"                 Error estimate: {num_str}")
                 stan_params_list.append(list(stan_popt) + list(stan_perr))
+                dev = stan_data['y'] - np.mean(stan_fit.stan_variable('mean_y'), axis=0)
+                for w_str, w in zip(['Unweighted', 'Weighted'], [None, 1/stan_data['y_err']**2]):
+                    rms_dev = np.sqrt(np.average(dev**2, weights=w))
+                    print(f"           {w_str} RMS deviation: {rms_dev:.4}")
                 
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
                 y_plot_fit = fit_funct(x_plot_fit, *stan_popt)
