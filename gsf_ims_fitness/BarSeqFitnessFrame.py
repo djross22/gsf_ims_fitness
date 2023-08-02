@@ -3240,6 +3240,8 @@ class BarSeqFitnessFrame:
             alpha = 0.7
             ms = 8
             color_ind = -1
+            fmt_list = ['o', '^', 'v', '<', '>', 'd', 'p', '*', 's', 'h', '+', 'x']
+            fmt_ind = 0
             x_fit_list = []
             y_fit_list = []
             y_err_list = []
@@ -3267,16 +3269,10 @@ class BarSeqFitnessFrame:
                                 color_ind += 1
                                 if color_ind >= len(fit_plot_colors):
                                     color_ind=0
-                                    if fmt=='o':
-                                        fmt = '^'
-                                    elif fmt=='^':
-                                        fmt = 'v'
-                                    elif fmt=='v':
-                                        fmt = '<'
-                                    elif fmt=='<':
-                                        fmt = '>'
-                                    elif fmt=='>':
-                                        fmt = 'd'
+                                    fmt_ind += 1
+                                    if fmt_ind >= len(fmt_list):
+                                        fmt_ind = 0
+                                    fmt = fmt_list[fmt_ind]
                                 color=fit_plot_colors[color_ind]
                                 
                                 var_labeled = False
