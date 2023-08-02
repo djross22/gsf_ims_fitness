@@ -16,6 +16,8 @@ def compile_model(filename, model_name=None, force_recompile=False, verbose=True
     os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
     
     sm = cmdstanpy.CmdStanModel(stan_file=filename)
+    
+    os.chdir(return_directory)
 
     return sm
 
