@@ -3307,10 +3307,6 @@ class BarSeqFitnessFrame:
                                             y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
                                                   
                                     x = hill_funct(lig_conc, *hill_params)
-                                    if plas == 'pVER-RS-01':
-                                        print(f'hill_params: {hill_params}')
-                                        print(f'lig_conc: {lig_conc}')
-                                        print(f'x: {x}')
 
                                     sel = RS_name in rs_exclude_list
                                     if sel:
