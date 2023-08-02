@@ -1753,7 +1753,8 @@ class BarSeqFitnessFrame:
         rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
             print()
-            print(f"fitting row index: {st_index}, for ligands: {lig_list}")
+            now = datetime.datetime.now()
+            print(f"{now}, fitting row index: {st_index}, for ligands: {lig_list}")
             
             stan_data = self.bs_frame_stan_data(st_row, initial=initial)
 
@@ -2001,7 +2002,8 @@ class BarSeqFitnessFrame:
         rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
             print()
-            print(f"fitting row index: {st_index}, for ligands: {lig_list}")
+            now = datetime.datetime.now()
+            print(f"{now}, fitting row index: {st_index}, for ligands: {lig_list}")
             
             stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=True)
         
