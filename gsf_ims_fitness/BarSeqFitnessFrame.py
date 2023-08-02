@@ -10,6 +10,7 @@ import os    # operating sytem utility
 import sys
 import warnings
 import datetime
+import logging
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -1663,6 +1664,9 @@ class BarSeqFitnessFrame:
                                        return_fit=False,
                                        initial=None):
         
+        cmdstanpy_logger = logging.getLogger("cmdstanpy")
+        cmdstanpy_logger.disabled = True
+        
         plasmid = self.plasmid
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
@@ -1909,6 +1913,9 @@ class BarSeqFitnessFrame:
                        refit_index=None,
                        return_fit=False,
                        initial=None):
+        
+        cmdstanpy_logger = logging.getLogger("cmdstanpy")
+        cmdstanpy_logger.disabled = True
         
         plasmid = self.plasmid
         
