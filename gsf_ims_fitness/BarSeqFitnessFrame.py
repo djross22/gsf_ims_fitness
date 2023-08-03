@@ -11,6 +11,7 @@ import sys
 import warnings
 import datetime
 import logging
+import traceback
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -1755,10 +1756,10 @@ class BarSeqFitnessFrame:
             print()
             now = datetime.datetime.now()
             print(f"{now}, fitting row index: {st_index}, for ligands: {lig_list}")
-            
-            stan_data = self.bs_frame_stan_data(st_row, initial=initial)
 
             try:
+                stan_data = self.bs_frame_stan_data(st_row, initial=initial)
+                
                 if len(lig_list) == 1:
                     stan_init = init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params)
                 elif len(lig_list) == 2:
@@ -1799,18 +1800,22 @@ class BarSeqFitnessFrame:
                     g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2, log_ginf_g0_ind_3]]
                     hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
             
-            except:
+            except Exception as err:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 stan_resid = np.nan
                 stan_samples_out = np.full((quantile_params_dim, 32), np.nan)
                 stan_quantiles = np.full((quantile_params_dim, quantile_dim), np.nan)
-                print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
                 hill_on_at_zero_prob = np.nan
+                
                 if len(lig_list) == 1:
                     hill_invert_prob = np.nan
                 else:
                     hill_invert_prob = [np.nan]*len(lig_list)
+                
+                print(f"Error during Stan fitting for index {st_index}: {err}", sys.exc_info()[0])
+                tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
+                print(tb_str)
             
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, st_index)
@@ -2005,11 +2010,12 @@ class BarSeqFitnessFrame:
             now = datetime.datetime.now()
             print(f"{now}, fitting row index: {st_index}, for ligands: {lig_list}")
             
-            stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=True)
         
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
             try:
+                stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=True)
+                
                 stan_init = init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid)
                 
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, inits=stan_init, chains=chains, 
@@ -2038,7 +2044,7 @@ class BarSeqFitnessFrame:
                 
                 
                 stan_resid = np.median(stan_fit.stan_variable("rms_resid"))
-            except:
+            except Exception as err:
                 stan_g = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
                 stan_dg = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
                 stan_f = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(f_arr_list))]
@@ -2053,7 +2059,10 @@ class BarSeqFitnessFrame:
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 
                 stan_resid = np.nan
-                print(f"Error during Stan fitting for index {st_index}:", sys.exc_info()[0])
+                
+                print(f"Error during Stan fitting for index {st_index}: {err}", sys.exc_info()[0])
+                tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
+                print(tb_str)
                 
             return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, st_index)
         
