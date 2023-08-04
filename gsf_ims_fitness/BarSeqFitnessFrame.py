@@ -2829,6 +2829,8 @@ class BarSeqFitnessFrame:
                             ylim = None,
                             show_fits=True,
                             show_GP=False,
+                            fitness_scale_factor=1,
+                            show_hill_fit=False,
                             log_g_scale=False,
                             box_size=6,
                             show_bc_str=False,
@@ -2875,7 +2877,7 @@ class BarSeqFitnessFrame:
             if "log_g0" not in barcode_frame.columns:
                 show_fits = False
         
-        if show_GP:
+        if show_GP or show_hill_fit:
             plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/3]
         else:
             plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/6]
@@ -2914,7 +2916,7 @@ class BarSeqFitnessFrame:
         
         fig_axs_list = []
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
-            if show_GP:
+            if show_GP or show_hill_fit:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     fig, axs_grid = plt.subplots(2, 2)
@@ -2941,8 +2943,8 @@ class BarSeqFitnessFrame:
                 fill_style = "full" if initial==plot_initials[0] else "none"
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
-                        y = row[f"fitness_{tet}_estimate_{initial}"]
-                        s = row[f"fitness_{tet}_err_{initial}"]
+                        y = row[f"fitness_{tet}_estimate_{initial}"]*fitness_scale_factor
+                        s = row[f"fitness_{tet}_err_{initial}"]*fitness_scale_factor
                         axl.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                     
                     y_zero = row[f"fitness_{0}_estimate_{initial}"]
@@ -2961,8 +2963,8 @@ class BarSeqFitnessFrame:
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
                             x = df[lig]
-                            y = [row[f"fitness_S{i}_{initial}"] for i in df.sample_id]
-                            s = [row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id]
+                            y = np.array([row[f"fitness_S{i}_{initial}"] for i in df.sample_id])*fitness_scale_factor
+                            s = np.array([row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])*fitness_scale_factor
                             axl.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
                     
                     if 'ea' not in initial:
@@ -3020,7 +3022,8 @@ class BarSeqFitnessFrame:
                         barcode_str += f"\ny_ref: {y_ref:.3f}"
                     axl.text(x=0, y=1.025, s=barcode_str, horizontalalignment='left', verticalalignment='bottom',
                             transform=axl.transAxes, fontsize=13, fontfamily=fontfamily)
-                    axl.set_ylabel('Fitness (log(10)/plate)', size=14)
+                    fitness_units = 'log(10)/plate' if fitness_scale_factor==1 else '1/h'
+                    axl.set_ylabel(f'Fitness ({fitness_units})', size=14)
                     axl.tick_params(labelsize=12);
                     axr.set_ylabel(f'Fitness effect of {self.antibiotic}', size=14)
                     axr.tick_params(labelsize=12);
@@ -3125,6 +3128,35 @@ class BarSeqFitnessFrame:
                         axg.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=10)
                         
                         # Also plot Hill fit result for g
+                        x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                        x_fit = np.insert(x_fit, 0, 0)
+                        params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}']
+                        hill_params = [10**row[p] for p in params_list[:-1]] + [row[params_list[-1]]]
+                        y_fit = hill_funct(x_fit, *hill_params)
+                        axg.plot(x_fit, y_fit, c=color, zorder=1000)
+                        
+                
+            if show_hill_fit and (not show_GP):
+                if old_style_plots:
+                    # Only plot Hill fit result for g
+                    x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
+                    x_fit = np.insert(x_fit, 0, 0)
+                    hill_params = 10**row["sensor_params"][:4]
+                    axg.plot(x_fit, hill_funct(x_fit, *hill_params), c='k', zorder=1000)
+                else:
+                    fill_alpha = 0.2
+                    
+                    tet_level_list = ['high'] if len(antibiotic_conc_list)==2 else ['low', 'high']
+                    for lig, color in zip(ligand_list, fit_plot_colors):
+                        stan_g = 10**row[f"GP_log_g_{lig}"]
+                        stan_dg = row[f"GP_dlog_g_{lig}"]
+                        
+                        df = plot_df
+                        df = df[(df.ligand==lig)|(df.ligand=='none')]
+                        df = df[df.with_tet]
+                        x = np.unique(df[lig])
+                        
+                        # Only plot Hill fit result for g
                         x_fit = np.logspace(np.log10(linthresh/10), np.log10(2*max(x)))
                         x_fit = np.insert(x_fit, 0, 0)
                         params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}']

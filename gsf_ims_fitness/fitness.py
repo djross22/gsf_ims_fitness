@@ -1167,8 +1167,19 @@ def general_distance(s1, s2, try_both_distances=True):
     else:
         return levenshtein_distance(s1, s2)
 
-def fitness_scale():
-    return np.log(10)/165*60
+def fitness_scale(plasmid="pVER"):
+    # Returns fitness scale factor in 1/hour
+    if plasmid == "pVER":
+        # 10-fold dilution between plates;
+        # Nominal incubation time: 2h:35m
+        #     actual time between plate starts = nominal + 10 minutes = 165 minutes
+        scale = np.log(10)/165*60
+    elif plasmid == "pRamR":
+        # 10-fold dilution between plates;
+        # Nominal incubation time: 3h
+        #     actual time between plate starts = nominal + 10 minutes = 190 minutes
+        scale = np.log(10)/190*60
+    return scale
             
 def gray_out(color, s_factor=0.5, v_factor=1):
     hsv_color = colors.rgb_to_hsv(colors.to_rgb(color)) * np.array([1, s_factor, v_factor])
