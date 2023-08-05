@@ -1521,3 +1521,22 @@ def parse_fastq_to_df(filename):
         
     return df
     
+
+def weighted_t_test(a, b, a_err=None, b_err=None):
+    import statsmodels.api as sm
+    
+    x = np.array([0]*len(a) + [1]*len(b))
+    x = sm.add_constant(x)
+    y = np.array(list(a) + list(b))
+    
+    if a_err is None:
+        a_err = [1]*len(a)
+    if b_err is None:
+        b_err = [1]*len(b)
+    
+    y_err = np.array(list(a_err) + list(b_err))
+    weights = 1/y_err**2
+    model = sm.WLS(y, x, weights=weights)
+    results = model.fit()
+    
+    return results.pvalues[1]
