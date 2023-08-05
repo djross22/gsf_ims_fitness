@@ -1756,9 +1756,12 @@ class BarSeqFitnessFrame:
             print()
             now = datetime.datetime.now()
             print(f"{now}, fitting row index: {st_index}, for ligands: {lig_list}")
+            
+            # For multi-ligand experiment, missing data can't just be dropped
+            is_gp_model = (len(lig_list) > 1)
 
             try:
-                stan_data = self.bs_frame_stan_data(st_row, initial=initial)
+                stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=is_gp_model)
                 
                 if len(lig_list) == 1:
                     stan_init = init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params)
