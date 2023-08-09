@@ -3640,7 +3640,7 @@ class BarSeqFitnessFrame:
     # Method for plotting sub-frame on background of full library distribution
     def plot_hill_params(self, input_frames, in_labels=None, in_colors=None, in_alpha=0.7,
                          error_bars=True, log_ginf_err_cutoff=0.71, legend=True,
-                         everything_color=None, box_size=6, ligand=None):
+                         everything_color=None, box_size=6, ligand=None, plot_g0_vs_ginf=True):
         
         if in_labels is None:
             in_labels = [""] * len (input_frames)
@@ -3656,24 +3656,30 @@ class BarSeqFitnessFrame:
         axs = axs_grid.flatten()
     
         y_label_list = ["G0", "Ginf", "Ginf/G0", "n"]
+        x_label_list = [f'EC50']*len(y_label_list)
         if ligand is None:
             lig_str = ''
         else:
             lig_str = f'_{ligand}'
         if 'log_g0' in self.barcode_frame.columns.values:
             param_names = ["log_g0", f"log_ginf{lig_str}", f"log_ginf_g0_ratio{lig_str}", f"sensor_n{lig_str}"]
-            x_param = f"log_ec50{lig_str}"
-            x_err_label = f"log_ec50{lig_str}_err"
+            x_param_list = [f"log_ec50{lig_str}"]*len(param_names)
+            x_err_label_list = [f"log_ec50{lig_str}_err"]*len(param_names)
+            if plot_g0_vs_ginf:
+                param_names[-1] = f"log_ginf{lig_str}"
+                x_param_list[-1] = "log_g0"
+                x_err_label_list[-1] = "log_g0_err"
+                y_label_list[-1] = "Ginf"
+                x_label_list[-1] = "G0"
         else:
             param_names = ["log_low_level", "log_high_level", "log_high_low_ratio", "log_n"]
-            x_param = f'log_ic50'
-            x_err_label = f'log_ic50 error'
+            x_param_list = [f'log_ic50']*len(param_names)
+            x_err_label_list = [f'log_ic50 error']*len(param_names)
     
-        x_label = f'EC50'
     
         # This part plots the input input_frames
         for input_frame, c, lab in zip(input_frames, in_colors, in_labels):
-            for ax, name in zip(axs, param_names):
+            for ax, name, x_param, x_err_label in zip(axs, param_names, x_param_list, x_err_label_list):
                 y_err_label = f"{name}_err"
         
                 params_x = input_frame[x_param]
@@ -3685,7 +3691,7 @@ class BarSeqFitnessFrame:
                 xerr = err_x
                 xerr = fitness.log_plot_errorbars(params_x, xerr)
                 x = 10**params_x
-                if ax is not axs[-1]:
+                if plot_g0_vs_ginf or (ax is not axs[-1]):
                     yerr = fitness.log_plot_errorbars(params_y, yerr)
                     y = 10**params_y
                 else:
@@ -3705,13 +3711,13 @@ class BarSeqFitnessFrame:
             plot_frame = plot_frame[plot_frame[f"log_ginf{lig_str}_err"]<log_ginf_err_cutoff]
         else:
             plot_frame = plot_frame[plot_frame["log_high_level error"]<log_ginf_err_cutoff]
-        for ax, name, y_label in zip(axs, param_names, y_label_list):
-            
+        
+        for ax, name, x_param, y_label, x_label in zip(axs, param_names, x_param_list, y_label_list, x_label_list):
             params_x = plot_frame[x_param]
             params_y = plot_frame[name]
             
             x = 10**params_x
-            if ax is not axs[-1]:
+            if plot_g0_vs_ginf or (ax is not axs[-1]):
                 y = 10**params_y
             else:
                 y = params_y
@@ -3777,17 +3783,18 @@ class BarSeqFitnessFrame:
         frame = self.barcode_frame
         frame = frame[frame["total_counts"]>count_threshold]
         
-        if log_ginf_error_cutoff is None:
-            if self.experiment == '2019-10-16_IPTG_Select-DNA-5-plates':
-                log_ginf_error_cutoff = 0.7
+        #if log_ginf_error_cutoff is None:
+        #    if self.experiment == '2019-10-16_IPTG_Select-DNA-5-plates':
+        #        log_ginf_error_cutoff = 0.7
         
         if log_ginf_error_cutoff is not None:
             if 'log_ginf' in frame.columns.values:
                 frame = frame[frame["log_ginf error"]<log_ginf_error_cutoff]
             else:
                 frame = frame[frame["log_high_level error"]<log_ginf_error_cutoff]
-            
-        frame = frame[frame["good_hill_fit_points"]>=num_good_hill_points]
+        
+        if num_good_hill_points > 0:
+            frame = frame[frame["good_hill_fit_points"]>=num_good_hill_points]
         
         if exclude_mut_regions is None:
             if "pacbio_KAN_mutations" in frame.columns:
@@ -3810,8 +3817,8 @@ class BarSeqFitnessFrame:
             for reg in exclude_mut_regions:
                 frame = frame[frame["pacbio_" + reg + "_mutations"]<=0]
         elif "KAN_1_confident_seq" in frame.columns:
-            #This is for the newer LacI experiment; we want to only keep variants with confident sequence assignments and zero mutations in each of the regions
-            #    The older method (frame["pacbio_" + reg + "_mutations"]<=0) only minimally increases the number of variants with confident LacI CDS assignments 
+            #This is for the newer LacI experiment; we want to only keep variants with non-confident sequence assignments OR zero mutations in each of the regions
+            #    If there is not a confident sequence assignment, the sequence is probably correct.
             for reg in exclude_mut_regions:
                 frame = frame[(~frame[f"{reg}_confident_seq"])|(frame[f'{reg}_mutations']==0)]
         elif "amp_barcode_confident_seq" in frame.columns:
