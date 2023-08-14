@@ -3190,6 +3190,8 @@ class BarSeqFitnessFrame:
                                             wt_cutoff=5000,
                                             min_err=0.05,
                                             show_old_fit=True,
+                                            robust_error_model=False,
+                                            robust_nu=4,
                                             return_fig=False,
                                             fig_size=[12, 6]):
         if spike_in_initial is None:
@@ -3221,6 +3223,8 @@ class BarSeqFitnessFrame:
                 sig = np.random.normal(1, 0.2) * 0.1
                 return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig, high_level=high)
         
+        if robust_error_model:
+            stan_model_file = stan_model_file[:-4] + "robust.stan"
         if run_stan_fit:
             fitness_model = stan_utility.compile_model(stan_model_file)
         
