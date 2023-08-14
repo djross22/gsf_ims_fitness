@@ -3187,11 +3187,14 @@ class BarSeqFitnessFrame:
                                             show_exclude_data=True,
                                             use_only_rs_variants=False,
                                             RS_list=None,
-                                            wt_cutoff=5000,
+                                            wt_cutoff=0,
                                             min_err=0.05,
                                             show_old_fit=True,
+                                            apply_ramr_correction=None,
+                                            turn_off_cmdstanpy_logger=True,
                                             robust_error_model=False,
                                             robust_nu=4,
+                                            return_resid_table=False,
                                             return_fig=False,
                                             fig_size=[12, 6]):
         if spike_in_initial is None:
@@ -3215,6 +3218,9 @@ class BarSeqFitnessFrame:
             
             ligand_plot_list = self.ligand_list
             
+            if apply_ramr_correction is None:
+                apply_ramr_correction = True
+            
             def init_fitness_fit(y_data):
                 low = -1.5 #np.mean(y_data[:2])
                 high = -0.5
@@ -3225,6 +3231,7 @@ class BarSeqFitnessFrame:
         
         if robust_error_model:
             stan_model_file = stan_model_file[:-4] + "robust.stan"
+            
         if run_stan_fit:
             fitness_model = stan_utility.compile_model(stan_model_file)
         
@@ -3263,9 +3270,9 @@ class BarSeqFitnessFrame:
                 if 'RS' in rs_name:
                     plas = 'RamR-' + rs_name
                 elif 'wt' in rs_name:
-                    plas = None
+                    plas = 'pRamR-WT'
                 else:
-                    plas = None
+                    plas = rs_name
                     
             return plas
             
@@ -3344,7 +3351,8 @@ class BarSeqFitnessFrame:
                                     
                                     stan_data = self.bs_frame_stan_data(HiSeq_row, 
                                                                         initial=spike_in_initial,
-                                                                        min_err=min_err)
+                                                                        min_err=min_err,
+                                                                        apply_ramr_correction=apply_ramr_correction)
                                     
                                     if len(ligand_plot_list) > 1:
                                         # For RamR
@@ -3403,7 +3411,14 @@ class BarSeqFitnessFrame:
             
             
             if run_stan_fit:
+                print(f'Fitting with stan model from: {stan_model_file}')
+                if turn_off_cmdstanpy_logger:
+                    import logging
+                    cmdstanpy_logger = logging.getLogger("cmdstanpy")
+                    cmdstanpy_logger.disabled = True
                 stan_data = dict(x=x_fit_list, y = y_fit_list, y_err = y_err_list, N=len(x_fit_list))
+                if robust_error_model:
+                    stan_data['nu'] = robust_nu
                 stan_init = init_fitness_fit(y)
                 stan_fit = fitness_model.sample(data=stan_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4)
                 if plasmid == 'pVER':
@@ -3426,8 +3441,19 @@ class BarSeqFitnessFrame:
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
                 y_plot_fit = fit_funct(x_plot_fit, *stan_popt)
                 ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='new fit');
-                    
-        
+                
+                if turn_off_cmdstanpy_logger:
+                    cmdstanpy_logger.disabled = False    
+            
+            if return_resid_table:
+                if run_stan_fit:
+                    popt = stan_popt
+                else:
+                    popt = old_fit_params[:3]
+                
+                resid_list = y_fit_list - fit_funct(x_fit_list, *popt)
+                
+            
         ncol = int(len(RS_list)/40)
         if ncol == 0:
             ncol = 1
@@ -3437,6 +3463,8 @@ class BarSeqFitnessFrame:
         
         if return_fig:
             return fig, axs
+        elif return_resid_table:
+            return resid_table
         
     
     def plot_count_ratios_vs_time(self, plot_range=None,
@@ -3933,8 +3961,13 @@ class BarSeqFitnessFrame:
                            old_style_columns=False, 
                            initial=None,
                            is_gp_model=False,
-                           min_err=0.05):
-                      
+                           min_err=0.05,
+                           apply_ramr_correction=None):
+        
+        if self.plasmid == 'pRamR':
+            if apply_ramr_correction is None:
+                apply_ramr_correction = True
+        
         sample_plate_map = self.sample_plate_map
         lig_list = list(np.unique(sample_plate_map.ligand))
         if 'none' in lig_list:
@@ -3959,7 +3992,8 @@ class BarSeqFitnessFrame:
                                    is_gp_model=is_gp_model,
                                    min_err=min_err, 
                                    ref_samples=self.ref_samples,
-                                   ramr_fitness_corection=ramr_fitness_corection)
+                                   ramr_fitness_corection=ramr_fitness_corection,
+                                   apply_ramr_correction=apply_ramr_correction)
         if plasmid == 'pVER':
             if len(self.antibiotic_conc_list) == 2:
                 # Original 2019 experiment, with single ligand and single antibiotic
@@ -4172,6 +4206,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                   is_gp_model=False,
                   min_err=0.05,
                   ref_samples=None,
+                  apply_ramr_correction=True,
                   ramr_fitness_corection=None):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
@@ -4229,9 +4264,11 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     y = (y - y_ref)/(y_ref*ref_correction)
                     s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
                     early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
-                    # Additive correction for RamR system at high [ligand]
-                    y_corr = fitness.fitness_corection(ramr_fitness_corection, x, early_fitness, raw_fitness, crit_conc=200)
-                    y = y - y_corr
+                    
+                    if apply_ramr_correction:
+                        # Additive correction for RamR system at high [ligand]
+                        y_corr = fitness.fitness_corection(ramr_fitness_corection, x, early_fitness, raw_fitness, crit_conc=200)
+                        y = y - y_corr
                 
                 s = np.sqrt(s**2 + min_err**2)
                 
