@@ -4251,6 +4251,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 df = df[df.antibiotic_conc==tet]
                 df = df.sort_values(by=lig)
                 x = np.array(df[lig])
+                samples = np.array(df.sample_id)
                 # Correction factor for non-constant ref fitness (i.e., fitness decreases with [ligand]
                 ref_correction = np.array([fitness.ref_fit_correction(z, plasmid, ligand=lig, spike_in=spike_in) for z in x])
                 y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
@@ -4286,8 +4287,9 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     x = x[valid]
                     y = y[valid]
                     s = s[valid]
+                    samples = samples[valid]
                 
-                sub_list.append([x, y, s])
+                sub_list.append([x, y, s, samples])
             x_y_s_list.append(sub_list)
             
         if len(lig_list) == 1:
@@ -4375,21 +4377,26 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             if fit_fitness_difference_params is None:
                 fit_fitness_difference_params = np.full((1, 6), np.nan)
             
-            x_1, y_1, s_1 = tuple(x_y_s_list[0][0][n] for n in range(3))
+            x_1, y_1, s_1, samp_1 = tuple(x_y_s_list[0][0][n] for n in range(4))
             y_0 = y_1[x_1==0]
             s_0 = s_1[x_1==0]
+            samp_0 = samp_1[x_1==0]
+            
             y_1 = y_1[x_1>0]
             s_1 = s_1[x_1>0]
+            samp_1 = samp_1[x_1>0]
             x_1 = x_1[x_1>0]
             
-            x_2, y_2, s_2 = tuple(x_y_s_list[1][0][n] for n in range(3))
+            x_2, y_2, s_2, samp_2 = tuple(x_y_s_list[1][0][n] for n in range(4))
             y_2 = y_2[x_2>0]
             s_2 = s_2[x_2>0]
+            samp_2 = samp_2[x_2>0]
             x_2 = x_2[x_2>0]
             
-            x_3, y_3, s_3 = tuple(x_y_s_list[2][0][n] for n in range(3))
+            x_3, y_3, s_3, samp_3 = tuple(x_y_s_list[2][0][n] for n in range(4))
             y_3 = y_3[x_3>0]
             s_3 = s_3[x_3>0]
+            samp_3 = samp_3[x_3>0]
             x_3 = x_3[x_3>0]
             
             stan_data = dict(N_lig=len(x_1),
@@ -4397,6 +4404,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              x_1=x_1, y_1=y_1, y_1_err=s_1,
                              x_2=x_2, y_2=y_2, y_2_err=s_2,
                              x_3=x_3, y_3=y_3, y_3_err=s_3,
+                             samp_0=samp_0, samp_1=samp_1, samp_2=samp_2, samp_3=samp_3,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
                              high_fitness_mu=fit_fitness_difference_params[0][0],
                              mid_g_mu=fit_fitness_difference_params[0][1],
