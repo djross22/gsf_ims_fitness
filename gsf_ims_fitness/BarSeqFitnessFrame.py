@@ -3310,9 +3310,18 @@ class BarSeqFitnessFrame:
             color_ind = -1
             fmt_list = ['o', '^', 'v', '<', '>', 'd', 'p', '*', 's', 'h', '+', 'x']
             fmt_ind = 0
+            
             x_fit_list = []
             y_fit_list = []
             y_err_list = []
+            
+            resid_frame_rs_name = []
+            resid_frame_lig = []
+            
+            resid_frame_lig_conc = []
+            resid_frame_ref = []
+            resid_frame_early_fitness = []
+            
             for RS_name in RS_list:
                 for i, lig in enumerate(ligand_plot_list):
                     plas = cytom_plasmid_from_rs_name(RS_name)
@@ -3359,6 +3368,8 @@ class BarSeqFitnessFrame:
                                         lig_conc = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
                                         y = np.array(list(stan_data[f'y_0']) + list(stan_data[f'y_{i+1}']))
                                         y_err = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{i+1}_err']))
+                                        samples = np.array(list(stan_data[f'samp_0']) + list(stan_data[f'samp_{i+1}']))
+                                         
                                     else:
                                         # For LacI
                                         if tet == plot_antibiotic_list[0]:
@@ -3385,6 +3396,17 @@ class BarSeqFitnessFrame:
                                         x_fit_list += list(x)
                                         y_fit_list += list(y)
                                         y_err_list += list(y_err)
+                                        
+                                        if return_resid_table:
+                                            resid_frame_rs_name += [RS_name]*len(x)
+                                            resid_frame_lig += [lig]*len(x)
+                                            resid_frame_samp += list(samples)
+                                            
+                                            resid_frame_lig_conc += list(lig_conc)
+                                            y_ref = stan_data['y_ref']
+                                            resid_frame_ref += [y_ref]*len(x)
+                                            resid_frame_early_fitness += [HiSeq_row[f"fitness_S{smp}_ea.{spike_in_initial}"] for smp in samples]
+                                        
                                     include_data_in_plot = show_exclude_data or (not sel)
                                     if include_data_in_plot:
                                         ax.errorbar(x, y, y_err, fmt=fmt, ms=ms, color=color, 
@@ -3452,9 +3474,20 @@ class BarSeqFitnessFrame:
                     popt = old_fit_params[:3]
                 
                 resid_list = y_fit_list - fit_funct(x_fit_list, *popt)
+                resid_frame = pd.DataFrame(dict(rs_name=resid_frame_rs_name,
+                                                sample=resid_frame_samp,
+                                                ligand=resid_frame_lig,
+                                                gene_expression=x_fit_list,
+                                                lig_conc=resid_frame_lig_conc,
+                                                fitness_effect=y_fit_list,
+                                                fitness_effect_err=y_err_list,
+                                                resid=resid_list,
+                                                resid_err=y_err_list,
+                                                ref_fitness=resid_frame_ref,
+                                                early_fitness=resid_frame_early_fitness))
                 
             
-        ncol = int(len(RS_list)/40)
+        ncol = int(len(RS_list)*len(lig_list)/40)
         if ncol == 0:
             ncol = 1
         axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=ncol, borderaxespad=0, frameon=True);
@@ -3464,7 +3497,7 @@ class BarSeqFitnessFrame:
         if return_fig:
             return fig, axs
         elif return_resid_table:
-            return resid_table
+            return resid_frame
         
     
     def plot_count_ratios_vs_time(self, plot_range=None,
