@@ -1210,7 +1210,7 @@ class BarSeqFitnessFrame:
         #     first key is tet concentration
         #     second key is spike-in name
         #     units for fitness values are 10-fold per plate. 
-        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
+        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeat cycle 
         # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
         #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
         #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
@@ -1500,7 +1500,7 @@ class BarSeqFitnessFrame:
         #     first key is tet concentration
         #     second key is spike-in name
         #     units for fitness values are 10-fold per plate. 
-        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
+        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeat cycle 
         # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
         #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
         #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
@@ -3196,7 +3196,7 @@ class BarSeqFitnessFrame:
                                             robust_error_model=False,
                                             robust_nu=4,
                                             return_resid_table=False,
-                                            repeate_after_dropping_outliers=False,
+                                            repeat_after_dropping_outliers=False,
                                             outlier_cutoff=2.5,
                                             return_fig=False,
                                             fig_size=[12, 6]):
@@ -3449,7 +3449,7 @@ class BarSeqFitnessFrame:
                     stan_data['nu'] = robust_nu
                 stan_init = init_fitness_fit(y)
                 
-                num_stan_re_runs = 3 if repeate_after_dropping_outliers else 1
+                num_stan_re_runs = 3 if repeat_after_dropping_outliers else 1
                 fit_data = stan_data
                 for run_num in range(num_stan_re_runs):
                     num_points = len(fit_data['x'])
