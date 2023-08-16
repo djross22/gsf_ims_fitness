@@ -2574,7 +2574,8 @@ class BarSeqFitnessFrame:
                             real_fitness_units=False,
                             plot_initials=None,
                             plot_slope_not_fitness=False,
-                            plot_stan_data=[False, False]):
+                            plot_stan_data=[False, False],
+                            plot_w_ramr_correction=[True, False]):
         
         if plot_initials is None:
             if self.plasmid == 'pVER':
@@ -2629,7 +2630,7 @@ class BarSeqFitnessFrame:
         antibiotic_conc_list = self.antibiotic_conc_list
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
-            for initial, fill_style, plot_st in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data):
+            for initial, fill_style, plot_st, plot_corr in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data, plot_w_ramr_correction):
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
@@ -2649,7 +2650,7 @@ class BarSeqFitnessFrame:
                                 s = [row[f"fit_slope_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             else:
                                 if plot_st and (tet > 0):
-                                    stan_data = self.bs_frame_stan_data(row, initial=initial)
+                                    stan_data = self.bs_frame_stan_data(row, initial=initial, apply_ramr_correction=plot_corr)
                                     if len(antibiotic_conc_list) == 2:
                                         # Single non-zero antibiotic concentration
                                         if 'y_0' in stan_data:
@@ -3195,6 +3196,8 @@ class BarSeqFitnessFrame:
                                             robust_error_model=False,
                                             robust_nu=4,
                                             return_resid_table=False,
+                                            repeate_after_dropping_outliers=False,
+                                            outlier_cutoff=2.5,
                                             return_fig=False,
                                             fig_size=[12, 6]):
         if spike_in_initial is None:
@@ -3434,6 +3437,8 @@ class BarSeqFitnessFrame:
             
             
             if run_stan_fit:
+                min_y_err = 0.1
+                y_err_list = np.sqrt(y_err_list**2 + min_y_err**2)
                 print(f'Fitting with stan model from: {stan_model_file}')
                 if turn_off_cmdstanpy_logger:
                     import logging
@@ -3443,21 +3448,44 @@ class BarSeqFitnessFrame:
                 if robust_error_model:
                     stan_data['nu'] = robust_nu
                 stan_init = init_fitness_fit(y)
-                stan_fit = fitness_model.sample(data=stan_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4)
-                if plasmid == 'pVER':
-                    stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
-                    stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
-                elif plasmid == 'pRamR':
-                    stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
-                    stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
+                
+                num_stan_re_runs = 3 if repeate_after_dropping_outliers else 1
+                fit_data = stan_data
+                for run_num in range(num_stan_re_runs):
+                    num_points = len(fit_data['x'])
+                    print()
+                    print(f'Fit iterration: {run_num+1}, with {num_points} data points')
+                    stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4)
+                    if plasmid == 'pVER':
+                        stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
+                        stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
+                    elif plasmid == 'pRamR':
+                        stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
+                        stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
+                    
+                    num_str = [ f"{x:.4}" for x in stan_popt]
+                    print(f"    Fitness params: {num_str}")
+                    num_str = [ f"{x:.4}" for x in stan_perr ]
+                    print(f"    Error estimate: {num_str}")
+                
+                    resid_list = y_fit_list - fit_funct(x_fit_list, *stan_popt)
+                    dev_list = np.abs(resid_list)/y_err_list
+                    
+                    x_fit_list_2 = x_fit_list[dev_list<outlier_cutoff]
+                    y_fit_list_2 = y_fit_list[dev_list<outlier_cutoff]
+                    y_err_list_2 = y_err_list[dev_list<outlier_cutoff]
+                    
+                    fit_data = dict(x=x_fit_list_2, y = y_fit_list_2, y_err = y_err_list_2, N=len(x_fit_list_2))
+                    if robust_error_model:
+                        fit_data['nu'] = robust_nu
                 
                 num_str = [ f"{x:.4}" for x in stan_popt]
                 print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
                 num_str = [ f"{x:.4}" for x in stan_perr ]
                 print(f"                 Error estimate: {num_str}")
                 stan_params_list.append(list(stan_popt) + list(stan_perr))
-                dev = stan_data['y'] - np.mean(stan_fit.stan_variable('mean_y'), axis=0)
-                for w_str, w in zip(['Unweighted', 'Weighted'], [None, 1/stan_data['y_err']**2]):
+                dev = y_fit_list - fit_funct(x_fit_list, *stan_popt)
+                for w_str, w in zip(['Unweighted', 'Weighted'], [None, 1/y_err_list**2]):
                     rms_dev = np.sqrt(np.average(dev**2, weights=w))
                     print(f"           {w_str} RMS deviation: {rms_dev:.4}")
                 
@@ -3500,6 +3528,69 @@ class BarSeqFitnessFrame:
         elif return_resid_table:
             return resid_frame
         
+    
+    def set_ramr_fitness_correction(self, resid_frame, auto_save=True, overwrite=False):
+        from sklearn.ensemble import GradientBoostingRegressor
+        
+        min_samples_split = 5
+        
+        def model_plots(model, params, print_stats=True):
+            plt.rcParams["figure.figsize"] = [6, 3]
+            fig, axs = plt.subplots(1, 2)
+            
+            ax = axs[1]
+            df_label_list = [[resid_frame, 'All data']] + [[df, label] for label, df in resid_frame.groupby('exp_date')]
+            for df_label in df_label_list:
+                df = df_label[0]
+                label = df_label[1]
+                
+                ms = 8 if label == 'All data' else 6
+                alpha = 1 if label == 'All data' else 0.5
+                fillstyle = 'none' if label == 'All data' else None
+                
+                y = df['resid']
+                w = 1/df['resid_err']**2
+                X = df[params]
+                predicted = model.predict(X)
+                actual = y
+                ax.plot(actual, predicted, 'o', ms=ms, alpha=alpha, fillstyle=fillstyle);
+                
+                if print_stats:
+                    resid_test = y - model.predict(X)
+                    rms_resid = np.sqrt(np.mean(resid_test**2))
+                    print(label)
+                    print(f'    {rms_resid}')
+                    print(f'    {model.score(X, y, sample_weight=w)}')
+                    print()
+
+            xlim = ax.get_xlim()
+            ax.plot(xlim, xlim, '--k');
+
+            ax = axs[0]
+            feature_importance = model.feature_importances_
+            sorted_idx = np.argsort(feature_importance)
+            pos = np.arange(sorted_idx.shape[0]) + 0.5
+
+            ax.barh(pos, feature_importance[sorted_idx], align="center")
+            ax.set_yticks(pos, np.array(params)[sorted_idx])
+            ax.set_title("Feature Importance (MDI)");
+            
+        params = ['lig_conc', 'fitness_effect', 'ref_fitness', 'early_fitness']
+        self.ramr_fitness_correction_params = params
+        y_train = resid_frame['resid']
+        w_train = 1/resid_frame['resid_err']**2
+        X_train = resid_frame[params]
+
+        ramr_model = GradientBoostingRegressor(loss="squared_error", min_samples_split=min_samples_split)
+        ramr_model.fit(X_train, y_train, sample_weight=w_train)
+
+        model_plots(ramr_model, params, print_stats=True);
+        
+        self.ramr_fitness_correction = ramr_model
+        
+        if auto_save:
+            self.save_as_pickle(overwrite=overwrite)
+    
     
     def plot_count_ratios_vs_time(self, plot_range=None,
                                   with_tet=None,
@@ -4018,7 +4109,9 @@ class BarSeqFitnessFrame:
         if initial is None:
             initial = self.get_default_initial()
         
-        ramr_fitness_corection = getattr(self, 'ramr_fitness_corection', None)
+        ramr_fitness_correction = getattr(self, 'ramr_fitness_correction', None)
+        ramr_fitness_correction_params = getattr(self, 'ramr_fitness_correction_params', None)
+        ramr_resid_frame = getattr(self, 'ramr_resid_frame', None)
         
         stan_data =  get_stan_data(st_row=st_row, plot_df=plot_df, antibiotic_conc_list=antibiotic_conc_list, 
                                    lig_list=lig_list, fit_fitness_difference_params=fit_fitness_difference_params, 
@@ -4026,8 +4119,13 @@ class BarSeqFitnessFrame:
                                    is_gp_model=is_gp_model,
                                    min_err=min_err, 
                                    ref_samples=self.ref_samples,
-                                   ramr_fitness_corection=ramr_fitness_corection,
-                                   apply_ramr_correction=apply_ramr_correction)
+                                   apply_ramr_correction=apply_ramr_correction,
+                                   ramr_fitness_correction=ramr_fitness_correction,
+                                   ramr_fitness_correction_params=ramr_fitness_correction_params,
+                                   ramr_resid_frame=ramr_resid_frame,
+                                   )
+                        
+                        
         if plasmid == 'pVER':
             if len(self.antibiotic_conc_list) == 2:
                 # Original 2019 experiment, with single ligand and single antibiotic
@@ -4241,7 +4339,10 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                   min_err=0.05,
                   ref_samples=None,
                   apply_ramr_correction=True,
-                  ramr_fitness_corection=None):
+                  ramr_fitness_correction=None,
+                  ramr_fitness_correction_params=None,
+                  ramr_resid_frame=None,
+                  ):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
     
@@ -4301,8 +4402,19 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
                     
                     if apply_ramr_correction:
-                        # Additive correction for RamR system at high [ligand]
-                        y_corr = fitness.fitness_corection(ramr_fitness_corection, x, early_fitness, raw_fitness, crit_conc=200)
+                        # Calibration correction for RamR system
+                        ramr_model = ramr_fitness_correction
+                        params = ramr_fitness_correction_params
+                        
+                        df = df.copy()
+                        df['lig_conc'] = x
+                        df['fitness_effect'] = y
+                        df['ref_fitness'] = [y_ref]*len(x)
+                        df['early_fitness'] = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
+
+                        X_test = df[params]
+                        
+                        y_corr = ramr_model.predict(X_test)
                         y = y - y_corr
                 
                 s = np.sqrt(s**2 + min_err**2)
