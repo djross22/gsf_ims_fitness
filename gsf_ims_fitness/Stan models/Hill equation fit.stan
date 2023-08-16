@@ -10,6 +10,8 @@ data {
   real log_g_max;        // upper bound on log_low_level and log_high_level
   real log_x_min;
   real log_x_max;
+  real<lower=0> sensor_n_alpha;  //prior shape
+  real<lower=0> sensor_n_beta;   //prior inverse scale
 }
 
 transformed data {
@@ -66,7 +68,8 @@ transformed parameters {
 
 model {
   // Prior on sensor_n
-  sensor_n ~ gamma(4.0, 10.0/3.0);
+  //sensor_n ~ gamma(4.0, 10.0/3.0); older version
+  sensor_n ~ gamma(sensor_n_alpha, sensor_n_beta);
   
   // Prior on log_IC_50
   target += log1m(erf((log_x_min + 0.7 - log_IC_50)/0.5));
