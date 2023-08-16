@@ -3317,6 +3317,7 @@ class BarSeqFitnessFrame:
             
             resid_frame_rs_name = []
             resid_frame_lig = []
+            resid_frame_samp = []
             
             resid_frame_lig_conc = []
             resid_frame_ref = []
