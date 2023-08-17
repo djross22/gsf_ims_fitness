@@ -1663,7 +1663,9 @@ class BarSeqFitnessFrame:
                                        overwrite=False,
                                        refit_index=None,
                                        return_fit=False,
-                                       initial=None):
+                                       initial=None,
+                                       re_stan_on_rhat=True,
+                                       rhat_cutoff=1.05):
         
         cmdstanpy_logger = logging.getLogger("cmdstanpy")
         cmdstanpy_logger.disabled = True
@@ -1742,6 +1744,8 @@ class BarSeqFitnessFrame:
         quantile_params_list = params_list[:fit_ind]
         quantile_params_dim = len(quantile_params_list)
         
+        key_params = params_list
+        
         print(f'    Using model from file: {sm_file}')
         stan_model = stan_utility.compile_model(sm_file)
         
@@ -1777,6 +1781,22 @@ class BarSeqFitnessFrame:
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup,
                                              inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
                                              output_dir=stan_output_dir)
+                                             
+                if re_stan_on_rhat:
+                    rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                    if len(rhat_params) > 0:
+                        print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                        stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling*10, iter_warmup=iter_warmup*10,
+                                                     inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
+                                                     output_dir=stan_output_dir)
+                        
+                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        if len(rhat_params) > 0:
+                            print(f'    The following parameters still had r_hat > {rhat_cutoff}: {rhat_params}')
+                        else:
+                            print(f'    All parameters now have r_hat < {rhat_cutoff}')
+                            
+                
                 if return_fit:
                     return stan_fit
         
@@ -1921,7 +1941,9 @@ class BarSeqFitnessFrame:
                        overwrite=False,
                        refit_index=None,
                        return_fit=False,
-                       initial=None):
+                       initial=None,
+                       re_stan_on_rhat=True,
+                       rhat_cutoff=1.05):
         
         cmdstanpy_logger = logging.getLogger("cmdstanpy")
         cmdstanpy_logger.disabled = True
@@ -1996,6 +2018,8 @@ class BarSeqFitnessFrame:
             
             x_dim = 7 # number of concentrations for each ligand, including zero
             
+        key_params = params_list + g_arr_list + dg_arr_list + f_arr_list
+            
         params_dim = len(params_list)
         
         quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
@@ -2023,6 +2047,20 @@ class BarSeqFitnessFrame:
                 
                 stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup, inits=stan_init, chains=chains, 
                                              adapt_delta=adapt_delta, show_progress=show_progress, output_dir=stan_output_dir)
+                                             
+                if re_stan_on_rhat:
+                    rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                    if len(rhat_params) > 0:
+                        print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                        stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling*10, iter_warmup=iter_warmup*10, inits=stan_init, chains=chains, 
+                                                     adapt_delta=adapt_delta, show_progress=show_progress, output_dir=stan_output_dir)
+                        
+                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        if len(rhat_params) > 0:
+                            print(f'    The following parameters still had r_hat > {rhat_cutoff}: {rhat_params}')
+                        else:
+                            print(f'    All parameters now have r_hat < {rhat_cutoff}')
+                            
                 if return_fit:
                     return stan_fit
                     
@@ -3197,6 +3235,8 @@ class BarSeqFitnessFrame:
                                             robust_nu=4,
                                             return_resid_table=False,
                                             repeat_after_dropping_outliers=False,
+                                            re_stan_on_rhat=True,
+                                            rhat_cutoff=1.05,
                                             outlier_cutoff=2.5,
                                             return_fig=False,
                                             fig_size=[12, 6]):
@@ -3437,6 +3477,12 @@ class BarSeqFitnessFrame:
             
             
             if run_stan_fit:
+                
+                if plasmid == 'pVER':
+                    key_params = ["low_level", "IC_50", "hill_n"]
+                elif plasmid == 'pRamR':
+                    key_params = ["high_level", "IC_50", "hill_n"]
+                        
                 min_y_err = 0.1
                 y_err_list = np.sqrt(y_err_list**2 + min_y_err**2)
                 print(f'Fitting with stan model from: {stan_model_file}')
@@ -3454,14 +3500,20 @@ class BarSeqFitnessFrame:
                 for run_num in range(num_stan_re_runs):
                     num_points = len(fit_data['x'])
                     print()
-                    print(f'Fit iterration: {run_num+1}, with {num_points} data points')
+                    print(f'Fit iteration: {run_num+1}, with {num_points} data points')
                     stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4)
-                    if plasmid == 'pVER':
-                        stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
-                        stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["low_level", "IC_50", "hill_n"]]
-                    elif plasmid == 'pRamR':
-                        stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
-                        stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in ["high_level", "IC_50", "hill_n"]]
+                    
+                    if re_stan_on_rhat:
+                        print('Checking r_hat...')
+                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        if len(rhat_params) > 0:
+                            print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                            stan_fit = fitness_model.sample(data=fit_data, iter_warmup=5000, iter_sampling=5000, inits=stan_init, chains=4)
+                        else:
+                            print(f'    ... r_hat below {rhat_cutoff} for all key parameters')
+                    
+                    stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in key_params]
+                    stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in key_params]
                     
                     num_str = [ f"{x:.4}" for x in stan_popt]
                     print(f"    Fitness params: {num_str}")
