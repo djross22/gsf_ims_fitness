@@ -33,7 +33,7 @@ data {
 
 transformed data {
   int N;                       // number of grid points for GP
-  vector[3] x_gp[3*N_lig+1];   // array of 3D coordinates of the log(ligand concentrations)
+  array[3*N_lig+1]vector[3] x_gp;   // array of 3D coordinates of the log(ligand concentrations)
   real sqrt_pi = sqrt(pi());
   real center_log_g;
   real log_spacing;
@@ -108,7 +108,7 @@ transformed parameters {
 
   {
     matrix[N, N] L_K;
-    matrix[N, N] K = cov_exp_quad(x_gp, alpha, rho);
+    matrix[N, N] K = gp_exp_quad_cov(x_gp, alpha, rho);
     real term1;
     real term2;
     real term3;
