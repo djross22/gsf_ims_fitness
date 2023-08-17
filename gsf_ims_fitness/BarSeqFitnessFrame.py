@@ -4467,6 +4467,9 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
                     early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
                     
+                    # Ligand effects on fitness make the measurements at the highest concentration less reliable
+                    s[x>=500] *= 2
+                    
                     if apply_ramr_correction:
                         # Calibration correction for RamR system
                         ramr_model = ramr_fitness_correction
