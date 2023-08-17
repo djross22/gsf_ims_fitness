@@ -30,25 +30,39 @@ data {
   real mid_g_std;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_std;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
+  array[3] real log_x_max;           // maximum possible value for log_ec50, previously set to log10(max(x)) + 1.4
+  
 }
 
 transformed data {
   real x_min;
   real x_max;
-  real log_x_min;
-  real log_x_max;
+  
   real low_fitness;
+  
+  real log_x_1_min;
+  real log_x_1_max;
+  real log_x_2_min;
+  real log_x_2_max;
+  real log_x_3_min;
+  real log_x_3_max;
   
   low_fitness = 0;
   
-  x_max = fmax(max(x_1), max(x_2));
-  x_max = fmax(x_max, max(x_3));
+  x_max = max(x_1);
+  x_min = min(x_1);
+  log_x_1_max = log_x_max[1];
+  log_x_1_min = log10(x_min) - 1.3;
   
-  x_min = fmin(min(x_1), min(x_2));
-  x_min = fmin(x_min, min(x_3));
+  x_max = max(x_2);
+  x_min = min(x_2);
+  log_x_2_max = log_x_max[2];
+  log_x_2_min = log10(x_min) - 1.3;
   
-  log_x_max = log10(x_max) + 1.4;
-  log_x_min = log10(x_min) - 0.3;
+  x_max = max(x_3);
+  x_min = min(x_3);
+  log_x_3_max = log_x_max[3];
+  log_x_3_min = log10(x_min) - 1.3;
   
 }
 
@@ -59,9 +73,9 @@ parameters {
   real<lower=log_g_min, upper=log_g_max>  log_ginf_2;   // log10 of gene expression level at saturating concentration of ligand 2
   real<lower=log_g_min, upper=log_g_max>  log_ginf_3;   // log10 of gene expression level at saturating concentration of ligand 3
   
-  real<lower=log_x_min, upper=log_x_max> log_ec50_1;    // input level (x) that gives output 1/2 way between g0 and ginf for ligand 1
-  real<lower=log_x_min, upper=log_x_max> log_ec50_2;    // input level (x) that gives output 1/2 way between g0 and ginf for ligand 2
-  real<lower=log_x_min, upper=log_x_max> log_ec50_3;    // input level (x) that gives output 1/2 way between g0 and ginf for ligand 3
+  real<lower=log_x_1_min, upper=log_x_1_max> log_ec50_1;    // input level (x) that gives output 1/2 way between g0 and ginf for ligand 1
+  real<lower=log_x_2_min, upper=log_x_2_max> log_ec50_2;    // input level (x) that gives output 1/2 way between g0 and ginf for ligand 2
+  real<lower=log_x_3_min, upper=log_x_3_max> log_ec50_3;    // input level (x) that gives output 1/2 way between g0 and ginf for ligand 3
   
   real<lower=0> sensor_n_1;                             // cooperativity exponent of sensor gene expression vs. x curve for ligand 1
   real<lower=0> sensor_n_2;                             // cooperativity exponent of sensor gene expression vs. x curve for ligand 2
@@ -126,14 +140,14 @@ model {
   sensor_n_3 ~ gamma(7.7, 3.5);
   
   // Prior on log_ec50; flat prior with erf boundaries
-  target += log1m(erf((log_x_min + 0.3 - log_ec50_1)/0.2));
-  target += log1m(erf((log_ec50_1 - log_x_max + 0.3)/0.3));
+  target += log1m(erf((log_x_1_min + 0.3 - log_ec50_1)/0.2));
+  target += log1m(erf((log_ec50_1 - log_x_1_max + 0.3)/0.3));
   
-  target += log1m(erf((log_x_min + 0.3 - log_ec50_2)/0.2));
-  target += log1m(erf((log_ec50_2 - log_x_max + 0.3)/0.3));
+  target += log1m(erf((log_x_2_min + 0.3 - log_ec50_2)/0.2));
+  target += log1m(erf((log_ec50_2 - log_x_2_max + 0.3)/0.3));
   
-  target += log1m(erf((log_x_min + 0.3 - log_ec50_3)/0.2));
-  target += log1m(erf((log_ec50_3 - log_x_max + 0.3)/0.3));
+  target += log1m(erf((log_x_3_min + 0.3 - log_ec50_3)/0.2));
+  target += log1m(erf((log_ec50_3 - log_x_3_max + 0.3)/0.3));
   
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
