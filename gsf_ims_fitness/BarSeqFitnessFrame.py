@@ -4418,7 +4418,12 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                     if apply_ramr_correction:
                         # Calibration correction for RamR system
                         ramr_model = ramr_fitness_correction
+                        if ramr_model is None:
+                            raise Exception('RamR calibration correction model (ramr_fitness_correction) is None')
+                            
                         params = ramr_fitness_correction_params
+                        if ramr_model is None:
+                            raise Exception('RamR calibration correction parameters (ramr_fitness_correction_params) is None')
                         
                         df = df.copy()
                         df['lig_conc'] = x
