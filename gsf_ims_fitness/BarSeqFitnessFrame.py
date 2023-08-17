@@ -4156,7 +4156,7 @@ class BarSeqFitnessFrame:
                 stan_data['log_x_max'] = log_x_max_arr
         elif plasmid == 'pRamR':
             log_x_max_arr = []
-            for k  in ['x_1', 'x_2'. 'x_3']:
+            for k  in ['x_1', 'x_2', 'x_3']:
                 x_min = stan_data[k]
                 x_min = x_min[x_min>0]
                 if len(x_min)>0:
