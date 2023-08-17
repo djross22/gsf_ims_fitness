@@ -52,17 +52,17 @@ transformed data {
   x_max = max(x_1);
   x_min = min(x_1);
   log_x_1_max = log_x_max[1];
-  log_x_1_min = log10(x_min) - 1.3;
+  log_x_1_min = log10(x_min) - 0.3;
   
   x_max = max(x_2);
   x_min = min(x_2);
   log_x_2_max = log_x_max[2];
-  log_x_2_min = log10(x_min) - 1.3;
+  log_x_2_min = log10(x_min) - 0.3;
   
   x_max = max(x_3);
   x_min = min(x_3);
   log_x_3_max = log_x_max[3];
-  log_x_3_min = log10(x_min) - 1.3;
+  log_x_3_min = log10(x_min) - 0.3;
   
 }
 
