@@ -22,6 +22,27 @@ def compile_model(filename, model_name=None, force_recompile=False, verbose=True
     return sm
 
 
+def check_rhat_by_params(fit, rhat_cutoff, stan_parameters=None):
+    df = fit.summary()
+    if stan_parameters is not None:
+        key_params = np.array(df.index)
+        sel = []
+        for p in key_params:
+            s = False
+            for p2 in stan_parameters:
+                if p2 in p:
+                    s = True
+                    break
+            sel.append(s)
+        key_params = key_params[sel]
+            
+        df = df.loc[key_params]
+     
+    df = df[df.R_hat>rhat_cutoff]
+    
+    return list(df.index)
+    
+
 def rhat_from_dataframe(df, split_chains=True):
     df = df.copy()
     if split_chains and ('draw' in list(df.columns)):
