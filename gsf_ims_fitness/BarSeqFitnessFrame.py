@@ -4154,6 +4154,20 @@ class BarSeqFitnessFrame:
                     log_x_max_arr.append(log_x_max)
                 log_x_max_arr = np.array(log_x_max_arr)
                 stan_data['log_x_max'] = log_x_max_arr
+        elif plasmid == 'pRamR':
+            log_x_max_arr = []
+            for k  in ['x_1', 'x_2'. 'x_3']:
+                x_min = stan_data[k]
+                x_min = x_min[x_min>0]
+                if len(x_min)>0:
+                    x_min = min(x_min)
+                else:
+                    x_min = 1
+                x_max = max(stan_data[k])
+                log_x_max = 2*np.log10(x_max) - np.log10(x_min) + 0.2
+                log_x_max_arr.append(log_x_max)
+            log_x_max_arr = np.array(log_x_max_arr)
+            stan_data['log_x_max'] = log_x_max_arr
         
         return stan_data
     
