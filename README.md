@@ -4,30 +4,50 @@ The repository contains a Python package and Jupyter notebooks used for analysis
 
 # Prerequisites
 
-gsf_ims_fitness was written in Python3, version 3.6.10
+gsf_ims_fitness was written in Python3, version 3.11.4
 
-It was written with the following python packages and versions:
+It was written with the following python packages:
 
-- matplotlib 3.1.1
+- matplotlib
 
-- numpu 1.17.4
+- numpy
 
-- Pandas 0.25.3
+- pandas
 
-- scipy 1.3.2
+- scipy
 
-- pystan 2.19.0.0
+- cmdstanpy
 
-- seaborn 0.9.0
+- seaborn
 
-- Bio 1.74
+- biopython
 
-- sklearn 0.22
+- scikit-learn
 
-- palettable 3.3.0
+- palettable
 
-- cmocean 2.0
+- cmocean
 
+- ipython
+
+- pyyaml
+
+To install the correct package versions, use one of the .yml files included in this repository. `gsf_ims_env.yml` is from a Windows installation. `gsf_ims_env.AWS.yml` is from a Linux installation (on an AWS EC2 instance).
+
+After installing conda (miniconda reccomended: https://docs.conda.io/en/latest/miniconda.html), create the gsf_ims environment with:
+`conda env create -f gsf_ims_env.AWS.yml`
+
+Then install the gsf_ims_fitness package from source:
+For Windows:
+```
+cd gsf_ims_fitness
+pip install -e .
+```
+For Linux:
+```
+cd gsf_ims_fitness
+python3 -m pip install -e .
+```
   
 
 # Data Requirements
