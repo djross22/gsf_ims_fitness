@@ -32,12 +32,17 @@ It was written with the following python packages:
 
 - pyyaml
 
-To install the correct package versions, use one of the .yml files included in this repository. `gsf_ims_env.yml` is from a Windows installation. `gsf_ims_env.AWS.yml` is from a Linux installation (on an AWS EC2 instance).
+To install the correct package versions, use one of the .yml files included in this repository. `gsf_ims_env.yml` is from a Windows installation. `gsf_ims_env.AWS.yml` is from a Linux installation (on an AWS EC2 instance). They are very similar, but they were set up independently, so we reccomend using the environment file spoecific to the computer OS.
 
 After installing conda (miniconda reccomended: https://docs.conda.io/en/latest/miniconda.html), create the gsf_ims environment with:
+
+Windows:
+`conda env create -f gsf_ims_env.yml`
+Linux:
 `conda env create -f gsf_ims_env.AWS.yml`
 
 Then install the gsf_ims_fitness package from source:
+
 For Windows:
 ```
 cd gsf_ims_fitness
