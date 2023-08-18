@@ -37,9 +37,13 @@ To install the correct package versions, use one of the .yml files included in t
 After installing conda (miniconda reccomended: https://docs.conda.io/en/latest/miniconda.html), create the gsf_ims environment with:
 
 Windows:
-`conda env create -f gsf_ims_env.yml`
+```
+conda env create -f gsf_ims_env.yml
+```
 Linux:
-`conda env create -f gsf_ims_env.AWS.yml`
+```
+conda env create -f gsf_ims_env.AWS.yml
+```
 
 Then install the gsf_ims_fitness package from source:
 
