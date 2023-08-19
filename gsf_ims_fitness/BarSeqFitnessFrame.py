@@ -1661,7 +1661,7 @@ class BarSeqFitnessFrame:
                                        show_progress=False,
                                        auto_save=True,
                                        overwrite=False,
-                                       refit_index=None,
+                                       refit_indexes=None,
                                        return_fit=False,
                                        initial=None,
                                        re_stan_on_rhat=True,
@@ -1843,36 +1843,43 @@ class BarSeqFitnessFrame:
                 
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, st_index)
         
-        if refit_index is None:
+        if refit_indexes is None:
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
+        else:
+            if return_fit:
+                return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
             
-            popt_list = []
-            pcov_list = []
-            residuals_list = []
-            samples_out_list = []
-            quantiles_list = []
-            invert_prob_list = []
-            on_at_zero_prob_list = []
-            index_list = []
+            row_list = [barcode_frame.loc[index] for index in refit_indexes]
+            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
             
-            for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, ind = item
-                
-                popt_list.append(stan_popt)
-                pcov_list.append(stan_pcov)
-                residuals_list.append(stan_resid)
-                samples_out_list.append(stan_samples_out)
-                quantiles_list.append(stan_quantiles)
-                invert_prob_list.append(hill_invert_prob)
-                on_at_zero_prob_list.append(hill_on_at_zero_prob)
-                index_list.append(ind)
+        popt_list = []
+        pcov_list = []
+        residuals_list = []
+        samples_out_list = []
+        quantiles_list = []
+        invert_prob_list = []
+        on_at_zero_prob_list = []
+        index_list = []
+        
+        for item in fit_list: # iterate over barcodes
+            stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, ind = item
             
+            popt_list.append(stan_popt)
+            pcov_list.append(stan_pcov)
+            residuals_list.append(stan_resid)
+            samples_out_list.append(stan_samples_out)
+            quantiles_list.append(stan_quantiles)
+            invert_prob_list.append(hill_invert_prob)
+            on_at_zero_prob_list.append(hill_on_at_zero_prob)
+            index_list.append(ind)
+            
+        perr_list = [np.sqrt(np.diagonal(x)) for x in pcov_list]
+        
+        if refit_indexes is None:
             if index_list == list(barcode_frame.index):
                 print("index lists match")
             else:
                 print("Warning!! index lists do not match!")
-            
-            perr_list = [np.sqrt(np.diagonal(x)) for x in pcov_list]
             
             for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
                 col_name = param
@@ -1881,7 +1888,9 @@ class BarSeqFitnessFrame:
                 barcode_frame[col_name] = v
                 barcode_frame[f"{col_name}_err"] = err
                 
-            for param, q, samp in zip(quantile_params_list, np.array(quantiles_list).transpose([1, 0, 2]), np.array(samples_out_list).transpose([1, 0, 2])):
+            for param, q, samp in zip(quantile_params_list, 
+                                      np.array(quantiles_list).transpose([1, 0, 2]), 
+                                      np.array(samples_out_list).transpose([1, 0, 2])):
                 col_name = param
                 for i, lig in enumerate(ligand_list):
                     col_name = col_name.replace(f"_{i+1}", f"_{lig}")
@@ -1895,31 +1904,35 @@ class BarSeqFitnessFrame:
             barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
             barcode_frame["sensor_rms_residuals"] = residuals_list
         else:
-            # TODO: update refits to Nov 2022, handle multiple ligands
-            row_to_fit = barcode_frame.loc[refit_index]
-            if return_fit:
-                return stan_fit_row(row_to_fit, refit_index, ligand_list, return_fit=True)
-            stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob = stan_fit_row(row_to_fit, refit_index)
-            arr_1 = barcode_frame.loc[refit_index, "sensor_params"]
-            print(f"old: {arr_1}")
-            arr_1 *= 0
-            arr_1 += stan_popt
-            new_test = barcode_frame.loc[refit_index, "sensor_params"]
-            print(f"new: {new_test}")
-            arr_2 = barcode_frame.loc[refit_index, "sensor_params_cov"]
-            arr_2 *= 0
-            arr_2 += stan_pcov
-            arr_3 = barcode_frame.loc[refit_index, "sensor_rms_residuals"]
-            arr_3 *= 0
-            arr_3 += stan_resid
-            arr_4 = barcode_frame.loc[refit_index, "sensor_stan_samples"]
-            arr_4 *= 0
-            arr_4 += stan_samples_out
-            arr_5 = barcode_frame.loc[refit_index, "sensor_params_quantiles"]
-            arr_5 *= 0
-            arr_5 += stan_quantiles
-            barcode_frame.loc[refit_index, "hill_invert_prob"] = hill_invert_prob
-            barcode_frame.loc[refit_index, "hill_on_at_zero_prob"] = hill_on_at_zero_prob
+            if index_list == list(refit_indexes):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
+            
+            for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                barcode_frame.loc[index_list, col_name] = v
+                barcode_frame.loc[index_list, f"{col_name}_err"] = err
+                
+            for param, q, samp in zip(quantile_params_list, 
+                                      np.array(quantiles_list).transpose([1, 0, 2]), 
+                                      np.array(samples_out_list).transpose([1, 0, 2])):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                
+                for ind, new_q, new_samp in zip(index_list, list(q), list(samp)):
+                    barcode_frame.at[ind, f"{col_name}_quantiles"] = new_q
+                    barcode_frame.at[ind, f"{col_name}_samples"] = new_samp
+                
+            for i, lig in enumerate(ligand_list):
+                barcode_frame.loc[index_list, f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
+            
+            barcode_frame.loc[index_list, "sensor_params_cov_all"] = pcov_list
+            barcode_frame.loc[index_list, "hill_on_at_zero_prob"] = on_at_zero_prob_list
+            barcode_frame.loc[index_list, "sensor_rms_residuals"] = residuals_list
         
         self.barcode_frame = barcode_frame
         
