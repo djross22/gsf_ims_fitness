@@ -4487,6 +4487,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                         df['early_fitness'] = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
 
                         X_test = df[params]
+                        X_test = X_test.dropna()
                         
                         y_corr = ramr_model.predict(X_test)
                         y = y - y_corr
