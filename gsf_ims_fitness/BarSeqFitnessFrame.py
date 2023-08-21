@@ -1952,7 +1952,7 @@ class BarSeqFitnessFrame:
                        stan_output_dir=None,
                        auto_save=True,
                        overwrite=False,
-                       refit_index=None,
+                       refit_indexes=None,
                        return_fit=False,
                        initial=None,
                        re_stan_on_rhat=True,
@@ -2120,60 +2120,69 @@ class BarSeqFitnessFrame:
                 
             return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, st_index)
         
-        if refit_index is None:
+        if refit_indexes is None:
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
+        else:
+            if return_fit:
+                return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
             
-            popt_list = []
-            pcov_list = []
+            row_list = [barcode_frame.loc[index] for index in refit_indexes]
+            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
             
-            stan_g_list = []
-            stan_dg_list = []
-            stan_f_list = []
             
-            residuals_list = []
-                
-            stan_g_var_list = []
-            stan_dg_var_list = []
+        popt_list = []
+        pcov_list = []
+        
+        stan_g_list = []
+        stan_dg_list = []
+        stan_f_list = []
+        
+        residuals_list = []
             
-            stan_g_samples_list = []
-            stan_dg_samples_list = []
+        stan_g_var_list = []
+        stan_dg_var_list = []
+        
+        stan_g_samples_list = []
+        stan_dg_samples_list = []
+        
+        index_list = []
+        
+        for item in fit_list: # iterate over barcodes
+            stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, ind = item
             
-            index_list = []
+            popt_list.append(stan_popt)
+            pcov_list.append(stan_pcov)
             
-            for item in fit_list: # iterate over barcodes
-                stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, ind = item
-                
-                popt_list.append(stan_popt)
-                pcov_list.append(stan_pcov)
-                
-                stan_g_list.append(stan_g)
-                stan_dg_list.append(stan_dg)
-                stan_f_list.append(stan_f)
-                
-                residuals_list.append(stan_resid)
-                
-                stan_g_var_list.append(stan_g_var)
-                stan_dg_var_list.append(stan_dg_var)
-                
-                stan_g_samples_list.append(stan_g_samples)
-                stan_dg_samples_list.append(stan_dg_samples)
-                
-                index_list.append(ind)
+            stan_g_list.append(stan_g)
+            stan_dg_list.append(stan_dg)
+            stan_f_list.append(stan_f)
             
+            residuals_list.append(stan_resid)
+            
+            stan_g_var_list.append(stan_g_var)
+            stan_dg_var_list.append(stan_dg_var)
+            
+            stan_g_samples_list.append(stan_g_samples)
+            stan_dg_samples_list.append(stan_dg_samples)
+            
+            index_list.append(ind)
+            
+        
+        stan_g_list = np.array(stan_g_list).transpose([1,0,2,3])
+        stan_g_var_list = np.array(stan_g_var_list).transpose([1,0,2])
+        stan_g_samples_list = np.array(stan_g_samples_list).transpose([1,0,2,3])
+        
+        stan_dg_list = np.array(stan_dg_list).transpose([1,0,2,3])
+        stan_dg_var_list = np.array(stan_dg_var_list).transpose([1,0,2])
+        stan_dg_samples_list = np.array(stan_dg_samples_list).transpose([1,0,2,3])
+        
+        stan_f_list = np.array(stan_f_list).transpose([1,0,2,3])
+        
+        if refit_indexes is None:
             if index_list == list(barcode_frame.index):
                 print("index lists match")
             else:
                 print("Warning!! index lists do not match!")
-            
-            stan_g_list = np.array(stan_g_list).transpose([1,0,2,3])
-            stan_g_var_list = np.array(stan_g_var_list).transpose([1,0,2])
-            stan_g_samples_list = np.array(stan_g_samples_list).transpose([1,0,2,3])
-            
-            stan_dg_list = np.array(stan_dg_list).transpose([1,0,2,3])
-            stan_dg_var_list = np.array(stan_dg_var_list).transpose([1,0,2])
-            stan_dg_samples_list = np.array(stan_dg_samples_list).transpose([1,0,2,3])
-            
-            stan_f_list = np.array(stan_f_list).transpose([1,0,2,3])
             
             barcode_frame["GP_params"] = popt_list
             barcode_frame["GP_cov"] = pcov_list
@@ -2210,55 +2219,53 @@ class BarSeqFitnessFrame:
                 barcode_frame[col_name] = list(f_list)
             
             barcode_frame["GP_residuals"] = residuals_list
+            
         else:
-            # TODO: update refits to Nov 2022, handle multiple ligands
-            row_to_fit = barcode_frame.loc[refit_index]
-            if return_fit:
-                return stan_fit_row(row_to_fit, refit_index, ligand_list, return_fit=True)
-            stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples = stan_fit_row(row_to_fit, refit_index)
+            if index_list == list(refit_indexes):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
             
-            arr_1 = barcode_frame.loc[refit_index, "sensor_GP_params"]
-            print(f"old: {arr_1}")
-            arr_1 *= 0
-            arr_1 += stan_popt
-            new_test = barcode_frame.loc[refit_index, "sensor_GP_params"]
-            print(f"new: {new_test}")
+            for ind, new_popt, new_pcov in zip(index_list, popt_list, pcov_list):
+                barcode_frame.at[ind, "GP_params"] = popt_list
+                barcode_frame.at[ind, "GP_cov"] = pcov_list
             
-            arr_2 = barcode_frame.loc[refit_index, "sensor_GP_cov"]
-            arr_2 *= 0
-            arr_2 += stan_pcov
+            for g_list, param, g_var, g_samp in zip(stan_g_list, g_arr_list, stan_g_var_list, stan_g_samples_list):
+                col_name = param
+                if col_name == 'constr_log_g':
+                    col_name = 'log_g_1'
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                col_name = f"GP_{col_name}"
+                for ind, new_g, new_var, new_samp in zip(index_list, list(g_list), list(g_var), list(g_samp)):
+                    barcode_frame.at[ind, col_name] = new_g
+                    barcode_frame.at[ind, f"{col_name}_var"] = new_var
+                    barcode_frame.at[ind, f"{col_name}_samp"] = new_samp
             
-            arr_3 = barcode_frame.loc[refit_index, "sensor_GP_residuals"]
-            arr_3 *= 0
-            arr_3 += stan_resid
+            for dg_list, param, dg_var, dg_samp in zip(stan_dg_list, dg_arr_list, stan_dg_var_list, stan_dg_samples_list):
+                col_name = param
+                if col_name == 'dlog_g':
+                    col_name = 'dlog_g_1'
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                col_name = f"GP_{col_name}"
+                for ind, new_dg, new_dvar, new_dsamp in zip(index_list, list(dg_list), list(dg_var), list(dg_samp)):
+                    barcode_frame.at[ind, col_name] = new_dg
+                    barcode_frame.at[ind, f"{col_name}_var"] = new_dvar
+                    barcode_frame.at[ind, f"{col_name}_samp"] = new_dsamp
             
-            arr_4 = barcode_frame.loc[refit_index, "sensor_GP_g_quantiles"]
-            arr_4 *= 0
-            arr_4 += stan_g
+            for f_list, param in zip(stan_f_list, f_arr_list):
+                col_name = param
+                if col_name == 'mean_y':
+                    col_name = 'y_1_out_high_tet'
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}_out", f"_{lig}")
+                col_name = f"GP_{col_name}"
+                for ind, new_f in zip(index_list, list(f_list)):
+                    barcode_frame.at[ind, col_name] = new_f
             
-            arr_5 = barcode_frame.loc[refit_index, "sensor_GP_Df_quantiles"]
-            arr_5 *= 0
-            arr_5 += stan_f
+            barcode_frame.loc[index_list, "GP_residuals"] = residuals_list
             
-            arr_6 = barcode_frame.loc[refit_index, "sensor_GP_Dg_quantiles"]
-            arr_6 *= 0
-            arr_6 += stan_dg
-            
-            arr_7 = barcode_frame.loc[refit_index, "sensor_GP_g_var"]
-            arr_7 *= 0
-            arr_7 += stan_g_var
-            
-            arr_8 = barcode_frame.loc[refit_index, "sensor_GP_dg_var"]
-            arr_8 *= 0
-            arr_8 += stan_dg_var
-            
-            arr_9 = barcode_frame.loc[refit_index, "sensor_GP_g_samples"]
-            arr_9 *= 0
-            arr_9 += stan_g_samples
-            
-            arr_10 = barcode_frame.loc[refit_index, "sensor_GP_dg_samples"]
-            arr_10 *= 0
-            arr_10 += stan_dg_samples
         
         self.barcode_frame = barcode_frame
         
