@@ -4455,6 +4455,11 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
         y_ref_list = np.array(y)
         s_ref_list = np.array(s)
         
+        sel = ~np.isnan(y_ref_list)
+        if len(sel[sel])>0:
+            y_ref_list = y_ref_list[sel]
+            s_ref_list = s_ref_list[sel]
+        
         w = 1/s_ref_list**2
         y_ref = np.average(y_ref_list, weights=w)
         s_ref = np.average((y_ref_list-y_ref)**2, weights=w)
