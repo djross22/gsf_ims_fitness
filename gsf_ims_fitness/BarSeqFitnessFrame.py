@@ -2897,6 +2897,7 @@ class BarSeqFitnessFrame:
                             box_size=6,
                             show_bc_str=False,
                             show_mut_codes=True,
+                            show_variant=False,
                             plot_initials=None):
         
         if plot_initials is None:
@@ -2975,7 +2976,8 @@ class BarSeqFitnessFrame:
                         return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
                                                  0, high_fitness, mid_g, fitness_n)
         
-        
+        show_mut_codes = ('mutation_codes' in barcode_frame.columns) and show_mut_codes
+        show_variant = ('variant' in barcode_frame.columns) and show_variant
         fig_axs_list = []
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
             if show_GP or show_hill_fit:
@@ -3071,6 +3073,8 @@ class BarSeqFitnessFrame:
                     barcode_str = str(index) + ': '
                     barcode_str += format(row[f'total_counts'], ",") + "; "
                     barcode_str += row['RS_name']
+                    if show_variant:
+                        barcode_str += f", {row.variant}"
                     if show_mut_codes:
                         barcode_str += f", {row.mutation_codes}"
                     if show_bc_str:
