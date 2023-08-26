@@ -3067,6 +3067,10 @@ class BarSeqFitnessFrame:
                                         y = np.array(st_y_0 + list(stan_data[f'y_{j+1}_{tet_str}_tet']))
                                         s = np.array(st_y_0_err + list(stan_data[f'y_{j+1}_{tet_str}_tet_err']))
                                         
+                                    axr.plot(x[s<10], y[s<10], marker, ms=8, color=color, fillstyle=fill_style)
+                                    ylimr = axr.get_ylim()
+                                    ylimr = (ylimr[0] - 0.1, ylimr[1] + 0.1)
+                                    axr.set_ylim(ylimr)
                                     axr.errorbar(x[s<10], y[s<10], s[s<10], fmt=marker, ms=8, color=color, fillstyle=fill_style)
                 
                 if initial == plot_initials[0]:
@@ -3095,6 +3099,7 @@ class BarSeqFitnessFrame:
                     axr.tick_params(labelsize=12);
                     if ylim is not None:
                         axl.set_ylim(ylim);
+                        
                     
             if show_fits:
                 if old_style_plots:
@@ -3126,6 +3131,9 @@ class BarSeqFitnessFrame:
                             y_fit = fit_funct(x_fit, *params)
                             
                             axr.plot(x_fit, y_fit, color=color, zorder=1000);
+                            ylimr = axr.get_ylim()
+                            ylimr = (min(ylimr[0], min(y_fit)-0.2), max(ylimr[1], max(y_fit)+0.2))
+                            axr.set_ylim(ylimr)
                 
             if show_GP:
                 if old_style_plots:
@@ -3146,6 +3154,10 @@ class BarSeqFitnessFrame:
                     axdg.tick_params(labelsize=12);
                     for i in range(1,3):
                         axr.fill_between(x, stan_f[2-i], stan_f[2+i], alpha=.3, color=fit_plot_colors[2]);
+                        if i == 3:
+                            ylimr = axr.get_ylim()
+                            ylimr = (min(ylimr[0], min(stan_f[2-i])-0.2), max(ylimr[1], max(stan_f[2+i])+0.2))
+                            axr.set_ylim(ylim)
                         axg.fill_between(x, stan_g[2-i], stan_g[2+i], alpha=.3, color=fit_plot_colors[2]);
                         axdg.fill_between(x, stan_dg[2-i], stan_dg[2+i], alpha=.3, color=fit_plot_colors[3]);
                         
