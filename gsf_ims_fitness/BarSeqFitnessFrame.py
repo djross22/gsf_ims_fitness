@@ -1651,7 +1651,6 @@ class BarSeqFitnessFrame:
         
     
     def stan_fitness_difference_curves(self,
-                                       includeChimeras=False,
                                        adapt_delta=0.9,
                                        iterations=1000,
                                        iter_warmup=None,
@@ -1688,8 +1687,6 @@ class BarSeqFitnessFrame:
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
-        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
-            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
         fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=[initial])
         ligand_list = self.ligand_list
@@ -1844,11 +1841,14 @@ class BarSeqFitnessFrame:
             return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, st_index)
         
         if refit_indexes is None:
+            print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
         else:
             if return_fit:
                 return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
             
+            print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
+            print(f'    selected rows: {refit_indexes}')
             row_list = [barcode_frame.loc[index] for index in refit_indexes]
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
             
@@ -1941,7 +1941,6 @@ class BarSeqFitnessFrame:
         
             
     def stan_GP_curves(self,
-                       includeChimeras=False,
                        stan_GP_model='gp-hill-nomean-constrained.stan',
                        adapt_delta=0.9,
                        iterations=1000,
@@ -1979,8 +1978,6 @@ class BarSeqFitnessFrame:
         print("      Method version from 2022-11-25")
         
         barcode_frame = self.barcode_frame
-        if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
-            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
         
         fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=[initial])
         
@@ -2121,10 +2118,14 @@ class BarSeqFitnessFrame:
             return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, st_index)
         
         if refit_indexes is None:
+            print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
         else:
             if return_fit:
                 return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
+            
+            print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
+            print(f'    selected rows: {refit_indexes}')
             
             row_list = [barcode_frame.loc[index] for index in refit_indexes]
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
