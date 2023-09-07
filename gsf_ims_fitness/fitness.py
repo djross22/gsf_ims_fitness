@@ -1540,3 +1540,23 @@ def weighted_t_test(a, b, a_err=None, b_err=None):
     results = model.fit()
     
     return results.pvalues[1]
+
+
+def weighted_rms_residual(x, y, yerr=None, xerr=None):
+    x = np.array(x)
+    y = np.array(y)
+    
+    if (yerr is None) and (xerr is None):
+        w = 1
+    elif yerr is None:
+        w = 1/xerr**2
+    elif xerr is None:
+        w = 1/yerr**2
+    else:
+        w = 1/(xerr**2 + yerr**2)
+    
+    resid = y - x
+    rms = np.sqrt(np.average(resid**2, weights=w))
+    
+    return rms
+
