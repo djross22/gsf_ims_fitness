@@ -1545,6 +1545,8 @@ def weighted_t_test(a, b, a_err=None, b_err=None):
 def weighted_rms_residual(x, y, yerr=None, xerr=None):
     x = np.array(x)
     y = np.array(y)
+    xerr = np.array(xerr)
+    yerr = np.array(yerr)
     
     if (yerr is None) and (xerr is None):
         w = 1
