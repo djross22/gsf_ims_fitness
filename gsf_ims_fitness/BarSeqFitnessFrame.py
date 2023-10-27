@@ -2380,14 +2380,15 @@ class BarSeqFitnessFrame:
         for i in range(13):
             axs[0].plot([i*8+0.5, i*8+0.5],[min(BC_totals), max(BC_totals)], color='gray');
         axs[0].set_title("Total Read Counts Per Sample", fontsize=32)
-        #axs[0].set_yscale('log');
+        axs[0].set_yscale('log');
     
         axs[0].set_xlim(0,97);
         axs[0].set_xlabel('Sample Number', size=20)
         axs[0].set_ylabel('Total Reads per Sample', size=20);
         axs[0].tick_params(labelsize=16);
+        
     
-        axs[1].matshow(BC_total_arr, cmap="inferno", vmin=vmin);
+        axs[1].matshow(BC_total_arr[::-1], cmap="inferno", vmin=vmin);
         axs[1].grid(visible=False);
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
