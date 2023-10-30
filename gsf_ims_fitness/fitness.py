@@ -1273,6 +1273,50 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         
         for t, d in zip(tet_list, dict_list):
             spike_in_fitness_dict[t] = d
+    
+    elif plasmid == 'pCymR':
+        tet_list = [0, 5]
+        # Fitness for 0, and 5 are from 2023-07-14_three_inducers_OD-test-5-plates
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
+                         
+        fitness_dicts = [{"AO-09": 0.9525, "AO-10": 0.9282}, {"AO-09": 0.9199, "AO-10": 0.9244}]
+        
+        # Tet = 0, "AO-09":
+        def fit_function(lig, conc):
+            return (0.9525, 0.0029)
+        dict_list = [{"AO-09":fit_function}]
+        
+        # Tet = 5, "AO-09":
+        def fit_function(lig, conc):
+            if (lig == 'Per-OH'):
+                b = -1.57354775e-07
+                c = -3.66694693e-07
+                return (0.952 + b*conc + c*conc**2, 0.0056 + conc/500*0.05)
+            else:
+                return (0.952, 0.0056)
+        dict_list += [{"AO-09":fit_function}]
+        
+        # Tet = 0, "AO-10":
+        def fit_function(lig, conc):
+            return (0.9525, 0.0029)
+            if (lig == 'IPTG') or (lig == 'none'):
+                return (0.9525, 0.0029)
+            if lig == 'ONPF':
+                return (0.92379*(1 - 0.02933*conc/2000), 0.00168 + 0.00378*conc/2000)
+        dict_list[0]["AO-10"] = fit_function
+        
+        # Tet = 5, "AO-10":
+        def fit_function(lig, conc):
+            return (0.952, 0.0056)
+            if (lig == 'IPTG') or (lig == 'none'):
+                return (0.8972*0.9288/0.9637, 0.005)
+            if lig == 'ONPF':
+                return (np.nan, np.nan)
+        dict_list[1]["AO-10"] = fit_function
+        
+        
+        for t, d in zip(tet_list, dict_list):
+            spike_in_fitness_dict[t] = d
             
     elif plasmid == 'pRamR':
         zeo_list = [0, 200]
@@ -1370,6 +1414,11 @@ def log_g_limits(plasmid="pVER"):
         log_g_max = 5
         log_g_prior_scale = 0.15
         wild_type_ginf = 10**4.67
+    elif plasmid == "pCymR":
+        log_g_min = np.log10(0.3)
+        log_g_max = np.log10(500)
+        log_g_prior_scale = 0.15
+        wild_type_ginf = 10**2.481
     else:
         log_g_min = 1
         log_g_max = 4.5
@@ -1468,6 +1517,13 @@ def get_spike_in_name_from_inital(plasmid, initial):
             spike_in = "ON-01"
         elif initial[-4:] == 'sp02':
             spike_in = "ON-02"
+        else:
+            raise ValueError(f'spike-in initial not recognized: {initial}')
+    elif plasmid == 'pCymR':
+        if initial[-4:] == 'sp09':
+            spike_in = "AO-09"
+        elif initial[-4:] == 'sp10':
+            spike_in = "AO-10"
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
             
