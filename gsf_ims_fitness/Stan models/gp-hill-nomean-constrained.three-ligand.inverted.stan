@@ -21,11 +21,11 @@ data {
   real log_g_min;                    // lower bound on log_low_level and log_high_level
   real log_g_max;                    // upper bound on log_low_level and log_high_level
   
-  real low_fitness_mu;      // fitness difference at +infinite gene expression, with antibiotic
+  real high_fitness_mu;      // fitness difference at +infinite gene expression, with antibiotic
   real mid_g_mu;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_mu;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
-  real low_fitness_std;       // fitness difference at +infinite gene expression, with antibiotic
+  real high_fitness_std;       // fitness difference at +infinite gene expression, with antibiotic
   real mid_g_std;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_std;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
@@ -39,9 +39,9 @@ transformed data {
   real log_spacing;
   real zero_spacing_factor;
   vector[3] log_x_zero;
-  real high_fitness;
+  real low_fitness;
   
-  high_fitness = 0;
+  low_fitness = 0;
   
   N = 3*N_lig+1;
   
@@ -80,7 +80,7 @@ transformed data {
 parameters {
   real<lower=0> sigma;            // scale factor for standard deviation of noise in fitness differnce, y
   
-  real low_fitness;       // fitness difference at zero gene expression, with antibiotic
+  real high_fitness;       // fitness difference at +infinite gene expression, with antibiotic
   real mid_g;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n;         // cooperativity coefficient of fitness difference curve, with antibiotic
 
@@ -150,7 +150,7 @@ transformed parameters {
 
 model {
   // informative priors on fitness calibration params
-  low_fitness ~ normal(low_fitness_mu, low_fitness_std);
+  high_fitness ~ normal(high_fitness_mu, high_fitness_std);
   mid_g ~ normal(mid_g_mu, mid_g_std);
   fitness_n ~ normal(fitness_n_mu, fitness_n_std);
   

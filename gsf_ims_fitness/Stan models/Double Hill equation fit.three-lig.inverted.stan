@@ -22,11 +22,11 @@ data {
   real log_g_max;                    // upper bound on log_g0 and log_ginf
   real log_g_prior_scale;
   
-  real low_fitness_mu;      // fitness difference at +infinite gene expression, with antibiotic
+  real high_fitness_mu;      // fitness difference at +infinite gene expression, with antibiotic
   real mid_g_mu;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_mu;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
-  real low_fitness_std;       // fitness difference at +infinite gene expression, with antibiotic
+  real high_fitness_std;       // fitness difference at +infinite gene expression, with antibiotic
   real mid_g_std;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_std;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
@@ -38,7 +38,7 @@ transformed data {
   real x_min;
   real x_max;
   
-  real high_fitness;
+  real low_fitness;
   
   real log_x_1_min;
   real log_x_1_max;
@@ -47,7 +47,7 @@ transformed data {
   real log_x_3_min;
   real log_x_3_max;
   
-  high_fitness = 0;
+  low_fitness = 0;
   
   x_max = max(x_1);
   x_min = min(x_1);
@@ -83,7 +83,7 @@ parameters {
   
   real<lower=0> sigma;            // scale factor for standard deviation of noise in y
   
-  real low_fitness;       // fitness difference at zero gene expression, med tet
+  real high_fitness;       // fitness difference at +infinite gene expression, med tet
   real mid_g;             // gene expression level at 1/2 max fitness difference, med tet
   real fitness_n;         // cooperativity coefficient of fitness difference curve, med tet
 }
@@ -130,7 +130,7 @@ transformed parameters {
 
 model {
   
-  low_fitness ~ normal(low_fitness_mu, low_fitness_std);
+  high_fitness ~ normal(high_fitness_mu, high_fitness_std);
   mid_g ~ normal(mid_g_mu, mid_g_std);
   fitness_n ~ normal(fitness_n_mu, fitness_n_std);
   
