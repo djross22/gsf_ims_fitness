@@ -1769,7 +1769,7 @@ class BarSeqFitnessFrame:
             # For multi-ligand experiment, missing data can't just be dropped
             is_gp_model = (len(lig_list) > 1)
 
-            if True:#try:
+            try:
                 stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=is_gp_model)
                 
                 if len(lig_list) == 1:
@@ -1828,8 +1828,7 @@ class BarSeqFitnessFrame:
                     g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2, log_ginf_g0_ind_3]]
                     hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
             
-            else:
-            #except Exception as err:
+            except Exception as err:
                 stan_popt = np.full((params_dim), np.nan)
                 stan_pcov = np.full((params_dim, params_dim), np.nan)
                 stan_resid = np.nan
@@ -2064,7 +2063,7 @@ class BarSeqFitnessFrame:
         
             single_tet = len(antibiotic_conc_list)==2
             single_ligand = len(lig_list) == 1
-            if True:#try:
+            try:
                 stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=True)
                 
                 stan_init = init_stan_GP_fit(fit_fitness_difference_params, single_tet=single_tet, single_ligand=single_ligand, plasmid=plasmid)
@@ -2109,7 +2108,7 @@ class BarSeqFitnessFrame:
                 
                 
                 stan_resid = np.median(stan_fit.stan_variable("rms_resid"))
-            else:#except Exception as err:
+            except Exception as err:
                 stan_g = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
                 stan_dg = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
                 stan_f = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(f_arr_list))]
