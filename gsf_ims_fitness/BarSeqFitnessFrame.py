@@ -2852,6 +2852,8 @@ class BarSeqFitnessFrame:
             plot_initials = ['b', 'e']
         elif self.plasmid == 'pRamR':
             plot_initials = ['sp01']
+        elif self.plasmid == 'pCymR':
+            plot_initials = ['sp09']
         
         fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=plot_initials)
         old_style_plots, linthresh, fit_plot_colors, plot_df = fitness_columns_setup
