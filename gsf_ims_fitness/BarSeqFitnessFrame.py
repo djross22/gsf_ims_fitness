@@ -1669,7 +1669,8 @@ class BarSeqFitnessFrame:
                                        return_fit=False,
                                        initial=None,
                                        re_stan_on_rhat=True,
-                                       rhat_cutoff=1.05):
+                                       rhat_cutoff=1.05,
+                                       log_x_max=None):
         
         cmdstanpy_logger = logging.getLogger("cmdstanpy")
         cmdstanpy_logger.disabled = True
@@ -1771,6 +1772,10 @@ class BarSeqFitnessFrame:
 
             try:
                 stan_data = self.bs_frame_stan_data(st_row, initial=initial, is_gp_model=is_gp_model)
+                
+                if log_x_max is not None:
+                    stan_data['log_x_max'] = log_x_max
+                    print(f'Manually setting log_x_max: {log_x_max}')
                 
                 if len(lig_list) == 1:
                     stan_init = init_stan_fit_single_ligand(stan_data, fit_fitness_difference_params)
