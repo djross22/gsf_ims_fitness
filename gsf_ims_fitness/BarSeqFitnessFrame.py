@@ -877,11 +877,11 @@ class BarSeqFitnessFrame:
                         spike_ins_no_tet += list(spike_in_reads)
                     
                     fit_result = stan_fit.stan_variable('log_slope')
-                    fit_mu = np.median(fit_result)
+                    fit_mu = np.mean(fit_result)
                     fit_sig = np.std(fit_result)
                     
                     fit_result = stan_fit.stan_variable('log_ratio_out')
-                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(fit_result)
+                    fit_resid = np.log(n_reads) - np.log(spike_in_reads) - fit_mu
                     log_ratio_out_quantiles = np.quantile(fit_result, [0.05, .25, .5, .75, .95], axis=0)
                     
                     fitness_out_dict[samp] = [fit_mu, fit_sig, fit_resid, log_ratio_out_quantiles]
@@ -1023,11 +1023,11 @@ class BarSeqFitnessFrame:
                     stan_fit_list.append(stan_fit)
                     
                 if stan_fit != 'failed':
-                    fit_mu = np.median(stan_fit.stan_variable('log_slope'))
+                    fit_mu = np.mean(stan_fit.stan_variable('log_slope'))
                     fit_sig = np.std(stan_fit.stan_variable('log_slope'))
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
-                        fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.median(stan_fit.stan_variable('log_ratio_out'), axis=0)
+                        fit_resid = np.log(n_reads) - np.log(spike_in_reads) - np.mean(stan_fit.stan_variable('log_ratio_out'), axis=0)
                     log_ratio_out_quantiles = np.quantile(stan_fit.stan_variable('log_ratio_out'), [0.05, .25, .5, .75, .95], axis=0)
                 else:
                     return
@@ -1059,14 +1059,14 @@ class BarSeqFitnessFrame:
                     sample_str_list = ['ref', 'no_tet', 'with_tet']
                 for samp_list, samp_str in zip(sample_lists, sample_str_list):
                     fit_result = stan_fit.stan_variable(f'slope_{samp_str}')
-                    fit_mu_list = np.median(fit_result, axis=0)
+                    fit_mu_list = np.mean(fit_result, axis=0)
                     fit_sig_list = np.std(fit_result, axis=0)
                     if samp_list is ref_samples:
                         fit_mu_list = [fit_mu_list]*len(ref_samples)
                         fit_sig_list = [fit_sig_list]*len(ref_samples)
                     
                     fit_result = stan_fit.stan_variable(f'residuals_{samp_str}')
-                    fit_resid_list = np.median(fit_result, axis=0).transpose()
+                    fit_resid_list = np.mean(fit_result, axis=0).transpose()
                     
                     fit_result = stan_fit.stan_variable(f'log_ratio_out_{samp_str}')
                     log_ratio_out_list = np.quantile(fit_result, [0.05, .25, .5, .75, .95], axis=0).transpose([2,0,1])
@@ -1811,9 +1811,9 @@ class BarSeqFitnessFrame:
                     return stan_fit
         
                 stan_samples_arr = np.array([stan_fit.stan_variable(key) for key in params_list ])
-                stan_popt = np.array([np.median(s) for s in stan_samples_arr ])
+                stan_popt = np.array([np.mean(s) for s in stan_samples_arr ])
                 stan_pcov = np.cov(stan_samples_arr, rowvar=True)
-                stan_resid = np.median(stan_fit.stan_variable("rms_resid"))
+                stan_resid = np.mean(stan_fit.stan_variable("rms_resid"))
                 
                 # Only save the quantiles and samples for the sensor params (not the fitness vs. g params)
                 stan_quant_arr = stan_samples_arr[:quantile_params_dim]
@@ -2108,11 +2108,11 @@ class BarSeqFitnessFrame:
                     
                 params_arr = np.array([stan_fit.stan_variable(x) for x in params_list])
         
-                stan_popt = np.array([np.median(s) for s in params_arr ])
+                stan_popt = np.array([np.mean(s) for s in params_arr ])
                 stan_pcov = np.cov(params_arr, rowvar=True)
                 
                 
-                stan_resid = np.median(stan_fit.stan_variable("rms_resid"))
+                stan_resid = np.mean(stan_fit.stan_variable("rms_resid"))
             except Exception as err:
                 stan_g = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
                 stan_dg = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
