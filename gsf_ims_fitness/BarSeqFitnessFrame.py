@@ -2341,21 +2341,23 @@ class BarSeqFitnessFrame:
             pdf = PdfPages(pdf_file)
         
         if hist_bin_max is None:
-            hist_bin_max = barcode_frame[int(len(barcode_frame)/50):int(len(barcode_frame)/50)+1]["total_counts"].values[0]
+            hist_bin_max = np.quantile(barcode_frame.total_counts, .99)
         
         #Plot histogram of Barcode counts to enable decision about threshold
         plt.rcParams["figure.figsize"] = [16,8]
         fig, axs = plt.subplots(1, 2)
         bins = np.linspace(-0.5, hist_bin_max + 0.5, num_bins)
         for ax in axs.flatten():
-            ax.hist(barcode_frame['total_counts'], bins=bins);
-            ax.set_xlabel('Barcode Count', size=20)
-            ax.set_ylabel('Number of Barcodes', size=20)
+            ax.hist(barcode_frame['total_counts'], bins=bins, label='All Time Points', alpha=0.7);
+            ax.hist(barcode_frame['total_counts_plate_2'], bins=bins, label='Time Point 1', alpha=0.7);
+            ax.set_xlabel('Barcode Count')
+            ax.set_ylabel('Number of Variants')
             ax.tick_params(labelsize=16);
         axs[0].hist(barcode_frame['total_counts'], bins=bins, histtype='step', cumulative=-1);
         axs[0].set_yscale('log');
         axs[1].set_yscale('log');
         axs[1].set_xlim(0,hist_bin_max/3);
+        axs[0].legend(loc='lower left', bbox_to_anchor= (0.05, 1.02), ncol=2, borderaxespad=0, frameon=True)
             
         if save_plots:
             pdf.savefig()
