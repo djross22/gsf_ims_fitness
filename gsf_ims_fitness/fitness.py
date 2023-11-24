@@ -1410,7 +1410,7 @@ def log_g_limits(plasmid="pVER"):
         log_g_prior_scale = 0.15
         wild_type_ginf = 2.44697108e+04
     elif plasmid == "pRamR":
-        log_g_min = np.log10(50)
+        log_g_min = np.log10(5)
         log_g_max = 5
         log_g_prior_scale = 0.15
         wild_type_ginf = 10**4.67
