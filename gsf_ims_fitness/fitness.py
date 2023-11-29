@@ -1532,8 +1532,14 @@ def get_spike_in_name_from_inital(plasmid, initial):
 def decode_phred(c):
     return ord(c) - 33
 
+def encode_phred(q):
+    return chr(q + 33)
+
 def quality_from_line(line):
     return list(map(decode_phred, line))
+
+def quality_char_string_from_int_list(int_list):
+    return ''.join(list(map(encode_phred, int_list)))
 
 def id_from_line(line):
     if line[0] =='@':
