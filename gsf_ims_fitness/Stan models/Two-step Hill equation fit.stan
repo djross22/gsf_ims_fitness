@@ -42,9 +42,9 @@ transformed data {
 parameters {
   real<lower=log_g_min, upper=log_g_max> log_low_level;               // log10 of gene expression level at zero induction
   real<lower=log_g_min, upper=log_g_max> log_mid_level;               // log10 of gene expression level at top of first step
-  real<lower=log_g_min, upper=log_g_max>  log_high_level;             // log10 of gene expression level at infinite induction
+  real<lower=log_g_min, upper=log_g_max> log_high_level;             // log10 of gene expression level at infinite induction
   
-  vector[2] log_IC_50;         // input level (x) that gives output 1/2 way between low_level and mid_level or between mid_level and high_level
+  ordered[2] log_IC_50;   // input level (x) that gives output 1/2 way between low_level and mid_level or between mid_level and high_level
   real<lower=0> sensor_n;                                             // cooperativity exponent of sensor gene expression vs. x curve, assumed to be the same for both steps
   real<lower=0> sigma;                                                // scale factor for standard deviation of noise in y
 
