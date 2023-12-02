@@ -1191,7 +1191,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
     #     second key is spike-in name
     #     each function has two arguments: the ligand and the ligand concentration
     #         return from function is 2-tuple: (spike-in fitness, uncertainty of spike-in fitness)
-    #     units for fitness values are 10-fold per plate. 
+    # ***** units for fitness values are 10-fold per plate. *****
     #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeate cycle 
     
     spike_in_fitness_dict = {}
@@ -1276,43 +1276,43 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
     
     elif plasmid == 'pCymR':
         tet_list = [0, 5]
-        # Fitness for 0, and 5 are from 2023-07-14_three_inducers_OD-test-5-plates
+        # Fitness for 0, and 5 Tet are indistinguishable in plate reader data.
+        #     results are from 2023-11-17_Per-OH_OD-test-5-plates
+        # AO-09 looks like a decent always-on, but AO-10 looks like it is actaully an inverted sensor,
+        #     so use RS-20 instead, which is an always-on phenotype
         # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
-                         
-        fitness_dicts = [{"AO-09": 0.9525, "AO-10": 0.9282}, {"AO-09": 0.9199, "AO-10": 0.9244}]
-        
+                                 
         # Tet = 0, "AO-09":
         def fit_function(lig, conc):
-            return (0.9525, 0.0029)
+            fit_zero = 0.9640
+            fit_zero_err = 0.0015
+            if (lig == 'Per-OH'):
+                fit_500 = 0.5735
+                fit_500_err = 0.0151
+                return (fit_zero - conc/500(fit_zero - fit_500), fit_zero_err + conc/500(fit_500_err - fit_zero_err))
+            else:
+                return (fit_zero, fit_zero_err)
         dict_list = [{"AO-09":fit_function}]
         
         # Tet = 5, "AO-09":
-        def fit_function(lig, conc):
-            if (lig == 'Per-OH'):
-                b = -1.57354775e-07
-                c = -3.66694693e-07
-                return (0.952 + b*conc + c*conc**2, 0.0056 + conc/500*0.05)
-            else:
-                return (0.952, 0.0056)
+        # No measureable difference
         dict_list += [{"AO-09":fit_function}]
         
-        # Tet = 0, "AO-10":
+        # Tet = 0, "RS-20":
         def fit_function(lig, conc):
-            return (0.9525, 0.0029)
-            if (lig == 'IPTG') or (lig == 'none'):
-                return (0.9525, 0.0029)
-            if lig == 'ONPF':
-                return (0.92379*(1 - 0.02933*conc/2000), 0.00168 + 0.00378*conc/2000)
-        dict_list[0]["AO-10"] = fit_function
+            fit_zero = 0.9648
+            fit_zero_err = 0.0021
+            if (lig == 'Per-OH'):
+                fit_500 = 0.6095
+                fit_500_err = 0.0187
+                return (fit_zero - conc/500(fit_zero - fit_500), fit_zero_err + conc/500(fit_500_err - fit_zero_err))
+            else:
+                return (fit_zero, fit_zero_err)
+        dict_list[0]["RS-20"] = fit_function
         
-        # Tet = 5, "AO-10":
-        def fit_function(lig, conc):
-            return (0.952, 0.0056)
-            if (lig == 'IPTG') or (lig == 'none'):
-                return (0.8972*0.9288/0.9637, 0.005)
-            if lig == 'ONPF':
-                return (np.nan, np.nan)
-        dict_list[1]["AO-10"] = fit_function
+        # Tet = 5, "RS-20":
+        # No measureable difference
+        dict_list[1]["RS-20"] = fit_function
         
         
         for t, d in zip(tet_list, dict_list):

@@ -1524,19 +1524,25 @@ class BarSeqFitnessFrame:
             df = sample_plate_map
             df = df[df["sample_id"]==samp]
             tet_conc = df.antibiotic_conc.iloc[0]
-            lig_conc = max(df[self.ligand_list].iloc[0].values)
             
             if constant_spike_in:
                 spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in]
                 spike_in_fitness_err = 0
             else:
-                if (plasmid == 'pVER') or (plasmid == 'pCymR'):
+                if (plasmid == 'pVER'):
                     ligand = df.ligand.iloc[0]
+                    lig_conc = df[ligand].iloc[0]
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid == 'pRamR':
+                    lig_conc = max(df[self.ligand_list].iloc[0].values)
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](lig_conc)
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](lig_conc)
+                elif plasmid == 'pCymR':
+                    ligand = df.ligand.iloc[0]
+                    lig_conc = df[ligand].iloc[0]
+                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
+                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
             
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
