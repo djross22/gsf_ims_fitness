@@ -102,10 +102,13 @@ generated quantities {
   real log_sensor_n;
   real rms_resid;
   vector[30] y_out;
+  real max_level;  // output at maximum  value of x that was measured
   
   for (i in 1:30) {
     y_out[i] = low_level + (mid_level - low_level)*(x_out[i]^sensor_n)/(IC_50_1^sensor_n + x_out[i]^sensor_n) + (high_level - mid_level)*(x_out[i]^sensor_n)/(IC_50_2^sensor_n + x_out[i]^sensor_n);
   }
+  
+  max_level = low_level + (mid_level - low_level)*(max_x_in^sensor_n)/(IC_50_1^sensor_n + max_x_in^sensor_n) + (high_level - mid_level)*(max_x_in^sensor_n)/(IC_50_2^sensor_n + max_x_in^sensor_n);
     
   log_sensor_n = log10(sensor_n);
   
