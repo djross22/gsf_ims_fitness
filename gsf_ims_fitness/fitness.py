@@ -1289,7 +1289,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
             if (lig == 'Per-OH'):
                 fit_500 = 0.5735
                 fit_500_err = 0.0151
-                return (fit_zero - conc/500(fit_zero - fit_500), fit_zero_err + conc/500(fit_500_err - fit_zero_err))
+                return (fit_zero - conc/500*(fit_zero - fit_500), fit_zero_err + conc/500*(fit_500_err - fit_zero_err))
             else:
                 return (fit_zero, fit_zero_err)
         dict_list = [{"AO-09":fit_function}]
@@ -1305,7 +1305,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
             if (lig == 'Per-OH'):
                 fit_500 = 0.6095
                 fit_500_err = 0.0187
-                return (fit_zero - conc/500(fit_zero - fit_500), fit_zero_err + conc/500(fit_500_err - fit_zero_err))
+                return (fit_zero - conc/500*(fit_zero - fit_500), fit_zero_err + conc/500*(fit_500_err - fit_zero_err))
             else:
                 return (fit_zero, fit_zero_err)
         dict_list[0]["RS-20"] = fit_function
