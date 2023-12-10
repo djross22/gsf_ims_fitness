@@ -186,6 +186,8 @@ generated quantities {
   
   vector[N_lig+1] log_g_1;    // log-gene expression level at each concentration of ligand 1, including zero
   vector[N_lig+1] log_g_2;    // log-gene expression level at each concentration of ligand 2, including zero
+  vector[N_lig+1] log_g_ratio_1;    // log-ratio of gene expression at each concentration to gene expression at zero
+  vector[N_lig+1] log_g_ratio_2;    // log-ratio of gene expression at each concentration to gene expression at zero
 
   vector[N_lig+1] dlog_g_1; // derivative of the gp along the ligand-1 direction
   vector[N_lig+1] dlog_g_2; // derivative of the gp along the ligand-2 direction
@@ -237,4 +239,8 @@ generated quantities {
   dlog_g_1[N_lig+1] = (log_g_1[N_lig+1] - log_g_1[N_lig]) / (log_spacing);
   dlog_g_2[N_lig+1] = (log_g_2[N_lig+1] - log_g_2[N_lig]) / (log_spacing);
   }
+  
+  log_g_ratio_1 = log_g_1 - log_g_1[1];
+  log_g_ratio_2 = log_g_2 - log_g_2[1];
+  
 }

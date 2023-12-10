@@ -2019,6 +2019,7 @@ class BarSeqFitnessFrame:
             params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
             
             g_arr_list = ['constr_log_g']
+            g_ratio_arr_list = []
             dg_arr_list = ['dlog_g']
             f_arr_list = ['mean_y']
             
@@ -2031,6 +2032,7 @@ class BarSeqFitnessFrame:
                            'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 
                            'log_rho', 'log_alpha', 'log_sigma']
             g_arr_list = [f'log_g_{i}' for i in [1, 2]]
+            g_ratio_arr_list = [f'log_g_ratio_{i}' for i in [1, 2]]
             dg_arr_list = [f'dlog_g_{i}' for i in [1, 2]]
             f_arr_list = ['y_1_out_low_tet',  'y_1_out_high_tet',  'y_2_out_low_tet', 'y_2_out_high_tet']
             
@@ -2047,12 +2049,13 @@ class BarSeqFitnessFrame:
                                'log_rho', 'log_alpha', 'log_sigma']
             
             g_arr_list = [f'log_g_{i}' for i in [1, 2, 3]]
+            g_ratio_arr_list = [f'log_g_ratio_{i}' for i in [1, 2, 3]]
             dg_arr_list = [f'dlog_g_{i}' for i in [1, 2, 3]]
             f_arr_list = [f'y_{i}_out' for i in [1, 2, 3]]
             
             x_dim = 7 # number of concentrations for each ligand, including zero
             
-        key_params = params_list + g_arr_list + dg_arr_list + f_arr_list
+        key_params = params_list + g_arr_list + g_ratio_arr_list + dg_arr_list + f_arr_list
             
         params_dim = len(params_list)
         
@@ -2100,10 +2103,13 @@ class BarSeqFitnessFrame:
                     return stan_fit
                     
                 g_arr = [stan_fit.stan_variable(x) for x in g_arr_list]
+                g_ratio_arr = [stan_fit.stan_variable(x) for x in g_ratio_arr_list]
                 dg_arr = [stan_fit.stan_variable(x) for x in dg_arr_list]
                 f_arr = [stan_fit.stan_variable(x) for x in f_arr_list]
                 
                 ret_dict['stan_g'] = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in g_arr]
+                ret_dict['stan_g_ratio'] = np.array([np.mean(a, axis=0) for a in g_ratio_arr])
+                ret_dict['stan_g_ratio_err'] = np.array([np.std(a, axis=0) for a in g_ratio_arr])
                 ret_dict['stan_dg'] = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in dg_arr]
                 ret_dict['stan_f'] = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in f_arr]
                 
@@ -2122,6 +2128,8 @@ class BarSeqFitnessFrame:
                 ret_dict['stan_resid'] = np.mean(stan_fit.stan_variable("rms_resid"))
             except Exception as err:
                 ret_dict['stan_g'] = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
+                ret_dict['stan_g_ratio'] = np.array([np.full(x_dim, np.nan) for i in range(len(g_arr_list))])
+                ret_dict['stan_g_ratio_err'] = np.array([np.full(x_dim, np.nan) for i in range(len(g_arr_list))])
                 ret_dict['stan_dg'] = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
                 ret_dict['stan_f'] = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(f_arr_list))]
                 
@@ -2164,8 +2172,7 @@ class BarSeqFitnessFrame:
         for item in fit_list: # iterate over barcodes
             for k in fit_lists_keys:
                 dict_of_fit_lists[k].append(item[k])
-            
-        
+                    
         stan_g_list = dict_of_fit_lists['stan_g']
         stan_g_var_list = dict_of_fit_lists['stan_g_var']
         stan_g_samples_list = dict_of_fit_lists['stan_g_samples']
@@ -2197,6 +2204,7 @@ class BarSeqFitnessFrame:
             barcode_frame["GP_params"] = dict_of_fit_lists['stan_popt']
             barcode_frame["GP_cov"] = dict_of_fit_lists['stan_pcov']
             
+            
             for g_list, param, g_var, g_samp in zip(stan_g_list, g_arr_list, stan_g_var_list, stan_g_samples_list):
                 col_name = param
                 if col_name == 'constr_log_g':
@@ -2207,6 +2215,11 @@ class BarSeqFitnessFrame:
                 barcode_frame[col_name] = list(g_list)
                 barcode_frame[f"{col_name}_var"] = list(g_var)
                 barcode_frame[f"{col_name}_samp"] = list(g_samp)
+            
+            for i, lig in enumerate(ligand_list):
+                col_name = f"GP_log_g_ratio_{lig}"
+                barcode_frame[col_name] = [x[i] for x in dict_of_fit_lists['stan_g_ratio']]
+                barcode_frame[f'{col_name}_err'] = [x[i] for x in dict_of_fit_lists['stan_g_ratio_err']]
             
             for dg_list, param, dg_var, dg_samp in zip(stan_dg_list, dg_arr_list, stan_dg_var_list, stan_dg_samples_list):
                 col_name = param
@@ -2239,6 +2252,12 @@ class BarSeqFitnessFrame:
             for ind, new_popt, new_pcov in zip(index_list, dict_of_fit_lists['stan_popt'], dict_of_fit_lists['stan_pcov']):
                 barcode_frame.at[ind, "GP_params"] = new_popt
                 barcode_frame.at[ind, "GP_cov"] = new_pcov
+            
+            for ind, rew_ratio, new_ratio_err in zip(index_list, dict_of_fit_lists['stan_g_ratio'], dict_of_fit_lists['stan_g_ratio_err']):
+                for i, lig in enumerate(ligand_list):
+                    col_name = f"GP_log_g_ratio_{lig}"
+                    barcode_frame.at[ind, col_name] = rew_ratio[i]
+                    barcode_frame.at[ind, f'{col_name}_err'] = new_ratio_err[i]
             
             for g_list, param, g_var, g_samp in zip(stan_g_list, g_arr_list, stan_g_var_list, stan_g_samples_list):
                 col_name = param
