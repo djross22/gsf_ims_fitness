@@ -2067,6 +2067,7 @@ class BarSeqFitnessFrame:
         
         rng = np.random.default_rng()
         def stan_fit_row(st_row, st_index, lig_list, return_fit=False):
+            ret_dict = {'st_index':st_index}
             print()
             now = datetime.datetime.now()
             print(f"{now}, fitting row index: {st_index}, for ligands: {lig_list}")
@@ -2102,44 +2103,44 @@ class BarSeqFitnessFrame:
                 dg_arr = [stan_fit.stan_variable(x) for x in dg_arr_list]
                 f_arr = [stan_fit.stan_variable(x) for x in f_arr_list]
                 
-                stan_g = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in g_arr]
-                stan_dg = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in dg_arr]
-                stan_f = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in f_arr]
+                ret_dict['stan_g'] = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in g_arr]
+                ret_dict['stan_dg'] = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in dg_arr]
+                ret_dict['stan_f'] = [np.array([ np.quantile(a, q, axis=0) for q in quantile_list ]) for a in f_arr]
                 
-                stan_g_var = [np.var(a, axis=0) for a in g_arr]
-                stan_dg_var = [np.var(a, axis=0) for a in dg_arr]
+                ret_dict['stan_g_var'] = [np.var(a, axis=0) for a in g_arr]
+                ret_dict['stan_dg_var'] = [np.var(a, axis=0) for a in dg_arr]
                 
-                stan_g_samples = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in g_arr]
-                stan_dg_samples = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in dg_arr]
+                ret_dict['stan_g_samples'] = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in g_arr]
+                ret_dict['stan_dg_samples'] = [rng.choice(a, size=32, replace=False, axis=0, shuffle=False).transpose() for a in dg_arr]
                     
                 params_arr = np.array([stan_fit.stan_variable(x) for x in params_list])
         
-                stan_popt = np.array([np.mean(s) for s in params_arr ])
-                stan_pcov = np.cov(params_arr, rowvar=True)
+                ret_dict['stan_popt'] = np.array([np.mean(s) for s in params_arr ])
+                ret_dict['stan_pcov'] = np.cov(params_arr, rowvar=True)
                 
                 
-                stan_resid = np.mean(stan_fit.stan_variable("rms_resid"))
+                ret_dict['stan_resid'] = np.mean(stan_fit.stan_variable("rms_resid"))
             except Exception as err:
-                stan_g = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
-                stan_dg = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
-                stan_f = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(f_arr_list))]
+                ret_dict['stan_g'] = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(g_arr_list))]
+                ret_dict['stan_dg'] = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(dg_arr_list))]
+                ret_dict['stan_f'] = [np.full((quantile_dim, x_dim), np.nan) for i in range(len(f_arr_list))]
                 
-                stan_g_var = [np.full(x_dim, np.nan) for i in range(len(g_arr_list))]
-                stan_dg_var = [np.full(x_dim, np.nan) for i in range(len(dg_arr_list))]
+                ret_dict['stan_g_var'] = [np.full(x_dim, np.nan) for i in range(len(g_arr_list))]
+                ret_dict['stan_dg_var'] = [np.full(x_dim, np.nan) for i in range(len(dg_arr_list))]
                 
-                stan_g_samples = [np.full((x_dim, 32), np.nan) for i in range(len(g_arr_list))]
-                stan_dg_samples = [np.full((x_dim, 32), np.nan) for i in range(len(dg_arr_list))]
+                ret_dict['stan_g_samples'] = [np.full((x_dim, 32), np.nan) for i in range(len(g_arr_list))]
+                ret_dict['stan_dg_samples'] = [np.full((x_dim, 32), np.nan) for i in range(len(dg_arr_list))]
                 
-                stan_popt = np.full(params_dim, np.nan)
-                stan_pcov = np.full((params_dim, params_dim), np.nan)
+                ret_dict['stan_popt'] = np.full(params_dim, np.nan)
+                ret_dict['stan_pcov'] = np.full((params_dim, params_dim), np.nan)
                 
-                stan_resid = np.nan
+                ret_dict['stan_resid'] = np.nan
                 
                 print(f"Error during Stan fitting for index {st_index}: {err}", sys.exc_info()[0])
                 tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
                 print(tb_str)
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, st_index)
+            return ret_dict
         
         if refit_indexes is None:
             print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
@@ -2154,44 +2155,24 @@ class BarSeqFitnessFrame:
             row_list = [barcode_frame.loc[index] for index in refit_indexes]
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
             
-            
-        popt_list = []
-        pcov_list = []
         
-        stan_g_list = []
-        stan_dg_list = []
-        stan_f_list = []
-        
-        residuals_list = []
-            
-        stan_g_var_list = []
-        stan_dg_var_list = []
-        
-        stan_g_samples_list = []
-        stan_dg_samples_list = []
-        
-        index_list = []
+        dict_of_fit_lists = {}
+        fit_lists_keys = list(fit_list[0].keys())
+        for k in fit_lists_keys:
+            dict_of_fit_lists[k] = []
         
         for item in fit_list: # iterate over barcodes
-            stan_popt, stan_pcov, stan_resid, stan_g, stan_dg, stan_f, stan_g_var, stan_dg_var, stan_g_samples, stan_dg_samples, ind = item
+            for k in fit_lists_keys:
+                dict_of_fit_lists[k].append(item[k])
             
-            popt_list.append(stan_popt)
-            pcov_list.append(stan_pcov)
-            
-            stan_g_list.append(stan_g)
-            stan_dg_list.append(stan_dg)
-            stan_f_list.append(stan_f)
-            
-            residuals_list.append(stan_resid)
-            
-            stan_g_var_list.append(stan_g_var)
-            stan_dg_var_list.append(stan_dg_var)
-            
-            stan_g_samples_list.append(stan_g_samples)
-            stan_dg_samples_list.append(stan_dg_samples)
-            
-            index_list.append(ind)
-            
+        
+        stan_g_list = dict_of_fit_lists['stan_g']
+        stan_g_var_list = dict_of_fit_lists['stan_g_var']
+        stan_g_samples_list = dict_of_fit_lists['stan_g_samples']
+        stan_dg_list = dict_of_fit_lists['stan_dg']
+        stan_dg_var_list = dict_of_fit_lists['stan_dg_var']
+        stan_dg_samples_list = dict_of_fit_lists['stan_dg_samples']
+        stan_f_list = dict_of_fit_lists['stan_f']
         
         stan_g_list = np.array(stan_g_list).transpose([1,0,2,3])
         stan_g_var_list = np.array(stan_g_var_list).transpose([1,0,2])
@@ -2203,14 +2184,18 @@ class BarSeqFitnessFrame:
         
         stan_f_list = np.array(stan_f_list).transpose([1,0,2,3])
         
+        residuals_list = dict_of_fit_lists['stan_resid']
+        
+        index_list = dict_of_fit_lists['st_index']
+        
         if refit_indexes is None:
             if index_list == list(barcode_frame.index):
                 print("index lists match")
             else:
                 print("Warning!! index lists do not match!")
             
-            barcode_frame["GP_params"] = popt_list
-            barcode_frame["GP_cov"] = pcov_list
+            barcode_frame["GP_params"] = dict_of_fit_lists['stan_popt']
+            barcode_frame["GP_cov"] = dict_of_fit_lists['stan_pcov']
             
             for g_list, param, g_var, g_samp in zip(stan_g_list, g_arr_list, stan_g_var_list, stan_g_samples_list):
                 col_name = param
@@ -2251,9 +2236,9 @@ class BarSeqFitnessFrame:
             else:
                 print("Warning!! index lists do not match!")
             
-            for ind, new_popt, new_pcov in zip(index_list, popt_list, pcov_list):
-                barcode_frame.at[ind, "GP_params"] = popt_list
-                barcode_frame.at[ind, "GP_cov"] = pcov_list
+            for ind, new_popt, new_pcov in zip(index_list, dict_of_fit_lists['stan_popt'], dict_of_fit_lists['stan_pcov']):
+                barcode_frame.at[ind, "GP_params"] = new_popt
+                barcode_frame.at[ind, "GP_cov"] = new_pcov
             
             for g_list, param, g_var, g_samp in zip(stan_g_list, g_arr_list, stan_g_var_list, stan_g_samples_list):
                 col_name = param
