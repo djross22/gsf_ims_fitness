@@ -169,7 +169,17 @@ generated quantities {
   real log_ginf_g0_ratio_2;
   real log_ginf_g0_ratio_3;
   
+  real spec_1;  //log_ec50-based specificity for each ligand
+  real spec_2;
+  real spec_3;
+  real mean_log_ec50;  //mean log_ec50 for all three ligands
+  
   real rms_resid;
+  
+  spec_1 = -log_ec50_1 + (log_ec50_2 + log_ec50_3)/2;
+  spec_2 = -log_ec50_2 + (log_ec50_1 + log_ec50_3)/2;
+  spec_3 = -log_ec50_3 + (log_ec50_1 + log_ec50_2)/2;
+  mean_log_ec50 = (log_ec50_1 + log_ec50_2 + log_ec50_3)/3;
   
   log_ginf_g0_ratio_1 = log_ginf_1 - log_g0;
   log_ginf_g0_ratio_2 = log_ginf_2 - log_g0;

@@ -1736,9 +1736,10 @@ class BarSeqFitnessFrame:
                 
         elif len(ligand_list) == 3:
             params_list = ['log_g0', 
-                           'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
-                           'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2',
-                           'log_ginf_3', 'log_ec50_3', 'sensor_n_3', 'log_ginf_g0_ratio_3']
+                           'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1', 'spec_1',
+                           'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2', 'spec_2',
+                           'log_ginf_3', 'log_ec50_3', 'sensor_n_3', 'log_ginf_g0_ratio_3', 'spec_3',
+                           'mean_log_ec50']
             if plasmid == 'pRamR':
                 params_list += ['high_fitness', 'mid_g', 'fitness_n']
                 sm_file = 'Double Hill equation fit.three-lig.inverted.stan'
