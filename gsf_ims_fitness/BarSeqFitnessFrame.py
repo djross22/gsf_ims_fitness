@@ -22,6 +22,7 @@ import pandas as pd
 from scipy.optimize import curve_fit
 #from scipy import special
 #from scipy import misc
+from scipy import stats
 
 #import pystan
 import pickle
@@ -2339,7 +2340,7 @@ class BarSeqFitnessFrame:
             self.save_as_pickle(overwrite=overwrite)
         
             
-    def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None):
+    def plot_count_hist(self, hist_bin_max=None, num_bins=50, save_plots=False, pdf_file=None, quantile_for_qc_ratio=0.99):
         
         barcode_frame = self.barcode_frame
         
@@ -2355,15 +2356,21 @@ class BarSeqFitnessFrame:
             hist_bin_max = np.quantile(barcode_frame.total_counts, .99)
         
         #Plot histogram of Barcode counts to enable decision about threshold
-        plt.rcParams["figure.figsize"] = [16,8]
+        plt.rcParams["figure.figsize"] = [10, 3]
         fig, axs = plt.subplots(1, 2)
         bins = np.linspace(-0.5, hist_bin_max + 0.5, num_bins)
+        x = barcode_frame['total_counts_plate_2'].values
+        count_mode = stats.mode(x).mode
+        count_quantile = np.quantile(x, quantile_for_qc_ratio)
+        print(f'plate 2 count mode: {count_mode}')
+        print(f'plate 2 {quantile_for_qc_ratio} quantile: {count_quantile}')
+        print(f'plate 2 QC ratio: {count_quantile/count_mode:.2f}')
         for ax in axs.flatten():
             ax.hist(barcode_frame['total_counts'], bins=bins, label='All Time Points', alpha=0.7);
-            ax.hist(barcode_frame['total_counts_plate_2'], bins=bins, label='Time Point 1', alpha=0.7);
+            ax.hist(x, bins=bins, label='Time Point 1', alpha=0.7);
             ax.set_xlabel('Barcode Count')
             ax.set_ylabel('Number of Variants')
-            ax.tick_params(labelsize=16);
+            #ax.tick_params(labelsize=16);
         axs[0].hist(barcode_frame['total_counts'], bins=bins, histtype='step', cumulative=-1);
         axs[0].set_yscale('log');
         axs[1].set_yscale('log');
