@@ -2383,7 +2383,7 @@ class BarSeqFitnessFrame:
         if save_plots:
             pdf.close()
         
-    def plot_read_counts(self, num_to_plot=None, save_plots=False, pdf_file=None, vmin=0):
+    def plot_read_counts(self, save_plots=False, pdf_file=None, vmin=0):
         
         barcode_frame = self.barcode_frame
         
@@ -2409,33 +2409,37 @@ class BarSeqFitnessFrame:
             BC_total_arr.append(subarr)
     
         #Plot barcode read counts across plate
-        plt.rcParams["figure.figsize"] = [12,16]
-        fig, axs = plt.subplots(2, 1)
+        plt.rcParams["figure.figsize"] = [8, 5]
+        fig, ax = plt.subplots()
     
         r12 = np.asarray(np.split(np.asarray(BC_totals), 8)).transpose().flatten()
+        for i, split_count in enumerate(np.split(r12, 4)):
+            geo_std = np.exp(np.std(np.log(split_count)))
+            geo_max = np.exp(np.ptp(np.log(split_count)))
+            print(f'Time point {i+1}, geometric stdev: {geo_std:.2f}-fold')
+            print(f'            maximum differnce: {geo_max:.2f}-fold')
     
-        axs[0].scatter(index_list, r12, c=plot_colors96(), s=70);
+        ax.scatter(index_list, r12, c=plot_colors96(), s=50);
         for i in range(13):
-            axs[0].plot([i*8+0.5, i*8+0.5],[min(BC_totals), max(BC_totals)], color='gray');
-        axs[0].set_title("Total Read Counts Per Sample", fontsize=32)
-        axs[0].set_yscale('log');
+            ax.plot([i*8+0.5, i*8+0.5],[min(BC_totals), max(BC_totals)], color='gray');
+        ax.set_yscale('log');
     
-        axs[0].set_xlim(0,97);
-        axs[0].set_xlabel('Sample Number', size=20)
-        axs[0].set_ylabel('Total Reads per Sample', size=20);
-        axs[0].tick_params(labelsize=16);
+        ax.set_xlim(0,97);
+        ax.set_xlabel('Sample Number', size=20)
+        ax.set_ylabel('Total Reads per Sample', size=20);
+        ax.tick_params(labelsize=16);
         
-    
-        axs[1].matshow(BC_total_arr[::-1], cmap="inferno", vmin=vmin);
-        axs[1].grid(visible=False);
+        fig, ax = plt.subplots()
+        ax.matshow(BC_total_arr[::-1], cmap="inferno", vmin=vmin);
+        ax.grid(visible=False);
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            axs[1].set_xticklabels([i+1 for i in range(12)], size=16);
-            axs[1].set_xticks([i for i in range(12)]);
-            axs[1].set_yticklabels([ r + " " for r in fitness.rows()[::-1] ], size=16);
-            axs[1].set_yticks([i for i in range(8)]);
-        axs[1].set_ylim(-0.5, 7.5);
-        axs[1].tick_params(length=0);
+            ax.set_xticklabels([i+1 for i in range(12)], size=16);
+            ax.set_xticks([i for i in range(12)]);
+            ax.set_yticklabels([ r + " " for r in fitness.rows()[::-1] ], size=16);
+            ax.set_yticks([i for i in range(8)]);
+        ax.set_ylim(-0.5, 7.5);
+        ax.tick_params(length=0);
         
         if save_plots:
             pdf.savefig()
