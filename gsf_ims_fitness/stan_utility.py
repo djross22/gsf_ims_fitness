@@ -16,10 +16,11 @@ def file_to_list(file_name):
     return lines
 
 
-def compile_model(filename, model_name=None, check_includes=True, incl_stan_save_dir=None):
+def compile_model(filename, file_in_repository_models=True, check_includes=True, incl_stan_save_file=None):
 
     return_directory = os.getcwd()
-    os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
+    if file_in_repository_models:
+        os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
     
     lines = file_to_list(filename)
     
@@ -41,9 +42,11 @@ def compile_model(filename, model_name=None, check_includes=True, incl_stan_save
         lines = new_lines
         
     if has_includes:
-        if incl_stan_save_dir is not None:
-            os.chdir(incl_stan_save_dir)
-        stan_file = filename.replace('.stan', '.incl.stan')
+        if incl_stan_save_file is not None:
+            os.chdir(return_directory)
+            stan_file = incl_stan_save_file
+        else:
+            stan_file = filename.replace('.stan', '.incl.stan')
 
         with open(stan_file, "w") as out_file:
             out_file.writelines(lines)
