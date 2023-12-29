@@ -10,12 +10,45 @@ def check_all_diagnostics(fit):
     print(fit.diagnose())
 
 
-def compile_model(filename, model_name=None, force_recompile=False, verbose=True):
+def file_to_list(file_name):
+    text_file = open(file_name, "r")
+    lines = text_file.readlines()
+    return lines
+
+
+def compile_model(filename, model_name=None, check_includes=True, incl_stan_save_dir=None):
 
     return_directory = os.getcwd()
     os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'Stan models'))
     
-    sm = cmdstanpy.CmdStanModel(stan_file=filename)
+    lines = file_to_list(filename)
+    
+    has_includes = False
+    stan_file = filename
+    while check_includes:
+        check_includes = False
+        new_lines = []
+        for line in lines:
+            if line.strip().startswith('#include'):
+                include_file = line[line.find('#include')+9:line.rfind('.stan')+5]
+                include_file = include_file.strip()
+                include_lines = file_to_list(include_file)
+                new_lines += include_lines
+                check_includes = True
+                has_includes = True
+            else:
+                new_lines += [line]
+        lines = new_lines
+        
+    if has_includes:
+        if incl_stan_save_dir is not None:
+            os.chdir(incl_stan_save_dir)
+        stan_file = filename.replace('.stan', '.incl.stan')
+
+        with open(stan_file, "w") as out_file:
+            out_file.writelines(lines)
+    
+    sm = cmdstanpy.CmdStanModel(stan_file=stan_file)
     
     os.chdir(return_directory)
 
