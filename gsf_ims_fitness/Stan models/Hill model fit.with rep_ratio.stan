@@ -83,31 +83,31 @@ transformed parameters {
   ec50[1] = exp(log_ec50_var[1]);
   n_eff[1] = hill_n*inv_logit(logit_n_eff_var[1]);
   
-  for (var in 2:num_var) {
-    if (var > num_non_epi_var) {
-      logit_g0_var[var] = logit_g0_wt + logit_g0_epi[var-num_non_epi_var];
-      logit_ginf_var[var] = logit_ginf_wt + logit_ginf_epi[var-num_non_epi_var];
-      log_ec50_var[var] = log_ec50_wt + log_ec50_epi[var-num_non_epi_var];
-      logit_n_eff_var[var] = logit_n_eff_wt + logit_n_eff_epi[var-num_non_epi_var];
+  for (variant_num in 2:num_var) {
+    if (variant_num > num_non_epi_var) {
+      logit_g0_var[variant_num] = logit_g0_wt + logit_g0_epi[variant_num-num_non_epi_var];
+      logit_ginf_var[variant_num] = logit_ginf_wt + logit_ginf_epi[variant_num-num_non_epi_var];
+      log_ec50_var[variant_num] = log_ec50_wt + log_ec50_epi[variant_num-num_non_epi_var];
+      logit_n_eff_var[variant_num] = logit_n_eff_wt + logit_n_eff_epi[variant_num-num_non_epi_var];
 	}
     else {
-      logit_g0_var[var] = logit_g0_wt;
-      logit_ginf_var[var] = logit_ginf_wt;
-      log_ec50_var[var] = log_ec50_wt;
-      logit_n_eff_var[var] = logit_n_eff_wt;
+      logit_g0_var[variant_num] = logit_g0_wt;
+      logit_ginf_var[variant_num] = logit_ginf_wt;
+      log_ec50_var[variant_num] = log_ec50_wt;
+      logit_n_eff_var[variant_num] = logit_n_eff_wt;
 	}
 	
 	for (mut in 1:num_mut) {
-	  logit_g0_var[var] += mut_code[var-1, mut]*logit_g0_mut[mut];
-	  logit_ginf_var[var] += mut_code[var-1, mut]*logit_ginf_mut[mut];
-	  log_ec50_var[var] += mut_code[var-1, mut]*log_ec50_mut[mut];
-	  logit_n_eff_var[var] += mut_code[var-1, mut]*logit_n_eff_mut[mut];
+	  logit_g0_var[variant_num] += mut_code[variant_num-1, mut]*logit_g0_mut[mut];
+	  logit_ginf_var[variant_num] += mut_code[variant_num-1, mut]*logit_ginf_mut[mut];
+	  log_ec50_var[variant_num] += mut_code[variant_num-1, mut]*log_ec50_mut[mut];
+	  logit_n_eff_var[variant_num] += mut_code[variant_num-1, mut]*logit_n_eff_mut[mut];
 	}
 	
-	g0[var] = inv_logit(logit_g0_var[var]);
-    ginf[var] = inv_logit(logit_ginf_var[var]);
-    ec50[var] = exp(log_ec50_var[var]);
-    n_eff[var] = hill_n*inv_logit(logit_n_eff_var[var]);
+	g0[variant_num] = inv_logit(logit_g0_var[variant_num]);
+    ginf[variant_num] = inv_logit(logit_ginf_var[variant_num]);
+    ec50[variant_num] = exp(log_ec50_var[variant_num]);
+    n_eff[variant_num] = hill_n*inv_logit(logit_n_eff_var[variant_num]);
   }
   
   for (i in 1:N) {
@@ -142,11 +142,11 @@ model {
   log_ec50_mut ~ normal(0, delta_prior_width_hill);
   logit_n_eff_mut ~ normal(0, delta_prior_width_hill);
   
-  for (var in 1:num_epi_var) {
-	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_g0_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_g0_epi[var] | 0, epi_prior_width_2_hill));
-	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_ginf_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_ginf_epi[var] | 0, epi_prior_width_2_hill));
-	target += log_sum_exp(log_phi_1 + normal_lpdf(log_ec50_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(log_ec50_epi[var] | 0, epi_prior_width_2_hill));
-	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_n_eff_epi[var] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_n_eff_epi[var] | 0, epi_prior_width_2_hill));
+  for (variant_num in 1:num_epi_var) {
+	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_g0_epi[variant_num] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_g0_epi[variant_num] | 0, epi_prior_width_2_hill));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_ginf_epi[variant_num] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_ginf_epi[variant_num] | 0, epi_prior_width_2_hill));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(log_ec50_epi[variant_num] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(log_ec50_epi[variant_num] | 0, epi_prior_width_2_hill));
+	target += log_sum_exp(log_phi_1 + normal_lpdf(logit_n_eff_epi[variant_num] | 0, epi_prior_width_1_hill), log_phi_2 + normal_lpdf(logit_n_eff_epi[variant_num] | 0, epi_prior_width_2_hill));
   }
   
   // prior on max output level
@@ -186,17 +186,17 @@ generated quantities {
   
   g_max = 10^log_g_max;
   
-  for (var in 1:num_var) {
+  for (variant_num in 1:num_var) {
     for (i in 1:19) {
-      fc_out[var, i] = g0[var] + (ginf[var] - g0[var])*(x_out[i]^n_eff[var])/(ec50[var]^n_eff[var] + x_out[i]^n_eff[var]);
+      fc_out[variant_num, i] = g0[variant_num] + (ginf[variant_num] - g0[variant_num])*(x_out[i]^n_eff[variant_num])/(ec50[variant_num]^n_eff[variant_num] + x_out[i]^n_eff[variant_num]);
 	
-      y_out[var, i] = g_max*fc_out[var, i];
+      y_out[variant_num, i] = g_max*fc_out[variant_num, i];
       
     }
 	
-	log_g0[var] = log10(g0[var]);
-	log_ginf[var] = log10(ginf[var]);
-	log_ec50[var] = log10(ec50[var]);
+	log_g0[variant_num] = log10(g0[variant_num]);
+	log_ginf[variant_num] = log10(ginf[variant_num]);
+	log_ec50[variant_num] = log10(ec50[variant_num]);
 	
   }
   
