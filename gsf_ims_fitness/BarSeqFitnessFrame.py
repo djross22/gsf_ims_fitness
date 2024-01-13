@@ -2641,10 +2641,10 @@ class BarSeqFitnessFrame:
         x = f_data["fraction_total_p2"]
         err_est = f_data["fraction_total_p2"] / np.sqrt(f_data["total_counts_plate_2"]/24)
         
-        axs[0].plot(x, y, "o", ms=5, label = experiment);
+        axs[0].plot(x, y, "o", ms=5, label = experiment, alpha=0.1);
         axs[0].plot(x, err_est, c="darkgreen");
         axs[0].set_ylabel('Stdev(barcode fraction per sample)', size=20);
-        axs[1].plot(x, y/x, "o", ms=5, label = experiment);
+        axs[1].plot(x, y/x, "o", ms=5, label = experiment, alpha=0.1);
         axs[1].plot(x, err_est/x, c="darkgreen");
         axs[1].set_ylabel('Relative Stdev(barcode fraction per sample)', size=20);
     
@@ -3898,7 +3898,7 @@ class BarSeqFitnessFrame:
     def plot_chimera_plot(self,
                           save_plots=False,
                           chimera_cut_line=None,
-                          plot_size=8):
+                          plot_size=6, alpha=0.1, chimera_alpha=0.3):
             
         barcode_frame = self.barcode_frame[self.barcode_frame["possibleChimera"]]
         
@@ -3912,31 +3912,31 @@ class BarSeqFitnessFrame:
         
         plt.rcParams["figure.figsize"] = [plot_size, plot_size]
         fig, axs = plt.subplots(1, 1)
-        axs.set_ylabel('Chimera Read Count per Sample', size=20)
-        axs.set_xlabel('Geometric Mean of Parental Read Counts', size=20);
+        axs.set_ylabel('Chimera Read Count per Sample')
+        axs.set_xlabel('Geometric Mean of Parental Read Counts');
         axs.tick_params(labelsize=16);
     
         #axs.plot(np.sqrt(for_parent_count_list_96*rev_parent_count_list_96), chimera_count_list_96, 'o', ms=5,
         #        label="Individual Sample Counts");
         x = barcode_frame["parent_geo_mean"]/96
         y = barcode_frame["total_counts"]/96
-        axs.plot(x, y, 'o', ms=7, label="Possible Chimeras, Total Counts ÷ 96");
+        axs.plot(x, y, 'o', ms=7, alpha=alpha, label="Possible Chimeras, Total Counts ÷ 96");
         
         if "parent_geo_mean_p2" in barcode_frame.columns:
             x = barcode_frame["parent_geo_mean_p2"]/24
             y = barcode_frame["total_counts_plate_2"]/24
-            axs.plot(x, y, 'o', ms=5, label="Total from Time Point 1 ÷ 24");
-            leg = axs.legend(loc='upper left', bbox_to_anchor= (0.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
-            leg.get_frame().set_edgecolor('k');
+            axs.plot(x, y, 'o', ms=5, alpha=alpha, label="Total from Time Point 1 ÷ 24");
         
         if "isChimera" in barcode_frame.columns:
             plot_frame = barcode_frame[barcode_frame["isChimera"]]
             x = plot_frame["parent_geo_mean"]/96
             y = plot_frame["total_counts"]/96
-            axs.plot(x, y, 'o', ms=5, label="Actual Chimeras, Total Counts ÷ 96");
-            leg = axs.legend(loc='upper left', bbox_to_anchor= (0.03, 0.97), ncol=1, borderaxespad=0, frameon=True, fontsize=12)
-            leg.get_frame().set_edgecolor('k');
+            axs.plot(x, y, 'o', ms=5, alpha=chimera_alpha, label="Actual Chimeras, Total Counts ÷ 96");
         
+        if ("parent_geo_mean_p2" in barcode_frame.columns) or ("isChimera" in barcode_frame.columns):
+            leg = axs.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=1)
+            #leg.get_frame().set_edgecolor('k');
+            
         axs.set_xscale("log");
         axs.set_yscale("log");
         ylim = axs.get_ylim()
