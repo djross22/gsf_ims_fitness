@@ -3330,12 +3330,14 @@ class BarSeqFitnessFrame:
                                             rhat_cutoff=1.05,
                                             outlier_cutoff=2.5,
                                             return_fig=False,
-                                            fig_size=[12, 6]):
+                                            fig_size=[12, 6],
+                                            plot_ligands=None):
         if spike_in_initial is None:
             spike_in_initial = self.get_default_initial()
         spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
         print(f'Calibrating with counts normalized to {spike_in}, initial: {spike_in_initial}')
         plasmid = self.plasmid
+        
         if plasmid == 'pVER':
             stan_model_file = "Hill equation fit-zero high.stan"
             
@@ -3365,7 +3367,7 @@ class BarSeqFitnessFrame:
         elif plasmid == 'pCymR':
             stan_model_file = "Hill equation fit-zero high.stan"
             
-            ligand_plot_list = self.ligand_list #[:1]
+            ligand_plot_list = self.ligand_list
             
             def init_fitness_fit(y_data):
                 low = -0.8 #np.mean(y_data[:2])
@@ -3373,6 +3375,9 @@ class BarSeqFitnessFrame:
                 n = 1.1 #np.random.normal(1, 0.2) * 3
                 sig = np.random.normal(1, 0.2) * 0.1
                 return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
+        
+        if plot_ligands is not None:
+            ligand_plot_list = [x for x in ligand_plot_list if x in plot_ligands]
         
         if robust_error_model:
             stan_model_file = stan_model_file[:-4] + "robust.stan"
@@ -3479,7 +3484,8 @@ class BarSeqFitnessFrame:
             resid_frame_early_fitness = []
             
             for RS_name in RS_list:
-                for i, lig in enumerate(ligand_plot_list):
+                for lig in ligand_plot_list:
+                    i = np.where(np.array(self.ligand_list)==lig)[0][0]
                     plas = cytom_plasmid_from_rs_name(RS_name)
 
                     df = all_cytometry_Hill_fits
