@@ -3541,7 +3541,9 @@ class BarSeqFitnessFrame:
                                             lig_conc = np.array(stan_data[f'x_{i+1}'])
                                             y = np.array(stan_data[f'y_{i+1}_high_tet'])
                                             y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
-                                                  
+                                    
+                                    if np.any(np.isinf(hill_params)):
+                                        hill_params = [0]*len(hill_params)
                                     x = hill_funct(lig_conc, *hill_params)
 
                                     sel = RS_name in rs_exclude_list
@@ -3574,7 +3576,7 @@ class BarSeqFitnessFrame:
                         raise ValueError('length of df != 1')
                     
             ylim = ax.get_ylim()
-            ax.set_xscale("log")
+            ax.set_xscale("symlog")
             ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
             ax.set_xlabel('Sensor Output (MEF)');
             
@@ -3584,6 +3586,8 @@ class BarSeqFitnessFrame:
             
             if show_old_fit and (old_fit_params is not None):
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
+                if 0 in x_fit_list:
+                    x_plot_fit = np.array([0] + list(x_plot_fit))
                 y_plot_fit = fit_funct(x_plot_fit, *old_fit_params[:3])
                 ax.plot(x_plot_fit, y_plot_fit, '--r', zorder=100, label='old fit');
             
@@ -3654,6 +3658,8 @@ class BarSeqFitnessFrame:
                     print(f"           {w_str} RMS deviation: {rms_dev:.4}")
                 
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/1.5), np.log10(1.2*max(x_fit_list)))
+                if 0 in x_fit_list:
+                    x_plot_fit = np.array([0] + list(x_plot_fit))
                 y_plot_fit = fit_funct(x_plot_fit, *stan_popt)
                 ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='new fit');
                 
