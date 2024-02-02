@@ -3365,7 +3365,7 @@ class BarSeqFitnessFrame:
         elif plasmid == 'pCymR':
             stan_model_file = "Hill equation fit-zero high.stan"
             
-            ligand_plot_list = self.ligand_list[:1]
+            ligand_plot_list = self.ligand_list #[:1]
             
             def init_fitness_fit(y_data):
                 low = -0.8 #np.mean(y_data[:2])
@@ -3685,8 +3685,10 @@ class BarSeqFitnessFrame:
                                                 ref_fitness=resid_frame_ref,
                                                 early_fitness=resid_frame_early_fitness))
                 
-            
-        ncol = int(len(RS_list)*len(lig_list)/40)
+        if plasmid == 'pRamR':
+            ncol = int(len(RS_list)*len(lig_list)/40)
+        else:
+            ncol = int(len(RS_list)*len(lig_list)/20)
         if ncol == 0:
             ncol = 1
         axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=ncol, borderaxespad=0, frameon=True);
