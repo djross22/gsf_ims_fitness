@@ -1233,9 +1233,9 @@ class BarSeqFitnessFrame:
             spike_2_init = 'sp02'
         elif self.plasmid == 'pCymR':
             spike_1 = 'AO-09'
-            spike_2 = 'AO-10'
+            spike_2 = 'RS-20'
             spike_1_init = 'sp09'
-            spike_2_init = 'sp10'
+            spike_2_init = 'rs20'
         
         if early_slope:
             early_initial = 'ea.'
@@ -2688,7 +2688,7 @@ class BarSeqFitnessFrame:
             elif self.plasmid == 'pRamR':
                 plot_initials=["sp01", "sp02"]
             elif self.plasmid == 'pCymR':
-                plot_initials=["sp09", "sp10"]
+                plot_initials=["sp09", "rs20"]
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -2884,7 +2884,7 @@ class BarSeqFitnessFrame:
         elif self.plasmid == 'pRamR':
             plot_initials = ['sp01']
         elif self.plasmid == 'pCymR':
-            plot_initials = ['sp09']
+            plot_initials = ['sp09', 'rs20']
         
         fitness_columns_setup = self.get_fitness_columns_setup(plot_initials=plot_initials)
         old_style_plots, linthresh, fit_plot_colors, plot_df = fitness_columns_setup

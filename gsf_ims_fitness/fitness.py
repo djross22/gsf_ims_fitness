@@ -1526,8 +1526,8 @@ def get_spike_in_name_from_inital(plasmid, initial):
     elif plasmid == 'pCymR':
         if initial[-4:] == 'sp09':
             spike_in = "AO-09"
-        elif initial[-4:] == 'sp10':
-            spike_in = "AO-10"
+        elif initial[-4:] == 'rs20':
+            spike_in = "RS-20"
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
             
