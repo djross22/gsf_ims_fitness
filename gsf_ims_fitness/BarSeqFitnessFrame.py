@@ -3311,6 +3311,8 @@ class BarSeqFitnessFrame:
                                             all_cytometry_Hill_fits,
                                             spike_in_initial=None,
                                             run_stan_fit=False,
+                                            plot_raw_fitness=False,
+                                            color_by_ligand_conc=None,
                                             save_fitness_difference_params=False,
                                             rs_exclude_list=[],
                                             show_exclude_data=True,
@@ -3330,12 +3332,17 @@ class BarSeqFitnessFrame:
                                             outlier_cutoff=2.5,
                                             return_fig=False,
                                             fig_size=[12, 6],
+                                            alpha=0.7,
                                             plot_ligands=None):
         if spike_in_initial is None:
             spike_in_initial = self.get_default_initial()
         spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
         print(f'Calibrating with counts normalized to {spike_in}, initial: {spike_in_initial}')
         plasmid = self.plasmid
+        
+        if plot_raw_fitness:
+            run_stan_fit = False
+            show_old_fit = False
         
         if plasmid == 'pVER':
             stan_model_file = "Hill equation fit-zero high.stan"
@@ -3464,7 +3471,6 @@ class BarSeqFitnessFrame:
         stan_params_list = []
         for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, plot_fit_params):
             fmt = 'o'
-            alpha = 0.7
             ms = 8
             color_ind = -1
             fmt_list = ['o', '^', 'v', '<', '>', 'd', 'p', '*', 's', 'h', '+', 'x']
@@ -3473,6 +3479,8 @@ class BarSeqFitnessFrame:
             x_fit_list = []
             y_fit_list = []
             y_err_list = []
+            if color_by_ligand_conc is not None:
+                lig_color_conc_list = []
             
             resid_frame_rs_name = []
             resid_frame_lig = []
@@ -3527,29 +3535,46 @@ class BarSeqFitnessFrame:
                                     if (len(ligand_plot_list) > 1) or (plasmid == 'pCymR'):
                                         # For RamR and CymR
                                         lig_conc = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
-                                        y = np.array(list(stan_data[f'y_0']) + list(stan_data[f'y_{i+1}']))
-                                        y_err = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{i+1}_err']))
                                         samples = np.array(list(stan_data[f'samp_0']) + list(stan_data[f'samp_{i+1}']))
+                                        if plot_raw_fitness:
+                                            y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
+                                            y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples])
+                                        else:
+                                            y = np.array(list(stan_data[f'y_0']) + list(stan_data[f'y_{i+1}']))
+                                            y_err = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{i+1}_err']))
                                          
                                     else:
                                         # For LacI
                                         if tet == plot_antibiotic_list[0]:
                                             if f'x_{i+1}' in stan_data:
                                                 lig_conc = np.array([0] + list(stan_data[f'x_{i+1}']))
+                                                samples = np.array(list(stan_data[f'samp_0']) + list(stan_data[f'samp_{i+1}']))
                                                 y = np.array([stan_data[f'y_0_low_tet']] + list(stan_data[f'y_{i+1}_low_tet']))
                                                 y_err = np.array([stan_data[f'y_0_low_tet_err']] + list(stan_data[f'y_{i+1}_low_tet_err']))
                                             else:
                                                 lig_conc = np.array(stan_data['x'])
+                                                samples = np.array(stan_data['samp'])
                                                 y = np.array(stan_data['y'])
                                                 y_err = np.array(stan_data[f'y_err'])
                                         elif tet == plot_antibiotic_list[1]:
                                             lig_conc = np.array(stan_data[f'x_{i+1}'])
+                                            samples = np.array(stan_data[f'samp_{i+1}'])
                                             y = np.array(stan_data[f'y_{i+1}_high_tet'])
                                             y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
+                                        
+                                        if plot_raw_fitness:
+                                            y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
+                                            y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples]) 
+                                    
                                     
                                     if np.any(np.isinf(hill_params)):
                                         hill_params = [0]*len(hill_params)
                                     x = hill_funct(lig_conc, *hill_params)
+                                    if color_by_ligand_conc is not None:
+                                        if lig == color_by_ligand_conc:
+                                            lig_color_conc = lig_conc
+                                        else:
+                                            lig_color_conc = [0]*len(lig_conc)
 
                                     sel = RS_name in rs_exclude_list
                                     if sel:
@@ -3559,6 +3584,8 @@ class BarSeqFitnessFrame:
                                         x_fit_list += list(x)
                                         y_fit_list += list(y)
                                         y_err_list += list(y_err)
+                                        if color_by_ligand_conc is not None:
+                                            lig_color_conc_list += list(lig_color_conc)
                                         
                                         if return_resid_table:
                                             resid_frame_rs_name += [RS_name]*len(x)
@@ -3571,7 +3598,7 @@ class BarSeqFitnessFrame:
                                             resid_frame_early_fitness += [HiSeq_row[f"fitness_S{smp}_ea.{spike_in_initial}"] for smp in samples]
                                         
                                     include_data_in_plot = show_exclude_data or (not sel)
-                                    if include_data_in_plot:
+                                    if (include_data_in_plot) and (color_by_ligand_conc is None):
                                         ax.errorbar(x, y, y_err, fmt=fmt, ms=ms, color=color, 
                                                     fillstyle=fill_style, label=lab, alpha=alpha)
                                     
@@ -3579,15 +3606,29 @@ class BarSeqFitnessFrame:
                         pass
                     else:
                         raise ValueError('length of df != 1')
-                    
-            ylim = ax.get_ylim()
-            ax.set_xscale("symlog")
-            ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
-            ax.set_xlabel('Sensor Output (MEF)');
+            
+            
             
             x_fit_list = np.array(x_fit_list)
             y_fit_list = np.array(y_fit_list)
             y_err_list = np.array(y_err_list)
+            
+            if color_by_ligand_conc is not None:
+                lig_color_conc_list = np.array(lig_color_conc_list)
+                concentrations = np.unique(lig_color_conc_list)
+                for c in concentrations:
+                    x = x_fit_list[lig_color_conc_list==c]
+                    y = y_fit_list[lig_color_conc_list==c]
+                    yerr = y_err_list[lig_color_conc_list==c]
+                    ax.errorbar(x, y, yerr, fmt='o', ms=ms, label=f'[{color_by_ligand_conc}] = {c}', alpha=alpha)
+            
+            ylim = ax.get_ylim()
+            ax.set_xscale("symlog")
+            ax.set_xlabel('Sensor Output (MEF)');
+            if color_by_ligand_conc is None:
+                ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
+            else:
+                ax.set_ylabel(f'Fitness')
             
             if show_old_fit and (old_fit_params is not None):
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
