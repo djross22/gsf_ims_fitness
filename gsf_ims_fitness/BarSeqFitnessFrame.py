@@ -653,7 +653,6 @@ class BarSeqFitnessFrame:
         
         barcode_frame = self.barcode_frame
         antibiotic_conc_list = getattr(self, 'antibiotic_conc_list', None)
-        ignore_samples = self.ignore_samples
         ligand_list = getattr(self, 'ligand_list', None)
         inducer_conc_lists = getattr(self, 'inducer_conc_lists', None)
         
@@ -666,7 +665,7 @@ class BarSeqFitnessFrame:
             if anti_out is not None:
                 self.antibiotic = anti_out
         
-        # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
+        # ignore_samples should be a list of 2-tuples: (int: sample_id, int: growth_plate) to ignore.
         # In the old version of the code, ignore_samples was a list of 3-tuples: e.g., ("no-tet", growth_plate, inducer_conc)
         # For backward compatibility, check if the old version is used, and convert it to the new version
         if len(ignore_samples)>0:
