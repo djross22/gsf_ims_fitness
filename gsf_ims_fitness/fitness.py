@@ -1284,34 +1284,36 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
                                  
         # Tet = 0, "AO-09":
         def fit_function(lig, conc):
-            fit_zero = 0.9640
-            fit_zero_err = 0.0015
+            # fitness is quadratic in Per-OH concentration (and uncertainty is also approximately quadratic
+            fitness_popt = [0.96023440345, -0.0006537943555499999, -1.2593978344390849e-06]
+            uncertainty_popt = [ 3.57965178e-03, -3.62885112e-06,  3.26292766e-07]
             if (lig == 'Per-OH'):
-                fit_500 = 0.5735
-                fit_500_err = 0.0151
-                return (fit_zero - conc/500*(fit_zero - fit_500), fit_zero_err + conc/500*(fit_500_err - fit_zero_err))
+                fit_ret = fitness_popt[0] + fitness_popt[1]*conc + fitness_popt[2]*conc**2
+                fit_ret_err = uncertainty_popt[0] + uncertainty_popt[1]*conc + uncertainty_popt[2]*conc**2
+                return (fit_ret, fit_ret_err)
             else:
-                return (fit_zero, fit_zero_err)
+                return (fitness_popt[0], uncertainty_popt[0])
         dict_list = [{"AO-09":fit_function}]
         
         # Tet = 5, "AO-09":
-        # No measureable difference
+        # No measureable difference between with and without Tet
         dict_list += [{"AO-09":fit_function}]
         
         # Tet = 0, "RS-20":
         def fit_function(lig, conc):
-            fit_zero = 0.9648
-            fit_zero_err = 0.0021
+            # fitness is quadratic in Per-OH concentration (and uncertainty is also approximately quadratic
+            fitness_popt = [0.96257526335, -0.00073499716683, -4.774547993411e-07]
+            uncertainty_popt = [4.79398178e-03, 1.67402328e-05, 2.73392737e-07]
             if (lig == 'Per-OH'):
-                fit_500 = 0.6095
-                fit_500_err = 0.0187
-                return (fit_zero - conc/500*(fit_zero - fit_500), fit_zero_err + conc/500*(fit_500_err - fit_zero_err))
+                fit_ret = fitness_popt[0] + fitness_popt[1]*conc + fitness_popt[2]*conc**2
+                fit_ret_err = uncertainty_popt[0] + uncertainty_popt[1]*conc + uncertainty_popt[2]*conc**2
+                return (fit_ret, fit_ret_err)
             else:
-                return (fit_zero, fit_zero_err)
+                return (fitness_popt[0], uncertainty_popt[0])
         dict_list[0]["RS-20"] = fit_function
         
         # Tet = 5, "RS-20":
-        # No measureable difference
+        # No measureable difference between with and without Tet
         dict_list[1]["RS-20"] = fit_function
         
         
