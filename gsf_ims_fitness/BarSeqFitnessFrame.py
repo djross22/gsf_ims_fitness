@@ -3325,12 +3325,13 @@ class BarSeqFitnessFrame:
                                             turn_off_cmdstanpy_logger=True,
                                             robust_error_model=False,
                                             robust_nu=4,
-                                            return_resid_table=False,
                                             repeat_after_dropping_outliers=False,
                                             re_stan_on_rhat=True,
                                             rhat_cutoff=1.05,
                                             outlier_cutoff=2.5,
                                             return_fig=False,
+                                            return_resid_table=False,
+                                            return_fit_data=False,
                                             fig_size=[12, 6],
                                             alpha=0.7,
                                             plot_ligands=None):
@@ -3469,6 +3470,8 @@ class BarSeqFitnessFrame:
         else:
             plot_fit_params = [None]*len(axs)
         stan_params_list = []
+        if return_fit_data:
+            fit_data_ret = []
         for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, plot_fit_params):
             fmt = 'o'
             ms = 8
@@ -3613,22 +3616,31 @@ class BarSeqFitnessFrame:
             y_fit_list = np.array(y_fit_list)
             y_err_list = np.array(y_err_list)
             
+            if return_fit_data:
+                df_ret = pd.DataFrame({'x':x_fit_list, 'y':y_fit_list, 'yerr':y_err_list})
+                fit_data_ret = []
+            
             if color_by_ligand_conc is not None:
                 lig_color_conc_list = np.array(lig_color_conc_list)
                 concentrations = np.unique(lig_color_conc_list)
+                if return_fit_data:
+                    df_ret[f'{color_by_ligand_conc} conc'] = lig_color_conc_list
                 for c in concentrations:
                     x = x_fit_list[lig_color_conc_list==c]
                     y = y_fit_list[lig_color_conc_list==c]
                     yerr = y_err_list[lig_color_conc_list==c]
                     ax.errorbar(x, y, yerr, fmt='o', ms=ms, label=f'[{color_by_ligand_conc}] = {c}', alpha=alpha)
             
+            if return_fit_data:
+                fit_data_ret.append(df_ret)
+                
             ylim = ax.get_ylim()
             ax.set_xscale("symlog")
             ax.set_xlabel('Sensor Output (MEF)');
-            if color_by_ligand_conc is None:
-                ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
-            else:
+            if plot_raw_fitness:
                 ax.set_ylabel(f'Fitness')
+            else:
+                ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
             
             if show_old_fit and (old_fit_params is not None):
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
@@ -3745,6 +3757,8 @@ class BarSeqFitnessFrame:
             return fig, axs
         elif return_resid_table:
             return resid_frame
+        elif return_fit_data:
+            return fit_data_ret
         
     
     def set_ramr_fitness_correction(self, resid_frame, auto_save=True, overwrite=False):
