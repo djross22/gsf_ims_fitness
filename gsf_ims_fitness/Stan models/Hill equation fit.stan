@@ -6,12 +6,15 @@ data {
   vector[N] x;           // inducer concentration
   vector[N] y;           // gene expression (from cytometry) at each concentration
   vector[N] y_err;       // estimated error of gene expression at each concentration
-  real log_g_min;        // lower bound on log_low_level and log_high_level
-  real log_g_max;        // upper bound on log_low_level and log_high_level
-  real log_x_min;
-  real log_x_max;
-  real<lower=0> sensor_n_alpha;  //prior shape
-  real<lower=0> sensor_n_beta;   //prior inverse scale
+  real log_g_min;        // lower bound on log_g0 and log_ginf
+  real log_g_max;        // upper bound on log_g0 and log_ginf
+  real log_ec50_min;
+  real log_ec50_max;
+  real<lower=0> sensor_n_alpha;   //prior shape
+  real<lower=0> sensor_n_sigma;   //prior scale
+  
+  real baseline_mu;             // mean value of non-fluorescent control
+  real baseline_sig;            //uncertainty of non-fluorescent control
 }
 
 transformed data {
@@ -40,70 +43,74 @@ transformed data {
 }
 
 parameters {
-  real<lower=log_g_min, upper=log_g_max> log_low_level;               // log10 of gene expression level at zero induction
-  real<lower=log_g_min, upper=log_g_max>  log_high_level;             // log10 of gene expression level at infinite induction
+  real baseline;                                           //non-fluorescent control 
   
-  real<lower=log_x_min, upper=log_x_max> log_IC_50;                   // input level (x) that gives output 1/2 way between low_level and high_level
-  real<lower=0> sensor_n;                                             // cooperativity exponent of sensor gene expression vs. x curve
-  real<lower=0> sigma;                                                // scale factor for standard deviation of noise in y
+  real<lower=log_g_min, upper=log_g_max> log_g0;           // log10 of gene expression level at zero induction
+  real<lower=log_g_min, upper=log_g_max> log_ginf;         // log10 of gene expression level at infinite induction
+  
+  real<lower=log_ec50_min, upper=log_ec50_max> log_ec50;   // input level (x) that gives output 1/2 way between g0 and ginf
+  real<lower=0> sensor_n;                                  // cooperativity exponent of sensor gene expression vs. x curve
+  
+  real<lower=0> sigma;                                     // scale factor for standard deviation of noise in y
 
 }
 
 transformed parameters {
-  real low_level;        
-  real high_level; 
-  real IC_50;
+  real g0;        
+  real ginf; 
+  real ec50;
   
   vector[N] mean_y;
   
-  IC_50 = 10^log_IC_50;
-  low_level = 10^log_low_level;
-  high_level = 10^log_high_level;
+  ec50 = 10^log_ec50;
+  g0 = 10^log_g0;
+  ginf = 10^log_ginf;
   
   for (i in 1:N) {
-    mean_y[i] = low_level + (high_level - low_level)*(x[i]^sensor_n)/(IC_50^sensor_n + x[i]^sensor_n);
+    mean_y[i] = g0 + (ginf - g0)*(x[i]^sensor_n)/(ec50^sensor_n + x[i]^sensor_n);
   }
   
 }
 
 model {
-  // Prior on sensor_n
+  // prior on baseline, informed by measurements of control strain
+  baseline ~ normal(baseline_mu, baseline_sig);
+  
+  // Prior on sensor_n; <weibull> ~ sensor_n_sigma*GammaFunct(1+1/sensor_n_alpha)
+  sensor_n ~ weibull(sensor_n_alpha, sensor_n_sigma);
   //sensor_n ~ gamma(4.0, 10.0/3.0); older version
-  sensor_n ~ gamma(sensor_n_alpha, sensor_n_beta);
+  //sensor_n ~ gamma(sensor_n_alpha, sensor_n_beta); not quite so-older version
   
-  // Prior on log_IC_50
-  target += log1m(erf((log_x_min + 0.7 - log_IC_50)/0.5));
-  target += log1m(erf((log_IC_50 - log_x_max + 0.8)/0.3));
+  // noise scale, prior to keep it from getting too much < 1
+  sigma ~ inv_gamma(3, 6);
   
-  // Prior on log_low_level
-  //target += log1m(erf((log_g_min + 0.9 - log_low_level)/0.3));
-  //target += log1m(erf((log_low_level - log_g_max + 0.9)/0.3));
-  
-  // Prior on log_high_level
-  //target += log1m(erf((log_g_min + 0.9 - log_high_level)/0.3));
-  //target += log1m(erf((log_high_level - log_g_max + 0.9)/0.3));
-  
-  y ~ normal(mean_y, sigma*y_err);
+  y ~ normal(mean_y + baseline, sigma*y_err);
 
 }
 
 generated quantities {
   real log_sensor_n;
   real rms_resid;
-  real log_high_low_ratio;
+  real log_ginf_g0_ratio;
   vector[30] y_out;
-  real max_level;  // output at maximum  value of x that was measured
+  real max_level;        // output at maximum  value of x that was measured
+  
+  vector[N] y_resid;
   
   for (i in 1:30) {
-    y_out[i] = low_level + (high_level - low_level)*(x_out[i]^sensor_n)/(IC_50^sensor_n + x_out[i]^sensor_n);
+    y_out[i] = g0 + (ginf - g0)*(x_out[i]^sensor_n)/(ec50^sensor_n + x_out[i]^sensor_n);
   }
   
-  max_level = low_level + (high_level - low_level)*(max_x_in^sensor_n)/(IC_50^sensor_n + max_x_in^sensor_n);
+  max_level = g0 + (ginf - g0)*(max_x_in^sensor_n)/(ec50^sensor_n + max_x_in^sensor_n);
   
-  log_high_low_ratio = log_high_level - log_low_level;
+  log_ginf_g0_ratio = log_ginf - log_g0;
   
   log_sensor_n = log10(sensor_n);
   
-  rms_resid = distance(y, mean_y)/sqrt(N);
+  rms_resid = distance(y, mean_y + baseline)/sqrt(N);
+  
+  for (i in 1:N) {
+    y_resid[i] = y[i] - mean_y[i] - baseline;
+  }
   
 }
