@@ -2963,7 +2963,7 @@ class BarSeqFitnessFrame:
             barcode_frame = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
             
         if (not includeChimeras) and ("isChimera" in barcode_frame.columns):
-            barcode_frame = barcode_frame[barcode_frame["isChimera"] == False]
+            barcode_frame = barcode_frame[barcode_frame["isChimera"] != True]
             
         if include_ref_seqs:
             RS_count_frame = self.barcode_frame[self.barcode_frame["RS_name"]!=""]
