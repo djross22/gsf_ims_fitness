@@ -4401,6 +4401,9 @@ class BarSeqFitnessFrame:
             log_x_max_arr = np.array(log_x_max_arr)
             stan_data['log_x_max'] = log_x_max_arr
         
+        if plasmid == 'pCymR':
+            stan_data['zero_spacing_factor'] = np.array([3]*3)
+        
         return stan_data
     
     

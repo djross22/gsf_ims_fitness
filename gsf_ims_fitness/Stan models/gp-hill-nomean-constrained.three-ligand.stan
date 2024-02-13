@@ -29,6 +29,7 @@ data {
   real mid_g_std;             // gene expression level at 1/2 max fitness difference, with antibiotic
   real fitness_n_std;         // cooperativity coefficient of fitness difference curve, with antibiotic
   
+  vector[3] zero_spacing_factor;   // used to set the spacing between log(x_min) and log(0) in the x-cocordinates of the GP model
 }
 
 transformed data {
@@ -37,7 +38,8 @@ transformed data {
   real sqrt_pi = sqrt(pi());
   real center_log_g;
   real log_spacing;
-  real zero_spacing_factor;
+  vector[3] log_x_min_ligand;
+  real log_x_min;
   vector[3] log_x_zero;
   real high_fitness;
   
@@ -49,10 +51,15 @@ transformed data {
   
   // this sets the zero-ligand coordinates on the log(x) scale at a distance of 1.5x the dilution spacing of the non=zero-ligands 
   log_spacing = log10(x_1[2]) - log10(x_1[1]);
-  zero_spacing_factor = 1.5;
-  log_x_zero[1] = log10(x_1[1]) - zero_spacing_factor*log_spacing;
-  log_x_zero[2] = log10(x_2[1]) - zero_spacing_factor*log_spacing;
-  log_x_zero[3] = log10(x_3[1]) - zero_spacing_factor*log_spacing;
+  
+  log_x_min_ligand[1] = log10(x_1[1]);
+  log_x_min_ligand[2] = log10(x_2[1]);
+  log_x_min_ligand[3] = log10(x_3[1]);
+  log_x_min = min(log_x_min_ligand);
+  
+  log_x_zero[1] = log_x_min - zero_spacing_factor[1]*log_spacing;
+  log_x_zero[2] = log_x_min - zero_spacing_factor[2]*log_spacing;
+  log_x_zero[3] = log_x_min - zero_spacing_factor[3]*log_spacing;
   
   // First grid point is zero-ligand
   x_gp[1][1] = log_x_zero[1];
@@ -217,13 +224,13 @@ generated quantities {
 
   // derivative calculation: end points based on difference with next point toward the middle
   //     non-end points are averaaged
-  dlog_g_1[1] = (log_g_1[2] - log_g_1[1]) / (zero_spacing_factor*log_spacing);
-  dlog_g_2[1] = (log_g_2[2] - log_g_2[1]) / (zero_spacing_factor*log_spacing);
-  dlog_g_3[1] = (log_g_3[2] - log_g_3[1]) / (zero_spacing_factor*log_spacing);
+  dlog_g_1[1] = (log_g_1[2] - log_g_1[1]) / (zero_spacing_factor[1]*log_spacing);
+  dlog_g_2[1] = (log_g_2[2] - log_g_2[1]) / (zero_spacing_factor[2]*log_spacing);
+  dlog_g_3[1] = (log_g_3[2] - log_g_3[1]) / (zero_spacing_factor[3]*log_spacing);
   
-  dlog_g_1[2] = (log_g_1[3] - log_g_1[1]) / ((1+zero_spacing_factor)*log_spacing);
-  dlog_g_2[2] = (log_g_2[3] - log_g_2[1]) / ((1+zero_spacing_factor)*log_spacing);
-  dlog_g_3[2] = (log_g_3[3] - log_g_3[1]) / ((1+zero_spacing_factor)*log_spacing);
+  dlog_g_1[2] = (log_g_1[3] - log_g_1[1]) / ((1+zero_spacing_factor[1])*log_spacing);
+  dlog_g_2[2] = (log_g_2[3] - log_g_2[1]) / ((1+zero_spacing_factor[2])*log_spacing);
+  dlog_g_3[2] = (log_g_3[3] - log_g_3[1]) / ((1+zero_spacing_factor[3])*log_spacing);
   
   for (i in 3:N_lig) {
     dlog_g_1[i] = (log_g_1[i+1] - log_g_1[i-1]) / (2*log_spacing);
