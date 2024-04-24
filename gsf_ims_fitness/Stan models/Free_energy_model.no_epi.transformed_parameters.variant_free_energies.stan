@@ -9,21 +9,21 @@
   K_A[1] = 10^log_k_a_var[1];
   K_I[1] = 10^log_k_i_var[1];
   
-  for (var in 2:num_var) {
-    log_k_a_var[var] = log_k_a_wt;
-    log_k_i_var[var] = log_k_i_wt;
-    delta_eps_AI_var[var] = delta_eps_AI_wt;
-    delta_eps_RA_var[var] = delta_eps_RA_wt;
+  for (variant_num in 2:num_var) {
+    log_k_a_var[variant_num] = log_k_a_wt;
+    log_k_i_var[variant_num] = log_k_i_wt;
+    delta_eps_AI_var[variant_num] = delta_eps_AI_wt;
+    delta_eps_RA_var[variant_num] = delta_eps_RA_wt;
 	
 	for (mut in 1:num_mut) {
-	  log_k_a_var[var] += mut_code[var-1, mut]*log_k_a_mut[mut];
-	  log_k_i_var[var] += mut_code[var-1, mut]*log_k_i_mut[mut];
-	  delta_eps_AI_var[var] += mut_code[var-1, mut]*delta_eps_AI_mut[mut];
-	  delta_eps_RA_var[var] += mut_code[var-1, mut]*delta_eps_RA_mut[mut];
+	  log_k_a_var[variant_num] += mut_code[variant_num-1, mut]*log_k_a_mut[mut];
+	  log_k_i_var[variant_num] += mut_code[variant_num-1, mut]*log_k_i_mut[mut];
+	  delta_eps_AI_var[variant_num] += mut_code[variant_num-1, mut]*delta_eps_AI_mut[mut];
+	  delta_eps_RA_var[variant_num] += mut_code[variant_num-1, mut]*delta_eps_RA_mut[mut];
 	}
 	
-	K_A[var] = 10^log_k_a_var[var];
-    K_I[var] = 10^log_k_i_var[var];
+	K_A[variant_num] = 10^log_k_a_var[variant_num];
+    K_I[variant_num] = 10^log_k_i_var[variant_num];
   }
   
 //}
