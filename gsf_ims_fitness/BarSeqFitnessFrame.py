@@ -1531,7 +1531,10 @@ class BarSeqFitnessFrame:
             else:
                 if (plasmid == 'pVER'):
                     ligand = df.ligand.iloc[0]
-                    lig_conc = df[ligand].iloc[0]
+                    if ligand != 'none':
+                        lig_conc = df[ligand].iloc[0]
+                    else:
+                        lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid == 'pRamR':
