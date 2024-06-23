@@ -3554,7 +3554,7 @@ class BarSeqFitnessFrame:
                                         if tet == plot_antibiotic_list[0]:
                                             if f'x_{i+1}' in stan_data:
                                                 lig_conc = np.array([0] + list(stan_data[f'x_{i+1}']))
-                                                samples = np.array(list(stan_data[f'samp_0']) + list(stan_data[f'samp_{i+1}']))
+                                                samples = np.array([stan_data[f'samp_0_low_tet']] + list(stan_data[f'samp_{i+1}_low_tet']))
                                                 y = np.array([stan_data[f'y_0_low_tet']] + list(stan_data[f'y_{i+1}_low_tet']))
                                                 y_err = np.array([stan_data[f'y_0_low_tet_err']] + list(stan_data[f'y_{i+1}_low_tet_err']))
                                             else:
@@ -3564,7 +3564,7 @@ class BarSeqFitnessFrame:
                                                 y_err = np.array(stan_data[f'y_err'])
                                         elif tet == plot_antibiotic_list[1]:
                                             lig_conc = np.array(stan_data[f'x_{i+1}'])
-                                            samples = np.array(stan_data[f'samp_{i+1}'])
+                                            samples = np.array(stan_data[f'samp_{i+1}_high_tet'])
                                             y = np.array(stan_data[f'y_{i+1}_high_tet'])
                                             y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
                                         
@@ -4736,11 +4736,12 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
             x = x_y_s_list[0][0][0]
             y = x_y_s_list[0][0][1]
             y_err = x_y_s_list[0][0][2]
+            samp = x_y_s_list[0][0][3]
             
             stan_data = dict(x=x, y=y, N=len(y), y_err=y_err,
                              low_fitness_mu=low_fitness, mid_g_mu=mid_g, fitness_n_mu=fitness_n,
                              log_g_min=log_g_min, log_g_max=log_g_max, log_g_prior_scale=log_g_prior_scale,
-                             y_ref=y_ref)
+                             y_ref=y_ref, samp=samp)
         
         elif (len(lig_list) == 2) and (len(tet_list) == 2):
             # Case for two-tet, two-ligand (e.g., LacI with high and low tet)
@@ -4749,33 +4750,42 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 
             y_0_med = x_y_s_list[0][0][1][0]
             s_0_med = x_y_s_list[0][0][2][0]
+            samp_0_med = x_y_s_list[0][0][3][0]
             
             x_1 = x_y_s_list[0][0][0]
             y_1_med = x_y_s_list[0][0][1]
             s_1_med = x_y_s_list[0][0][2]
+            samp_1_med = x_y_s_list[0][0][3]
             y_1_med = y_1_med[x_1>0]
             s_1_med = s_1_med[x_1>0]
+            samp_1_med = samp_1_med[x_1>0]
             x_1 = x_1[x_1>0]
             
             x_1_high = x_y_s_list[0][1][0]
             y_1_high = x_y_s_list[0][1][1]
             s_1_high = x_y_s_list[0][1][2]
+            samp_1_high = x_y_s_list[0][1][3]
             y_1_high = y_1_high[x_1_high>0]
             s_1_high = s_1_high[x_1_high>0]
+            samp_1_high = samp_1_high[x_1_high>0]
             x_1_high = x_1_high[x_1_high>0]
             
             x_2 = x_y_s_list[1][0][0]
             y_2_med = x_y_s_list[1][0][1]
             s_2_med = x_y_s_list[1][0][2]
+            samp_2_med = x_y_s_list[1][0][3]
             y_2_med = y_2_med[x_2>0]
             s_2_med = s_2_med[x_2>0]
+            samp_2_med = samp_2_med[x_2>0]
             x_2 = x_2[x_2>0]
             
             x_2_high = x_y_s_list[1][1][0]
             y_2_high = x_y_s_list[1][1][1]
             s_2_high = x_y_s_list[1][1][2]
+            samp_2_high = x_y_s_list[1][1][3]
             y_2_high = y_2_high[x_2_high>0]
             s_2_high = s_2_high[x_2_high>0]
+            samp_2_high = samp_2_high[x_2_high>0]
             x_2_high = x_2_high[x_2_high>0]
             
             stan_data = dict(N_lig=len(x_1), x_1=x_1, x_2=x_2, 
@@ -4798,6 +4808,11 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              mid_g_std_high_tet=fit_fitness_difference_params[1][4],
                              fitness_n_std_high_tet=fit_fitness_difference_params[1][5],
                              y_ref=y_ref,
+                             samp_0_low_tet=samp_0_med, 
+                             samp_1_low_tet=samp_1_med,
+                             samp_2_low_tet=samp_2_med,
+                             samp_1_high_tet=samp_1_high,
+                             samp_2_high_tet=samp_2_high,
                              )
         
         elif (len(lig_list) == 3) and (len(tet_list) == 1):
