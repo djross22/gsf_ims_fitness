@@ -9,22 +9,21 @@ data {
   real baseline_mu;               // prior mean for baseline
   real<lower=2.2> baseline_df;               // prior degrees of freedom for baseline
   real<lower=0> baseline_scale;   // prior scale for baseline 
+  
+  real min_gamma;
+  real max_gamma;
 }
 
 transformed data {
   real x_out_spacing;
   real min_x;
   real max_x;
-  real min_gamma;
-  real max_gamma;
   
   min_x = min(x);
   max_x = max(x);
   
   x_out_spacing = (max_x - min_x)/19;
   
-  min_gamma = -log(10);
-  max_gamma = log(10)/5;
   
 }
 
