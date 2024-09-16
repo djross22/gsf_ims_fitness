@@ -1595,6 +1595,12 @@ class BarSeqFitnessFrame:
                         lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
+                elif plasmid == 'Align-TF':
+                    # For this plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                    ligand = 'none'
+                    lig_conc = 0
+                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
+                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
             
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
