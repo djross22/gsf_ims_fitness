@@ -239,7 +239,7 @@ class BarSeqFitnessFrame:
         if get_layout_from_file:
             if growth_plate_layout_file is None:
                 growth_plate_layout_file = self.find_growth_plate_layout_file()
-            self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file)
+            self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file, plasmid=self.plasmid)
             
             
             self.antibiotic_conc_list = list(np.unique(self.sample_plate_map.antibiotic_conc))
@@ -616,6 +616,10 @@ class BarSeqFitnessFrame:
                 if lig != 'none':
                     st += f'{row2[lig]} {lig}, '
                 st += f'{row2.antibiotic_conc} {antibiotic}'
+                
+                if self.plasmid == 'Align-TF':
+                    st += f', TF = {row2.transcription_factor}'
+                
                 st_list.append(st)
             col_contents.append(st_list)
         plate_layout_frame_2 = pd.DataFrame({r:cont for r, cont in zip(fitness.rows(), col_contents)}, 
@@ -647,7 +651,8 @@ class BarSeqFitnessFrame:
         display(plate_layout_frame_3)
     
     
-    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, overwrite=False, growth_plate_layout_file=None):
+    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, overwrite=False, growth_plate_layout_file=None,
+                             plasmid=None):
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
         
@@ -661,7 +666,8 @@ class BarSeqFitnessFrame:
             sample_plate_map, anti_out = fitness.get_sample_plate_map(growth_plate_layout_file=growth_plate_layout_file,
                                                                       inducer_list=ligand_list, 
                                                                       inducer_conc_lists=inducer_conc_lists, 
-                                                                      tet_conc_list=antibiotic_conc_list)
+                                                                      tet_conc_list=antibiotic_conc_list,
+                                                                      plasmid=plasmid)
             if anti_out is not None:
                 self.antibiotic = anti_out
         
