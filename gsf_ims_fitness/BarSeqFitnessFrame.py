@@ -1096,6 +1096,7 @@ class BarSeqFitnessFrame:
                           bi_linear_alpha=np.log(5),
                           bi_linear_x0=None,
                           early_slope=False,
+                          mid_slope=False,
                           use_all_ref_samples=True,
                           float_replace_zero=0.1):
                             
@@ -1110,6 +1111,7 @@ class BarSeqFitnessFrame:
                                                bi_linear_x0=bi_linear_x0,
                                                plots_not_fits=False,
                                                early_slope=early_slope,
+                                               mid_slope=mid_slope,
                                                float_replace_zero=float_replace_zero,
                                                use_all_ref_samples=use_all_ref_samples)
         
@@ -1201,6 +1203,7 @@ class BarSeqFitnessFrame:
                                    show_bc_str=False,
                                    plot_samples=None,
                                    early_slope=False,
+                                   mid_slope=False,
                                    use_all_ref_samples=True,
                                    float_replace_zero=0.1):
         
@@ -1259,6 +1262,8 @@ class BarSeqFitnessFrame:
         
         if early_slope:
             early_initial = 'ea.'
+        elif mid_slope:
+            early_initial = 'mid.'
         else:
             early_initial = ''
         
@@ -1354,6 +1359,12 @@ class BarSeqFitnessFrame:
                             y = y[:2]
                             s = s[:2]
                             sel = sel[:2]
+                        # If mid_slope == True, use only the 2nd and 3rd time points (x = 3, 4)
+                        elif mid_slope:
+                            x = x[1:3]
+                            y = y[1:3]
+                            s = s[1:3]
+                            sel = sel[1:3]
                         # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
                         elif bi_linear_alpha is None:
                             x = x[1:]
@@ -1381,6 +1392,9 @@ class BarSeqFitnessFrame:
                                 if early_slope:
                                     resids = np.array(list(resids) + [np.nan, np.nan])
                                     log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
+                                elif mid_slope:
+                                    resids = np.array([np.nan] + list(resids) + [np.nan])
+                                    log_ratio_out = np.array([np.nan] + list(log_ratio_out) + [np.nan])
                                 elif bi_linear_alpha is None:
                                     resids = np.array([np.nan] + list(resids))
                                     log_ratio_out = np.array([np.nan] + list(log_ratio_out))
@@ -1444,7 +1458,7 @@ class BarSeqFitnessFrame:
                     n_reads = np.array(row[well_list], dtype='int64')
                     
                     x = x0
-                    if early_slope or (bi_linear_alpha is None):
+                    if early_slope or mid_slope or (bi_linear_alpha is None):
                         # For purely linear fits, use 0.1 instead of zero for n_reads - so it will still give an estimate for the slope. 
                         n_reads = n_reads.astype(float)
                         n_reads[n_reads==0] = float_replace_zero
@@ -1466,6 +1480,12 @@ class BarSeqFitnessFrame:
                         y = y[:2]
                         s = s[:2]
                         sel = sel[:2]
+                    # If mid_slope == True, use only the 2nd and 3rd time points (x = 3, 4)
+                    elif mid_slope:
+                        x = x[1:3]
+                        y = y[1:3]
+                        s = s[1:3]
+                        sel = sel[1:3]
                     # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
                     elif bi_linear_alpha is None:
                         x = x[1:]
@@ -1478,7 +1498,7 @@ class BarSeqFitnessFrame:
                     y = y[sel]
                     s = s[sel]
                     
-                    if early_slope:
+                    if early_slope or mid_slope:
                         fit_funct = fitness.line_funct
                     elif bi_linear_alpha is not None:
                         if bi_linear_x0 is None:
@@ -1506,6 +1526,9 @@ class BarSeqFitnessFrame:
                             if early_slope:
                                 resids = np.array(list(resids) + [np.nan, np.nan])
                                 log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
+                            elif mid_slope:
+                                resids = np.array([np.nan] + list(resids) + [np.nan])
+                                log_ratio_out = np.array([np.nan] + list(log_ratio_out) + [np.nan])
                             elif bi_linear_alpha is None:
                                 resids = np.array([np.nan] + list(resids))
                                 log_ratio_out = np.array([np.nan] + list(log_ratio_out))
@@ -2539,7 +2562,7 @@ class BarSeqFitnessFrame:
             plot_param = ""
         for (index, row), ax in zip(f_data.iterrows(), axs):
             y_for_scale = []
-            for marker, tet in zip(['o', '<', '>'], tet_list):
+            for marker, tet in zip(['o', '<', '>', '^', 'v'], tet_list):
                 y = []
                 x = []
                 c = []
@@ -2556,16 +2579,18 @@ class BarSeqFitnessFrame:
                         y_for_scale.append(row[plot_param + w])
         
                 ax.scatter(x, y, c=c, s=marker_size, marker=marker);
-            ax.set_ylim(0.5*min(y_for_scale), 2*max(y));
+            #ax.set_ylim(0.5*min(y_for_scale), 2*max(y));
             ax.set_yscale("log")
             barcode_str = str(index) + ', '
             if row['RS_name'] != "": barcode_str += row['RS_name'] + ", "
             barcode_str += row['forward_BC'] + ', ' + row['reverse_BC']
-            ax.text(x=0.05, y=0.95, s=barcode_str, horizontalalignment='left', verticalalignment='top',
-                     transform=ax.transAxes, fontsize=plot_size)
+            ax.text(x=0.05, y=1.02, s=barcode_str, horizontalalignment='left', verticalalignment='bottom',
+                     transform=ax.transAxes, fontsize=plot_size/1.5)
         
+            ylim = ax.get_ylim()
+            ax.set_ylim(ylim)
             for i in range(13):
-                ax.plot([i*8+0.5, i*8+0.5],[0.6*min(y_for_scale), 1.2*max(y)], color='gray');
+                ax.plot([i*8+0.5, i*8+0.5],ylim, color='gray');
         if plot_fraction:
             axs[0].set_title("Read Fraction Per Barcode", fontsize=2*plot_size);
         else:
@@ -3392,7 +3417,8 @@ class BarSeqFitnessFrame:
                                             return_fit_data=False,
                                             fig_size=[12, 6],
                                             alpha=0.7,
-                                            plot_ligands=None):
+                                            plot_ligands=None,
+                                            show_progress=True):
         if spike_in_initial is None:
             spike_in_initial = self.get_default_initial()
         spike_in = fitness.get_spike_in_name_from_inital(self.plasmid, spike_in_initial)
@@ -3794,14 +3820,14 @@ class BarSeqFitnessFrame:
                     num_points = len(fit_data['x'])
                     print()
                     print(f'Fit iteration: {run_num+1}, with {num_points} data points')
-                    stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4)
+                    stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4, show_progress=show_progress)
                     
                     if re_stan_on_rhat:
                         print('Checking r_hat...')
                         rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
                         if len(rhat_params) > 0:
                             print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
-                            stan_fit = fitness_model.sample(data=fit_data, iter_warmup=5000, iter_sampling=5000, inits=stan_init, chains=4)
+                            stan_fit = fitness_model.sample(data=fit_data, iter_warmup=5000, iter_sampling=5000, inits=stan_init, chains=4, show_progress=show_progress)
                         else:
                             print(f'    ... r_hat below {rhat_cutoff} for all key parameters')
                     
