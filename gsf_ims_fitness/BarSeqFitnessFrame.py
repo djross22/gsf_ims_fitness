@@ -2802,7 +2802,7 @@ class BarSeqFitnessFrame:
                             warnings.simplefilter("ignore")
                             ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                 else:
-                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>']):
+                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>', '^', 'v']):
                         for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
