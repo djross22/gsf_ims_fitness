@@ -1096,6 +1096,7 @@ class BarSeqFitnessFrame:
                           bi_linear_alpha=np.log(5),
                           bi_linear_x0=None,
                           early_slope=False,
+                          use_all_ref_samples=True,
                           float_replace_zero=0.1):
                             
         for ig in self.ignore_samples:
@@ -1109,7 +1110,8 @@ class BarSeqFitnessFrame:
                                                bi_linear_x0=bi_linear_x0,
                                                plots_not_fits=False,
                                                early_slope=early_slope,
-                                               float_replace_zero=float_replace_zero)
+                                               float_replace_zero=float_replace_zero,
+                                               use_all_ref_samples=use_all_ref_samples)
         
     
     def plot_count_ratio_per_sample(self,
@@ -1192,6 +1194,7 @@ class BarSeqFitnessFrame:
                                    show_bc_str=False,
                                    plot_samples=None,
                                    early_slope=False,
+                                   use_all_ref_samples=True,
                                    float_replace_zero=0.1):
         
         barcode_frame = self.barcode_frame
@@ -1333,8 +1336,25 @@ class BarSeqFitnessFrame:
                     sel = np.array(sample_keep_dict[samp])
                     s[~sel] = 10 
                     
-                    # then, drop data for any samples with zero read count 
+                    
+                    # Need to drop data for any samples with zero read count 
                     sel = (n_reads>0)&(spike_in_reads>0)
+                    
+                    if not use_all_ref_samples:
+                        # If early_slope == True, use only the first two time points (x = 2, 3)
+                        if early_slope:
+                            x = x[:2]
+                            y = y[:2]
+                            s = s[:2]
+                            sel = sel[:2]
+                        # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
+                        elif bi_linear_alpha is None:
+                            x = x[1:]
+                            y = y[1:]
+                            s = s[1:]
+                            sel = sel[1:]
+                    
+                    # after use_all_ref_samples check, drop data for any samples with zero read count
                     x_out = x.copy()
                     x = x[sel]
                     y = y[sel]
@@ -1350,6 +1370,14 @@ class BarSeqFitnessFrame:
                             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
                             log_ratio_out = fitness.line_funct(x_out, *popt)
                             resids = y - log_ratio_out[sel]
+                            if not use_all_ref_samples:
+                                if early_slope:
+                                    resids = np.array(list(resids) + [np.nan, np.nan])
+                                    log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
+                                elif bi_linear_alpha is None:
+                                    resids = np.array([np.nan] + list(resids))
+                                    log_ratio_out = np.array([np.nan] + list(log_ratio_out))
+                            
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
                             slope_list.append(popt[0])
