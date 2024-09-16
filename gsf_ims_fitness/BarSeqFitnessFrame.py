@@ -4542,7 +4542,7 @@ class BarSeqFitnessFrame:
         elif plasmid == 'pCymR':
             initial = 'sp09'
         elif plasmid == 'Align-TF':
-            initial = 'ramr'
+            initial = 'laci'
         
         return initial
 
