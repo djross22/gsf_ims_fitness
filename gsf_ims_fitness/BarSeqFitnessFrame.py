@@ -239,7 +239,7 @@ class BarSeqFitnessFrame:
         if get_layout_from_file:
             if growth_plate_layout_file is None:
                 growth_plate_layout_file = self.find_growth_plate_layout_file()
-            self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file, plasmid=self.plasmid)
+            self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file)
             
             
             self.antibiotic_conc_list = list(np.unique(self.sample_plate_map.antibiotic_conc))
@@ -616,10 +616,6 @@ class BarSeqFitnessFrame:
                 if lig != 'none':
                     st += f'{row2[lig]} {lig}, '
                 st += f'{row2.antibiotic_conc} {antibiotic}'
-                
-                if self.plasmid == 'Align-TF':
-                    st += f', TF = {row2.transcription_factor}'
-                
                 st_list.append(st)
             col_contents.append(st_list)
         plate_layout_frame_2 = pd.DataFrame({r:cont for r, cont in zip(fitness.rows(), col_contents)}, 
@@ -651,8 +647,7 @@ class BarSeqFitnessFrame:
         display(plate_layout_frame_3)
     
     
-    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, overwrite=False, growth_plate_layout_file=None,
-                             plasmid=None):
+    def set_sample_plate_map(self, ignore_samples=[], verbose=True, auto_save=True, overwrite=False, growth_plate_layout_file=None):
         # ignore_samples should be a list of 2-tuples: (sample_id, growth_plate) to ignore.
         self.ignore_samples = ignore_samples
         
@@ -666,8 +661,7 @@ class BarSeqFitnessFrame:
             sample_plate_map, anti_out = fitness.get_sample_plate_map(growth_plate_layout_file=growth_plate_layout_file,
                                                                       inducer_list=ligand_list, 
                                                                       inducer_conc_lists=inducer_conc_lists, 
-                                                                      tet_conc_list=antibiotic_conc_list,
-                                                                      plasmid=plasmid)
+                                                                      tet_conc_list=antibiotic_conc_list)
             if anti_out is not None:
                 self.antibiotic = anti_out
         
@@ -1241,6 +1235,11 @@ class BarSeqFitnessFrame:
             spike_2 = 'RS-20'
             spike_1_init = 'sp09'
             spike_2_init = 'rs20'
+        elif self.plasmid == 'Align-TF':
+            spike_1 = 'pRamR-norm-01'
+            spike_2 = 'pLacI-norm-01'
+            spike_1_init = 'ramr'
+            spike_2_init = 'laci'
         
         if early_slope:
             early_initial = 'ea.'
@@ -2697,6 +2696,8 @@ class BarSeqFitnessFrame:
                 plot_initials=["sp01", "sp02"]
             elif self.plasmid == 'pCymR':
                 plot_initials=["sp09", "rs20"]
+            elif self.plasmid == 'Align-TF':
+                plot_initials=["ramr", "laci"]
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -4424,6 +4425,8 @@ class BarSeqFitnessFrame:
             initial = 'sp01'
         elif plasmid == 'pCymR':
             initial = 'sp09'
+        elif plasmid == 'Align-TF':
+            initial = 'ramr'
         
         return initial
 
@@ -4873,4 +4876,12 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 stan_data['low_fitness_std'] = fit_fitness_difference_params[0][3]
                              
     return stan_data
+
+def align_tf_from_ligand(lig):
+    if lig == 'IPTG':
+        return 'LacI'
+    if lig == '1S-TIQ':
+        return 'RamR'
+    if lig == 'Van':
+        return 'VanR'
     

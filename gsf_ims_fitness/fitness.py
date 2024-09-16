@@ -1356,6 +1356,57 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         for t, d in zip(zeo_list, fitness_dicts):
             spike_in_fitness_dict[t] = d
     
+    elif plasmid == 'Align-TF':
+        tet_list = [0, 0.5, 1, 5]
+        # Fitness values are from 2024-08-27_Align-TF_GBA_1_OD-test, 
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
+        
+        # TMP = 0, "pRamR-norm-01":
+        def fit_function(lig, conc):
+            return (0.91051, 0.013531)
+        dict_list = [{"pRamR-norm-01":fit_function}]
+        
+        # TMP = 0.5, "pRamR-norm-01":
+        def fit_function(lig, conc):
+            return (0.89862, 0.013568)
+        dict_list += [{"pRamR-norm-01":fit_function}]
+        
+        # TMP = 1, "pRamR-norm-01":
+        def fit_function(lig, conc):
+            return (0.89142, 0.011612)
+        dict_list += [{"pRamR-norm-01":fit_function}]
+        
+        # TMP = 5, "pRamR-norm-01":
+        def fit_function(lig, conc):
+            return (0.70381, 0.012593)
+        dict_list += [{"pRamR-norm-01":fit_function}]
+        
+        # TMP = 0, "pLacI-norm-01":
+        def fit_function(lig, conc):
+            return (0.94828, 0.014503)
+        dict_list[0]["pLacI-norm-01"] = fit_function
+        
+        # TMP = 0.5, "pLacI-norm-01":
+        def fit_function(lig, conc):
+            return (0.90892, 0.015545)
+        dict_list[1]["pLacI-norm-01"] = fit_function
+        
+        # TMP = 1, "pLacI-norm-01":
+        def fit_function(lig, conc):
+            return (0.88796, 0.021021)
+        dict_list[2]["pLacI-norm-01"] = fit_function
+        
+        # TMP = 5, "pLacI-norm-01":
+        def fit_function(lig, conc):
+            return (0.64319, 0.020423)
+        dict_list[3]["pLacI-norm-01"] = fit_function
+        
+        
+        for t, d in zip(tet_list, dict_list):
+            spike_in_fitness_dict[t] = d
+            
+            
+            
     return spike_in_fitness_dict
     
 
@@ -1541,6 +1592,13 @@ def get_spike_in_name_from_inital(plasmid, initial):
             spike_in = "AO-09"
         elif initial[-4:] == 'rs20':
             spike_in = "RS-20"
+        else:
+            raise ValueError(f'spike-in initial not recognized: {initial}')
+    elif plasmid == 'Align-TF':
+        if initial[-4:] == 'laci':
+            spike_in = 'pLacI-norm-01'
+        elif initial[-4:] == 'ramr':
+            spike_in = 'pRamR-norm-01'
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
             
