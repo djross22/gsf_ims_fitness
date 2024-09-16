@@ -3369,6 +3369,7 @@ class BarSeqFitnessFrame:
                                             spike_in_initial=None,
                                             run_stan_fit=False,
                                             plot_raw_fitness=False,
+                                            include_zero_antibiotic=False,
                                             color_by_ligand_conc=None,
                                             save_fitness_difference_params=False,
                                             rs_exclude_list=[],
@@ -3496,26 +3497,36 @@ class BarSeqFitnessFrame:
                 else:
                     plas = rs_name
                     
+            elif plasmid == 'Align-TF':
+                plas = f'{rs_name}_mScar'
+                    
             return plas
             
         # Fitness calibration function is Hill function with either low or high value to zero:
         def hill_funct(x, low, high, mid, n):
             return low + (high-low)*( x**n )/( mid**n + x**n )
 
-        if plasmid in ['pVER', 'pCymR']:
+        if plasmid in ['pVER', 'pCymR', 'Align-TF']:
             def fit_funct(x, low, mid, n):
                 return hill_funct(x, low, 0, mid, n)
         elif plasmid == 'pRamR':
             def fit_funct(x, high, mid, n):
                 return hill_funct(x, 0, high, mid, n)
         
-        plot_antibiotic_list = self.antibiotic_conc_list[1:]
+        if include_zero_antibiotic:# and plot_raw_fitness:
+            plot_antibiotic_list = self.antibiotic_conc_list
+        else:
+            plot_antibiotic_list = self.antibiotic_conc_list[1:]
         plt.rcParams["figure.figsize"] = fig_size
         if len(plot_antibiotic_list)==1:
             fig, axs = plt.subplots()
             axs = [axs]
         elif len(plot_antibiotic_list)==2:
             fig, axs = plt.subplots(1, 2)
+        else:
+            plt.rcParams["figure.figsize"] = [fig_size[0], fig_size[1]*len(plot_antibiotic_list)]
+            fig, axs = plt.subplots(len(plot_antibiotic_list), 1, layout='tight')
+        
         
         if show_old_fit:
             if self.fit_fitness_difference_params is None:
