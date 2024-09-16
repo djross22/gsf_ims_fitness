@@ -1117,7 +1117,8 @@ class BarSeqFitnessFrame:
     def plot_count_ratio_per_sample(self,
                                     plot_range=None,
                                     spike_in_initial=None,
-                                    max_plots=20):
+                                    max_plots=20,
+                                    log_scale=None):
                                     
         plt.rcParams["figure.figsize"] = [26, 13]
 
@@ -1165,9 +1166,15 @@ class BarSeqFitnessFrame:
                     warnings.simplefilter("ignore")
                     y = np.log(n_reads) - np.log(spike_in_reads)
                     s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                    if log_scale is not None:
+                        y = y/np.log(log_scale)
+                        s = s/np.log(log_scale)
                 ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o', ms=10);
                 
                 log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
+                if log_scale is not None:
+                    log_ratio = log_ratio/np.log(log_scale)
+                    
                 if len(log_ratio.shape) ==  1:
                     ax.plot(x, log_ratio, '--k')
                 else:
