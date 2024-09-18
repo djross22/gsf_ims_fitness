@@ -1120,7 +1120,8 @@ class BarSeqFitnessFrame:
                                     plot_range=None,
                                     spike_in_initial=None,
                                     max_plots=20,
-                                    log_scale=None):
+                                    log_scale=None,
+                                    plot_raw_counts=False):
                                     
         plt.rcParams["figure.figsize"] = [26, 13]
 
@@ -1164,28 +1165,39 @@ class BarSeqFitnessFrame:
                 spike_in_reads = np.array(spike_in_row[well_list], dtype='int64')
                 n_reads = np.array(row[well_list], dtype='int64')
                 
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    y = np.log(n_reads) - np.log(spike_in_reads)
-                    s = np.sqrt(1/n_reads + 1/spike_in_reads)
-                    if log_scale is not None:
-                        y = y/np.log(log_scale)
-                        s = s/np.log(log_scale)
-                ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o', ms=10);
-                
-                log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
-                if log_scale is not None:
-                    log_ratio = log_ratio/np.log(log_scale)
-                    
-                if len(log_ratio.shape) ==  1:
-                    ax.plot(x, log_ratio, '--k')
+                if plot_raw_counts:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        y = np.log(n_reads)
+                        s = np.sqrt(1/n_reads)
+                        s[n_reads == 0] = np.log(10)
+                        if log_scale is not None:
+                            y = y/np.log(log_scale)
+                            s = s/np.log(log_scale)
+                    ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o', ms=10);
                 else:
-                    if log_ratio.shape == (5, 3):
-                        x_plt = x[1:]
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        y = np.log(n_reads) - np.log(spike_in_reads)
+                        s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                        if log_scale is not None:
+                            y = y/np.log(log_scale)
+                            s = s/np.log(log_scale)
+                    ax.errorbar(x[n_reads>0], y[n_reads>0], s[n_reads>0], fmt='o', ms=10);
+                    
+                    log_ratio = row[f'fit_slope_S{samp}_log_ratio_out_{spike_in_initial}']
+                    if log_scale is not None:
+                        log_ratio = log_ratio/np.log(log_scale)
+                        
+                    if len(log_ratio.shape) ==  1:
+                        ax.plot(x, log_ratio, '--k')
                     else:
-                        x_plt = x
-                    for q in log_ratio:
-                        ax.plot(x_plt, q);
+                        if log_ratio.shape == (5, 3):
+                            x_plt = x[1:]
+                        else:
+                            x_plt = x
+                        for q in log_ratio:
+                            ax.plot(x_plt, q);
                 
                 ax.set_title(f'sample {samp}')
     
