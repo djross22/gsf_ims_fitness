@@ -1142,7 +1142,7 @@ class BarSeqFitnessFrame:
             plot_frame = plot_frame.iloc[:max_plots]
 
         x = np.array([i for i in range(4)])
-        plot_list = self.samples_without_tet + self.samples_with_tet
+        plot_list_0 = self.samples_without_tet + self.samples_with_tet
         sample_plate_map = self.sample_plate_map
 
         for ind, row in plot_frame.iterrows():
@@ -1152,6 +1152,14 @@ class BarSeqFitnessFrame:
                 suptitle += f', {row.RS_name}'
             fig.suptitle(suptitle, size=24, y=0.925)
             axs = axs.flatten()
+            
+            plot_list = plot_list_0
+            if (self.plasmid == 'Align-TF') and ('norm' not in row.RS_name):
+                tf = align_tf_from_RS_name(row.RS_name)
+                df_tf = sample_plate_map
+                df_tf = df_tf[df_tf.transcription_factor==tf]
+                samples_with_tf = np.unique(df_tf.sample_id)
+                plot_list = [s for s in plot_list_0 if s in samples_with_tf] + [s for s in plot_list_0 if s not in samples_with_tf]
             
             for samp, ax in zip(plot_list, axs):
                 if samp in self.samples_with_tet:
