@@ -1656,7 +1656,7 @@ class BarSeqFitnessFrame:
             self.save_as_pickle(overwrite=overwrite)
         
     
-    def plot_fit_residuals(self, initial=None):
+    def plot_fit_residuals(self, initial=None, alpha=0.3):
         if initial is None:
             initial = self.get_default_initial()
         
@@ -1722,7 +1722,7 @@ class BarSeqFitnessFrame:
                 elif len(x) > 1000:
                     ax.hist2d(np.log10(x), y, bins=50, norm=colors.LogNorm())
                 else:
-                    ax.plot(np.log10(x), y, 'o', alpha=0.3)
+                    ax.plot(np.log10(x), y, 'o', alpha=alpha)
                 ax.set_xlabel('log10(read count)')
                 if ax is axs[0]:
                     ax.set_ylabel('fit residual')
