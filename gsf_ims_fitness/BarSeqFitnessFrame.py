@@ -1671,6 +1671,14 @@ class BarSeqFitnessFrame:
         
         plt.rcParams["figure.figsize"] = [16, 3]
         sample_list = np.unique(sample_plate_map.sample_id)
+        if self.plasmid == 'Align-TF':
+            tf_dict = {}
+            for samp in sample_list:
+                df = sample_plate_map
+                df = df[df.sample_id==samp]
+                tf = df.iloc[0].transcription_factor
+                tf_dict[samp] = tf
+        
         mean_resid_lists = []
         rms_resid_lists = []
         tet_list = []
@@ -1682,10 +1690,16 @@ class BarSeqFitnessFrame:
             tet = df.antibiotic_conc.iloc[0]
             tet_list.append(tet)
             
-            resid_array = barcode_frame[f'fit_slope_S{samp}_resid_{initial}']
+            df_bc = barcode_frame
+            if self.plasmid == 'Align-TF':
+                # Only plot residuals for rows/variants that are in each sample
+                sel_tf = [(align_tf_from_RS_name(x) == tf_dict[samp]) or ('norm' in x) for x in df_bc.RS_name]
+                df_bc = df_bc[sel_tf]
+            
+            resid_array = df_bc[f'fit_slope_S{samp}_resid_{initial}']
             sel = [len(x)==4 for x in resid_array]
             resid_array = np.array(list(resid_array[sel]))
-            x_list = [barcode_frame[sel][x] for x in df.well]
+            x_list = [df_bc[sel][x] for x in df.well]
             w_list = df.well
             y_list = resid_array.transpose()
             
