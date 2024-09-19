@@ -5060,4 +5060,12 @@ def align_tf_from_ligand(lig):
         return 'RamR'
     if lig == 'Van':
         return 'VanR'
+
+def align_tf_from_RS_name(rs):
+    if 'LacI' in rs:
+        return 'LacI'
+    if 'RamR' in rs:
+        return 'RamR'
+    if 'VanR' in rs:
+        return 'VanR'
     
