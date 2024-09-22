@@ -1372,6 +1372,10 @@ class BarSeqFitnessFrame:
                     # Need to drop data for any samples with zero read count 
                     sel = (n_reads>0)&(spike_in_reads>0)
                     
+                    # These are used for outputs of fit predictions and residuals
+                    x_out = x0.copy()
+                    y_in = y.copy()
+                    
                     if not use_all_ref_samples:
                         # If early_slope == True, use only the first two time points (x = 2, 3)
                         if early_slope:
@@ -1393,7 +1397,6 @@ class BarSeqFitnessFrame:
                             sel = sel[1:]
                     
                     # after use_all_ref_samples check, drop data for any samples with zero read count
-                    x_out = x.copy()
                     x = x[sel]
                     y = y[sel]
                     s = s[sel]
@@ -1407,17 +1410,7 @@ class BarSeqFitnessFrame:
                         if len(x)>1:
                             popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
                             log_ratio_out = fitness.line_funct(x_out, *popt)
-                            resids = y - log_ratio_out[sel]
-                            if not use_all_ref_samples:
-                                if early_slope:
-                                    resids = np.array(list(resids) + [np.nan, np.nan])
-                                    log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
-                                elif mid_slope:
-                                    resids = np.array([np.nan] + list(resids) + [np.nan])
-                                    log_ratio_out = np.array([np.nan] + list(log_ratio_out) + [np.nan])
-                                elif bi_linear_alpha is None:
-                                    resids = np.array([np.nan] + list(resids))
-                                    log_ratio_out = np.array([np.nan] + list(log_ratio_out))
+                            resids = y_in - log_ratio_out
                             
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
@@ -1494,6 +1487,10 @@ class BarSeqFitnessFrame:
                     # Need to drop data for any samples with zero read count (after bi_linear_alpha check)
                     sel = (n_reads>0)&(spike_in_reads>0)
                     
+                    # These are used for outputs of fit predictions and residuals
+                    x_out = x0.copy()
+                    y_in = y.copy()
+                    
                     # If early_slope == True, use only the first two time points (x = 2, 3)
                     if early_slope:
                         x = x[:2]
@@ -1513,7 +1510,6 @@ class BarSeqFitnessFrame:
                         s = s[1:]
                         sel = sel[1:]
                     
-                    x_out = x.copy()
                     x = x[sel]
                     y = y[sel]
                     s = s[sel]
@@ -1542,16 +1538,8 @@ class BarSeqFitnessFrame:
                                     popt = np.full(2, np.nan)
                                     pcov = np.full([2,2], np.nan)
                             log_ratio_out = fit_funct(x_out, *popt)
-                            resids = y - log_ratio_out[sel]
-                            if early_slope:
-                                resids = np.array(list(resids) + [np.nan, np.nan])
-                                log_ratio_out = np.array(list(log_ratio_out) + [np.nan, np.nan])
-                            elif mid_slope:
-                                resids = np.array([np.nan] + list(resids) + [np.nan])
-                                log_ratio_out = np.array([np.nan] + list(log_ratio_out) + [np.nan])
-                            elif bi_linear_alpha is None:
-                                resids = np.array([np.nan] + list(resids))
-                                log_ratio_out = np.array([np.nan] + list(log_ratio_out))
+                            resids = y_in - log_ratio_out
+                            
                             resids_list.append(resids)
                             log_ratio_out_list.append(log_ratio_out)
                             f_est_list.append(popt[0])
