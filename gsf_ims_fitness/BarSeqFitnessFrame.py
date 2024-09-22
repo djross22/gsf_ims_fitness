@@ -1097,6 +1097,7 @@ class BarSeqFitnessFrame:
                           bi_linear_x0=None,
                           early_slope=False,
                           mid_slope=False,
+                          all_slope=False,
                           use_all_ref_samples=True,
                           float_replace_zero=0.1):
                             
@@ -1112,6 +1113,7 @@ class BarSeqFitnessFrame:
                                                plots_not_fits=False,
                                                early_slope=early_slope,
                                                mid_slope=mid_slope,
+                                               all_slope=all_slope,
                                                float_replace_zero=float_replace_zero,
                                                use_all_ref_samples=use_all_ref_samples)
         
@@ -1224,6 +1226,7 @@ class BarSeqFitnessFrame:
                                    plot_samples=None,
                                    early_slope=False,
                                    mid_slope=False,
+                                   all_slope=False,
                                    use_all_ref_samples=True,
                                    float_replace_zero=0.1):
         
@@ -1284,6 +1287,8 @@ class BarSeqFitnessFrame:
             early_initial = 'ea.'
         elif mid_slope:
             early_initial = 'mid.'
+        elif all_slope:
+            early_initial = 'all.'
         else:
             early_initial = ''
         
@@ -1389,6 +1394,9 @@ class BarSeqFitnessFrame:
                             y = y[1:3]
                             s = s[1:3]
                             sel = sel[1:3]
+                        # If all_slope == True, use all 4 time points, with a linear fit
+                        elif all_slope:
+                            pass
                         # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
                         elif bi_linear_alpha is None:
                             x = x[1:]
@@ -1503,6 +1511,9 @@ class BarSeqFitnessFrame:
                         y = y[1:3]
                         s = s[1:3]
                         sel = sel[1:3]
+                    # If all_slope == True, use all 4 time points, with a linear fit
+                    elif all_slope:
+                        pass
                     # If bi_linear_alpha is set to None, then use linear fit to time points 2, 3, 4 (x = 3, 4, 5).
                     elif bi_linear_alpha is None:
                         x = x[1:]
