@@ -3679,6 +3679,7 @@ class BarSeqFitnessFrame:
                                                                             initial=spike_in_initial,
                                                                             min_err=min_err,
                                                                             apply_ramr_correction=apply_ramr_correction)
+                                        xerr = None
                                     
                                     if plasmid == 'Align-TF':
                                         # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
@@ -3716,15 +3717,24 @@ class BarSeqFitnessFrame:
                                         
                                         # Get x values (gene expression) from asymmetric Hill fit for Align-TF data:
                                         x = []
+                                        xerr = []
                                         min_xerr = np.log10(1.2)
                                         for lig_ref in lig_conc:
                                             if lig_ref == 0:
                                                 g = cytom_row['log_g0']
+                                                gerr = np.sqrt(cytom_row['log_g0_err']**2 + min_xerr**2)
                                             else:
                                                 g = cytom_row[f'log_g_{int(lig_ref)}_{lig}']
+                                                gerr = np.sqrt(cytom_row[f'log_g_{int(lig_ref)}_{lig}_err']**2 + min_xerr**2)
+                                                
+                                            gerr = fitness.log_plot_errorbars(log_mu=g, log_sig=gerr)
                                             g = 10**g
+                                            
                                             x.append(g)
+                                            xerr.append(gerr)
                                         x = np.array(x)
+                                        xerr = np.array(xerr).transpose()
+                                        
                                     elif (len(ligand_plot_list) > 1) or (plasmid == 'pCymR'):
                                         # For RamR and CymR
                                         lig_conc = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
@@ -3793,9 +3803,8 @@ class BarSeqFitnessFrame:
                                         
                                     include_data_in_plot = show_exclude_data or (not sel)
                                     if (include_data_in_plot) and (color_by_ligand_conc is None):
-                                        ax.errorbar(x, y, y_err, fmt=fmt, ms=ms, color=color, 
+                                        ax.errorbar(x, y, y_err, xerr, fmt=fmt, ms=ms, color=color, 
                                                     fillstyle=fill_style, label=lab, alpha=alpha)
-                                    
                     elif len(df) == 0:
                         if plasmid == 'Align-TF':
                             tf = align_tf_from_ligand(lig)
