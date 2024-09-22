@@ -4534,7 +4534,80 @@ class BarSeqFitnessFrame:
                            initial=None,
                            is_gp_model=False,
                            min_err=0.05,
-                           apply_ramr_correction=None):
+                           apply_ramr_correction=None,
+                           lig=None,
+                           lig_conc=None):
+        
+        if initial is None:
+            initial = self.get_default_initial()
+        
+        if self.plasmid == 'Align-TF':
+            sample_map = self.sample_plate_map
+            sample_map = sample_map[sample_map.growth_plate==2].sort_values(by=['antibiotic_conc'])
+            
+            # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
+            tf = align_tf_from_ligand(lig)
+            sample_map = sample_map[sample_map.transcription_factor==tf]
+            sample_map = sample_map[sample_map[lig]==lig_conc]
+            
+            samples = np.array(sample_map[sample_map.antibiotic_conc>0]['sample_id'])
+            antibiotic_concentrations = np.array(sample_map[sample_map.antibiotic_conc>0]['antibiotic_conc'])
+            
+            # Reference sample has zero antibiotic:
+            ref_sample = sample_map[sample_map.antibiotic_conc==0]['sample_id']
+            if len(ref_sample) != 1:
+                raise ValueError(f'Unexpected number of samples with zero antibiotic: len(ref_sample): {len(ref_sample)}')
+            else:
+                ref_sample = ref_sample.iloc[0]
+            
+            # Can use different normalizations/fitness values for each antibiotic concentration is initial is a dictionary with
+            #     k = antibiotic concentration, v = initial to use
+            if type(initial) is dict:
+                init_list = [initial[c] for c in antibiotic_concentrations]
+            else:
+                init_list = [initial for c in antibiotic_concentrations]
+            
+            # can also use different values for min_err
+            if type(min_err) is dict:
+                min_err = np.array([min_err[c] for c in antibiotic_concentrations])
+            
+            y = np.array([st_row[f"fitness_S{s}_{init}"] for s, init in zip(samples, init_list)])
+            y_err = np.array([st_row[f"fitness_S{s}_err_{init}"] for s, init in zip(samples, init_list)])
+            
+            y_ref = np.array([st_row[f"fitness_S{ref_sample}_{init}"] for init in init_list])
+            y_ref_err = np.array([st_row[f"fitness_S{ref_sample}_err_{init}"] for init in init_list])
+            
+            y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2 + min_err**2)
+            y = (y - y_ref)/y_ref
+                
+            stan_data = {'ligand_id':lig, 'ligand_conc':lig_conc, 'y':y, 'y_err':y_err, 'N_antibiotic':len(y)}
+            
+            fit_fitness_difference_params = self.fit_fitness_difference_params
+            
+            low_fitness_mu = np.array([fit_fitness_difference_params[init][c]['popt'][0] for c, init in zip(antibiotic_concentrations, init_list)])
+            stan_data['low_fitness_mu'] = low_fitness_mu
+            
+            mid_g_mu = np.array([fit_fitness_difference_params[init][c]['popt'][1] for c, init in zip(antibiotic_concentrations, init_list)])
+            stan_data['mid_g_mu'] = mid_g_mu
+            
+            fitness_n_mu = np.array([fit_fitness_difference_params[init][c]['popt'][2] for c, init in zip(antibiotic_concentrations, init_list)])
+            stan_data['fitness_n_mu'] = fitness_n_mu
+            
+            low_fitness_std = np.array([fit_fitness_difference_params[init][c]['perr'][0] for c, init in zip(antibiotic_concentrations, init_list)])
+            stan_data['low_fitness_std'] = low_fitness_std
+            
+            mid_g_std = np.array([fit_fitness_difference_params[init][c]['perr'][1] for c, init in zip(antibiotic_concentrations, init_list)])
+            stan_data['mid_g_std'] = mid_g_std
+            
+            fitness_n_std = np.array([fit_fitness_difference_params[init][c]['perr'][2] for c, init in zip(antibiotic_concentrations, init_list)])
+            stan_data['fitness_n_std'] = fitness_n_std
+            
+            log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=self.plasmid)
+            stan_data['log_g_min'] = log_g_min
+            stan_data['log_g_max'] = log_g_max
+            
+            return stan_data
+        
         
         if self.plasmid == 'pRamR':
             if apply_ramr_correction is None:
@@ -4552,9 +4625,6 @@ class BarSeqFitnessFrame:
         plasmid = self.plasmid
         antibiotic_conc_list = self.antibiotic_conc_list
         fit_fitness_difference_params = self.fit_fitness_difference_params
-        
-        if initial is None:
-            initial = self.get_default_initial()
         
         ramr_fitness_correction = getattr(self, 'ramr_fitness_correction', None)
         ramr_fitness_correction_params = getattr(self, 'ramr_fitness_correction_params', None)
