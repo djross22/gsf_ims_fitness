@@ -1487,6 +1487,11 @@ def log_g_limits(plasmid="pVER"):
         log_g_max = np.log10(500)
         log_g_prior_scale = 0.15
         wild_type_ginf = 10**2.481
+    elif plasmid == "Align-TF":
+        log_g_min = np.log10(5)
+        log_g_max = np.log10(50000)
+        log_g_prior_scale = np.nan
+        wild_type_ginf = np.nan
     else:
         log_g_min = 1
         log_g_max = 4.5
