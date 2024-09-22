@@ -3714,6 +3714,17 @@ class BarSeqFitnessFrame:
                                             y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2)
                                             y = (y - y_ref)/y_ref
                                         
+                                        # Get x values (gene expression) from asymmetric Hill fit for Align-TF data:
+                                        x = []
+                                        min_xerr = np.log10(1.2)
+                                        for lig_ref in lig_conc:
+                                            if lig_ref == 0:
+                                                g = cytom_row['log_g0']
+                                            else:
+                                                g = cytom_row[f'log_g_{int(lig_ref)}_{lig}']
+                                            g = 10**g
+                                            x.append(g)
+                                        x = np.array(x)
                                     elif (len(ligand_plot_list) > 1) or (plasmid == 'pCymR'):
                                         # For RamR and CymR
                                         lig_conc = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
@@ -3748,10 +3759,11 @@ class BarSeqFitnessFrame:
                                             y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
                                             y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples]) 
                                     
+                                    if plasmid != 'Align-TF':
+                                        if np.any(np.isinf(hill_params)):
+                                            hill_params = [0]*len(hill_params)
+                                        x = hill_funct(lig_conc, *hill_params)
                                     
-                                    if np.any(np.isinf(hill_params)):
-                                        hill_params = [0]*len(hill_params)
-                                    x = hill_funct(lig_conc, *hill_params)
                                     if color_by_ligand_conc is not None:
                                         if lig == color_by_ligand_conc:
                                             lig_color_conc = lig_conc
