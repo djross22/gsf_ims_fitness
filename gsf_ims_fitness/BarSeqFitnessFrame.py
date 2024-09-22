@@ -3666,7 +3666,10 @@ class BarSeqFitnessFrame:
                                 color=fit_plot_colors[color_ind]
                                 
                                 var_labeled = False
-                                for ind, HiSeq_row in HiSeq_df.iterrows():
+                                
+                                # For some datasets, there will be more than one entry for some RS_name variants - particularly for the wild-type.
+                                #     So, use a loop here instead of just taking the single row that matches RS_name.
+                                for ind, HiSeq_row in HiSeq_df.iterrows(): 
                                     if var_labeled:
                                         lab = None
                                     var_labeled = True
@@ -3687,6 +3690,7 @@ class BarSeqFitnessFrame:
                                         samples = np.array(plot_df_align['sample_id'])
                                         lig_conc = np.array(plot_df_align[lig])
                                         
+                                        # make array of ref_samples in the same order as samples (using ligand concentration to set ordering):
                                         ref_samples = []
                                         for lig_ref in lig_conc:
                                             df_ref = plot_df
@@ -3697,6 +3701,8 @@ class BarSeqFitnessFrame:
                                                 raise ValueError('length of df_ref != 1')
                                             ref_samples.append(df_ref.iloc[0].sample_id)
                                         ref_samples = np.array(ref_samples)
+                                        
+                                        # samples and ref_samples should each have two values, one without ligand and one with
                                         
                                         y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
                                         y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples])
