@@ -3602,15 +3602,26 @@ class BarSeqFitnessFrame:
         
         
         if show_old_fit:
-            if self.fit_fitness_difference_params is None:
-                plot_fit_params = [None]*len(plot_antibiotic_list)
+            if plasmid == 'Align-TF':
+                if (type(self.fit_fitness_difference_params) is dict) and (spike_in_initial in self.fit_fitness_difference_params):
+                    params = self.fit_fitness_difference_params[spike_in_initial]
+                    plot_fit_params = [params[tet]['popt'] + params[tet]['perr'] for tet in plot_antibiotic_list]
+                else:
+                    plot_fit_params = [None]*len(plot_antibiotic_list)
             else:
-                plot_fit_params = self.fit_fitness_difference_params
-                if type(plot_fit_params[0]) is not list:
-                    plot_fit_params = [plot_fit_params]
+                if self.fit_fitness_difference_params is None:
+                    plot_fit_params = [None]*len(plot_antibiotic_list)
+                else:
+                    plot_fit_params = self.fit_fitness_difference_params
+                    if type(plot_fit_params[0]) is not list:
+                        plot_fit_params = [plot_fit_params]
         else:
             plot_fit_params = [None]*len(axs)
-        stan_params_list = []
+        
+        if plasmid == 'Align-TF':
+            stan_params_to_save = {}
+        else:
+            stan_params_to_save = []
         if return_fit_data:
             fit_data_ret = []
         for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, plot_fit_params):
@@ -3917,7 +3928,10 @@ class BarSeqFitnessFrame:
                 print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
                 num_str = [ f"{x:.4}" for x in stan_perr ]
                 print(f"                 Error estimate: {num_str}")
-                stan_params_list.append(list(stan_popt) + list(stan_perr))
+                if plasmid == 'Align-TF':
+                    stan_params_to_save[tet] = {'popt':list(stan_popt), 'perr':list(stan_perr)}
+                else:
+                    stan_params_to_save.append(list(stan_popt) + list(stan_perr))
                 dev = y_fit_list - fit_funct(x_fit_list, *stan_popt)
                 for w_str, w in zip(['Unweighted', 'Weighted'], [None, 1/y_err_list**2]):
                     rms_dev = np.sqrt(np.average(dev**2, weights=w))
@@ -3966,7 +3980,13 @@ class BarSeqFitnessFrame:
                 ax.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=ncol, borderaxespad=0, frameon=True);
             
         if run_stan_fit and save_fitness_difference_params:
-            self.fit_fitness_difference_params = stan_params_list
+            if plasmid == 'Align-TF':
+                if type(self.fit_fitness_difference_params) is dict:
+                    self.fit_fitness_difference_params[spike_in_initial] = stan_params_to_save
+                else:
+                    self.fit_fitness_difference_params = {spike_in_initial: stan_params_to_save}
+            else:
+                self.fit_fitness_difference_params = stan_params_to_save
         
         if return_fig:
             return fig, axs
