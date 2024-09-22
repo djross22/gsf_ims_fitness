@@ -1099,7 +1099,8 @@ class BarSeqFitnessFrame:
                           mid_slope=False,
                           all_slope=False,
                           use_all_ref_samples=True,
-                          float_replace_zero=0.1):
+                          float_replace_zero=0.1,
+                          min_log_count_error=0):
                             
         for ig in self.ignore_samples:
             print(f"ignoring or de-weighting sample {ig[0]}, time point {ig[1]-1}")
@@ -1115,7 +1116,8 @@ class BarSeqFitnessFrame:
                                                mid_slope=mid_slope,
                                                all_slope=all_slope,
                                                float_replace_zero=float_replace_zero,
-                                               use_all_ref_samples=use_all_ref_samples)
+                                               use_all_ref_samples=use_all_ref_samples,
+                                               min_log_count_error=min_log_count_error)
         
     
     def plot_count_ratio_per_sample(self,
@@ -1228,7 +1230,8 @@ class BarSeqFitnessFrame:
                                    mid_slope=False,
                                    all_slope=False,
                                    use_all_ref_samples=True,
-                                   float_replace_zero=0.1):
+                                   float_replace_zero=0.1,
+                                   min_log_count_error=0):
         
         barcode_frame = self.barcode_frame
         
@@ -1367,7 +1370,7 @@ class BarSeqFitnessFrame:
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         y = (np.log(n_reads) - np.log(spike_in_reads))
-                        s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                        s = np.sqrt(1/n_reads + 1/spike_in_reads + min_log_count_error**2)
                     
                     # de-weight samples to be ignored, instead of dropping data
                     sel = np.array(sample_keep_dict[samp])
@@ -1486,7 +1489,7 @@ class BarSeqFitnessFrame:
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
                         y = (np.log(n_reads) - np.log(spike_in_reads))
-                        s = np.sqrt(1/n_reads + 1/spike_in_reads)
+                        s = np.sqrt(1/n_reads + 1/spike_in_reads + min_log_count_error**2)
                     
                     # de-weight samples to be ignored, instead of dropping data
                     sel = np.array(sample_keep_dict[samp])
