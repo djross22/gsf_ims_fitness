@@ -5203,12 +5203,22 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
     return stan_data
 
 def align_tf_from_ligand(lig):
+    # TODO: edit this to use sample_plate_map
     if lig == 'IPTG':
         return 'LacI'
     if lig == '1S-TIQ':
         return 'RamR'
     if lig == 'Van':
         return 'VanR'
+
+def align_ligand_from_tf(tf):
+    # TODO: edit this to use sample_plate_map
+    if tf == 'LacI':
+        return 'IPTG'
+    if tf == 'RamR':
+        return '1S-TIQ'
+    if tf == 'VanR':
+        return 'Van'
 
 def align_tf_from_RS_name(rs):
     if 'LacI' in rs:
