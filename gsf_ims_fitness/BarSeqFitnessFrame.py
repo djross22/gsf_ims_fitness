@@ -363,12 +363,19 @@ class BarSeqFitnessFrame:
         name_list = [""]*len(barcode_frame)
         barcode_frame["RS_name"] = name_list
         
+        if self.plasmid == 'Align-TF':
+            tf_list = [""]*len(barcode_frame)
+            barcode_frame["transcription_factor"] = tf_list
+        
         double_barcodes = "reverse_lin_tag" in ref_seq_frame.columns
         
         if double_barcodes:
             disp_cols = ["RS_name", "forward_BC", "reverse_BC", "rev_BC_ID", "total_counts"]
         else:
             disp_cols = ["RS_name", "forward_BC", "for_BC_ID", "total_counts"]
+        
+        if self.plasmid == 'Align-TF':
+            disp_cols = ['transcription_factor'] + disp_cols
     
         if ref_seq_frame is not None:
             no_match_list = []
@@ -380,14 +387,19 @@ class BarSeqFitnessFrame:
                 if len(display_frame)==0:
                     n = row["RS_name"]
                     no_match_list.append(n)
-                if len(display_frame)>1:
-                    n = row["RS_name"]
-                    print(f"found more than one possible match for {n}")
-                if len(display_frame)>0:
+                elif len(display_frame)==1:
                     display_frame["RS_name"].iloc[0] = row["RS_name"]
                     barcode_frame.loc[display_frame.index[0], "RS_name"] = row["RS_name"]
+                    
+                    if self.plasmid == 'Align-TF':
+                        display_frame["transcription_factor"].iloc[0] = row["transcription_factor"]
+                        barcode_frame.loc[display_frame.index[0], "transcription_factor"] = row["transcription_factor"]
+                        
                     if show_output:
                         display(display_frame)
+                else:
+                    n = row["RS_name"]
+                    print(f"found more than one possible match for {n}")
             print(f'no matches found for:')
             for n in np.unique(no_match_list):
                 print(f'    {n}')
@@ -2070,6 +2082,280 @@ class BarSeqFitnessFrame:
             barcode_frame.loc[index_list, "sensor_params_cov_all"] = pcov_list
             barcode_frame.loc[index_list, "hill_on_at_zero_prob"] = on_at_zero_prob_list
             barcode_frame.loc[index_list, "sensor_rms_residuals"] = residuals_list
+        
+        self.barcode_frame = barcode_frame
+        
+        if auto_save:
+            self.save_as_pickle(overwrite=overwrite)
+        
+    
+    def stan_single_fitness_to_function(self,
+                                        adapt_delta=0.9,
+                                        iter_warmup=500,
+                                        iter_sampling=500,
+                                        chains=4,
+                                        stan_output_dir=None,
+                                        show_progress=False,
+                                        auto_save=True,
+                                        overwrite=False,
+                                        refit_indexes=None,
+                                        return_fit=False,
+                                        initial_dict=None,
+                                        min_err_dict=None,
+                                        re_stan_on_rhat=True,
+                                        rhat_cutoff=1.05):
+        
+        plasmid = self.plasmid
+        if plasmid != 'Align-TF':
+            raise NotImplementedError(f"stan_single_fitness_to_function() is not yet implemented for plasmid: {plasmid}")
+                    
+        cmdstanpy_logger = logging.getLogger("cmdstanpy")
+        cmdstanpy_logger.disabled = True
+        
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
+        if initial_dict is None:
+            initial = self.get_default_initial()
+            initial_dict = {}
+            for c in self.antibiotic_conc_list:
+                if c > 0:
+                    initial_dict[c] = initial
+                    
+        if min_err_dict is None:
+            min_err_dict = {c:0.02 for c in initial_dict}
+            
+        print(f"Using Stan to estimate function from fitness for {self.experiment}")
+        print(f"  Using fitness parameters for {plasmid}:")
+        for k, v in initial_dict.items():
+            print(f"      {k} {self.antibiotic}, fitness initial: {v}")
+            print(f"      min fitness error: {min_err_dict[k]}")
+            print(f"        popt: {self.fit_fitness_difference_params[v][k]['popt']}")
+            print(f"        perr: {self.fit_fitness_difference_params[v][k]['perr']}")
+        print("      Method version from 2024-09-23")
+        
+        barcode_frame = self.barcode_frame
+        
+        antibiotic_conc_list = self.antibiotic_conc_list
+        
+        sm_file = 'Single point fitness to function.stan'
+        
+        function_param = 'log_g'
+        fitness_params_list = ['low_fitness', 'mid_g', 'fitness_n']
+        #quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
+        
+        # key_params are the parameters to check for Stan fit convergence:
+        key_params = [function_param] + fitness_params_list
+        
+        print(f'    Using model from file: {sm_file}')
+        stan_model = stan_utility.compile_model(sm_file)
+        
+        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+        print(f'log_g_limits: {log_g_min, log_g_max}')
+        
+        sample_plate_map = self.sample_plate_map
+        sample_plate_map = sample_plate_map[sample_plate_map.growth_plate==2]
+        
+        rng = np.random.default_rng()
+        def stan_fit_row(st_row, return_fit=False):
+            st_index = st_row.name
+            tf = st_row.transcription_factor
+            ligand = align_ligand_from_tf(tf)
+            print()
+            now = datetime.datetime.now()
+            print(f"{now}, fitting row index: {st_index}, for ligand {ligand} and TF {tf}")
+            
+            ret_dict = {'ligand':ligand}
+                
+            stan_data = self.bs_frame_stan_data(st_row, 
+                                                initial=initial_dict, 
+                                                min_err=min_err_dict,
+                                                is_gp_model=False)
+                                                
+            if stan_data is None:
+                # This is the expected case for normalization variants, i.e., variants with tf == 'all'
+                
+                # TODO: replace '2' with more general result for a different number of ligand concentrations per TF
+                stan_log_g_mean = np.full((2), np.nan)
+                stan_log_g_std = np.full((2), np.nan)
+                ligand_concentrations = np.array([0, 1])
+                
+                anti_list = [x for x in antibiotic_conc_list if x>0]
+                n_anti = len(anti_list)
+                stan_fitness_params_mean = [np.full((n_anti), np.nan) for p in fitness_params_list]
+                stan_fitness_params_std = [np.full((n_anti), np.nan) for p in fitness_params_list]
+                
+                stan_resid = np.nan
+                
+                ligand = 'none'
+                
+                print()
+                print(f"Skipping Stan fit for normalization variant, {st_row.RS_name}, at index {st_index}")
+                
+            else:
+                
+                ligand_concentrations = stan_data['ligand_concentrations']
+                
+                st_lig = stan_data['ligand_id']
+                if st_lig != ligand:
+                    raise ValueError(f'Stan data ligand_id ({st_lig}) does not match exprected value ({ligand}) for index {st_index}')
+                    
+                fit_data = dict(stan_data)
+                del fit_data['ligand_id']
+                
+                stan_init = init_stan_fit_single_point(stan_data)
+                
+                try:
+                    if tf == 'all':
+                        raise NotImplementedError(f"stan_single_fitness_to_function() is not yet implemented for variants present in multiple sub-libraries")
+                    
+                    #print("fit_data:")
+                    #for k, v in fit_data.items():
+                    #    print(f"{k}: {v}")
+                    #print()
+                    stan_fit = stan_model.sample(data=fit_data, iter_sampling=iter_sampling, iter_warmup=iter_warmup,
+                                                 inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
+                                                 output_dir=stan_output_dir)
+                                                 
+                    if re_stan_on_rhat:
+                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        if len(rhat_params) > 0:
+                            print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                            stan_fit = stan_model.sample(data=fit_data, iter_sampling=iter_sampling*10, iter_warmup=iter_warmup*10,
+                                                         inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
+                                                         output_dir=stan_output_dir)
+                            
+                            rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                            if len(rhat_params) > 0:
+                                print(f'    The following parameters still had r_hat > {rhat_cutoff}: {rhat_params}')
+                            else:
+                                print(f'    All parameters now have r_hat < {rhat_cutoff}')
+                                
+                    
+                    if return_fit:
+                        return stan_fit
+            
+                    stan_log_g_mean = np.mean(stan_fit.stan_variable('log_g'), axis=0)
+                    stan_log_g_std = np.std(stan_fit.stan_variable('log_g'), axis=0)
+                    
+                    stan_fitness_params_mean = [np.mean(stan_fit.stan_variable(p)) for p in fitness_params_list]
+                    stan_fitness_params_std = [np.std(stan_fit.stan_variable(p)) for p in fitness_params_list]
+                    
+                    stan_resid = np.mean(stan_fit.stan_variable("rms_resid"))
+                
+                except Exception as err:
+                    stan_log_g_mean = np.full((fit_data['N_lig']), np.nan)
+                    stan_log_g_std = np.full((fit_data['N_lig']), np.nan)
+                    
+                    stan_fitness_params_mean = [np.full((fit_data['N_antibiotic']), np.nan) for p in fitness_params_list]
+                    stan_fitness_params_std = [np.full((fit_data['N_antibiotic']), np.nan) for p in fitness_params_list]
+                    
+                    stan_resid = np.nan
+                    
+                    print(f"Error during Stan fitting for index {st_index}: {err}", sys.exc_info()[0])
+                    tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
+                    print(tb_str)
+            
+            
+            ret_result = {}
+            ret_result['ligand_concentrations'] = ligand_concentrations
+            ret_result['stan_log_g_mean'] = stan_log_g_mean
+            ret_result['stan_log_g_std'] = stan_log_g_std
+            ret_result['stan_fitness_params_mean'] = stan_fitness_params_mean
+            ret_result['stan_fitness_params_std'] = stan_fitness_params_std
+            ret_result['stan_resid'] = stan_resid
+            ret_result['st_index'] = st_index
+            ret_result['ligand'] = ligand
+            
+            return ret_result
+        
+        if refit_indexes is None:
+            print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
+            fit_index_list = list(barcode_frame.index)
+            #fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
+        else:
+            if return_fit:
+                return stan_fit_row(row_to_fit, return_fit=True)
+            
+            print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
+            print(f'    selected rows: {refit_indexes}')
+            fit_index_list = refit_indexes
+            
+        row_list = [barcode_frame.loc[index] for index in fit_index_list]
+        
+        # This line actually runs all the fits:
+        fit_list = [stan_fit_row(row) for row in row_list]
+        
+        # Then, add the fit results to barcode_frame:
+        tf_list = np.unique(sample_plate_map.transcription_factor)
+        ligand_list = [align_ligand_from_tf(tf) for tf in tf_list]
+        non_zero_lig_conc_dict = {}
+        for tf, lig in zip(tf_list, ligand_list):
+            df = sample_plate_map
+            df = df[df.transcription_factor==tf]
+            df = df[df[lig]>0]
+            conc = np.unique(df[lig])
+            if len(conc) == 1:
+                non_zero_lig_conc_dict[lig] = int(conc[0])
+            else:
+                raise ValueError(f'Unexpected number of ligand concentrations for transcription_factor {tf} and ligand {lig}')
+            
+        output_columns = ['log_g0']
+        output_columns += [f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}' for lig in ligand_list]
+        output_columns += [f'{c}_err' for c in output_columns]
+        output_columns += ['stan_fitness_params_mean', 'stan_fitness_params_std']
+        
+        output_results_list = []
+        for ret_result in fit_list: # iterate over fit results for each barcode/row
+            ligand = ret_result['ligand']
+            non_zero_ligand_conc = [x for x in ret_result['ligand_concentrations'] if x != 0][0]
+            
+            output_dict = {}
+            for c, log_g_mu, lig_g_sig in zip(ret_result['ligand_concentrations'], 
+                                              ret_result['stan_log_g_mean'], 
+                                              ret_result['stan_log_g_std']):
+                if ligand == 'none':
+                    out_col = 'log_g0'
+                elif c == 0:
+                    out_col = 'log_g0'
+                else:
+                    out_col = f'log_g_{int(c)}_{ligand}'
+                
+                output_dict[out_col] = log_g_mu
+                output_dict[f'{out_col}_err'] = lig_g_sig
+            
+            for lig in ligand_list:
+                if lig != ligand:
+                    output_dict[f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}'] = np.nan
+                    output_dict[f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}_err'] = np.nan
+            
+            for c in ['stan_fitness_params_mean', 'stan_fitness_params_std']:
+                output_dict[c] = list(ret_result[c])
+                
+            for c in ['stan_resid', 'st_index']:
+                output_dict[c] = ret_result[c]
+                
+            output_results_list.append(output_dict)
+        
+        # Confirm that fit results go to the correct row (by index):
+        index_list = [d['st_index'] for d in output_results_list]
+        if refit_indexes is None:
+            if index_list == list(barcode_frame.index):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
+            
+            for column_name in output_columns:
+                barcode_frame[column_name] = [x[column_name] for ind, x in enumerate(output_results_list)]
+                
+        else:
+            if index_list == list(refit_indexes):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
+            
+            for column_name in output_columns:
+                
+                barcode_frame.loc[index_list, column_name] = [x[column_name] for x in output_results_list]
         
         self.barcode_frame = barcode_frame
         
