@@ -3,9 +3,10 @@
 
 data {
   int<lower=1> N_antibiotic;      // number of non-zero antibiotic concentrations
+  int<lower=1> N_lig;             // number of ligand concentrations at each antibiotic concentration
   
-  vector[N_antibiotic] y;         // normalized fitness difference with antibiotic
-  vector[N_antibiotic] y_err;     // estimated error of fitness difference
+  array[N_lig, N_antibiotic] real y;         // normalized fitness difference with antibiotic
+  array[N_lig, N_antibiotic] real y_err;     // estimated error of fitness difference
   
   real log_g_min;                    // lower bound on log_g
   real log_g_max;                    // upper bound on log_g
@@ -26,7 +27,7 @@ transformed data {
 }
 
 parameters {
-  real<lower=log_g_min, upper=log_g_max> log_g;        // log10 of function
+  vector<lower=log_g_min, upper=log_g_max>[N_lig] log_g;        // log10 of function
   
   real<lower=0> sigma;            // scale factor for standard deviation of noise in y
   
@@ -36,14 +37,16 @@ parameters {
 }
 
 transformed parameters {
-  real g;
+  vector[N_lig] g;
   
-  vector[N_antibiotic] mean_y;
+  array[N_lig, N_antibiotic] real mean_y;
   
   g = 10^log_g;
   
-  for (n in 1:N_antibiotic) {
-    mean_y[n] = low_fitness[n] - low_fitness[n]*(g^fitness_n[n])/(mid_g[n]^fitness_n[n] + g^fitness_n[n]);
+  for (lig in 1:N_lig) {
+    for (n in 1:N_antibiotic) {
+      mean_y[lig][n] = low_fitness[n] - low_fitness[n]*(g[lig]^fitness_n[n])/(mid_g[n]^fitness_n[n] + g[lig]^fitness_n[n]);
+    }
   }
   
 }
@@ -57,13 +60,21 @@ model {
   // noise scale, prior to keep it from getting too much < 1
   sigma ~ inv_gamma(3, 6);
   
-  y ~ normal(mean_y, sigma*y_err);
-  
+  for (lig in 1:N_lig) {
+    for (n in 1:N_antibiotic) {
+      y[lig][n] ~ normal(mean_y[lig][n], sigma*y_err[lig][n]);
+    }
+  }
 }
 
 generated quantities {
   real rms_resid;
   
-  rms_resid = distance(y, mean_y)/sqrt(N_antibiotic);
-  
+  rms_resid = 0;
+  for (lig in 1:N_lig) {
+    for (n in 1:N_antibiotic) {
+      rms_resid = rms_resid + (y[lig][n] - mean_y[lig][n])^2;
+    }
+  }
+  rms_resid = sqrt(rms_resid/(N_antibiotic*N_lig));
 }

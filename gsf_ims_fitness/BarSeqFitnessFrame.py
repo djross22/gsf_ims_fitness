@@ -4554,9 +4554,7 @@ class BarSeqFitnessFrame:
                            initial=None,
                            is_gp_model=False,
                            min_err=0.05,
-                           apply_ramr_correction=None,
-                           lig=None,
-                           lig_conc=None):
+                           apply_ramr_correction=None):
         
         if initial is None:
             initial = self.get_default_initial()
@@ -4566,41 +4564,63 @@ class BarSeqFitnessFrame:
             sample_map = sample_map[sample_map.growth_plate==2].sort_values(by=['antibiotic_conc'])
             
             # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
-            tf = align_tf_from_ligand(lig)
+            tf = st_row.transcription_factor
+            if tf == 'all':
+                return None
+            lig = align_ligand_from_tf(tf)
             sample_map = sample_map[sample_map.transcription_factor==tf]
-            sample_map = sample_map[sample_map[lig]==lig_conc]
             
-            samples = np.array(sample_map[sample_map.antibiotic_conc>0]['sample_id'])
-            antibiotic_concentrations = np.array(sample_map[sample_map.antibiotic_conc>0]['antibiotic_conc'])
+            ligand_concentrations = np.unique(sample_map[lig])
             
-            # Reference sample has zero antibiotic:
-            ref_sample = sample_map[sample_map.antibiotic_conc==0]['sample_id']
-            if len(ref_sample) != 1:
-                raise ValueError(f'Unexpected number of samples with zero antibiotic: len(ref_sample): {len(ref_sample)}')
-            else:
-                ref_sample = ref_sample.iloc[0]
+            if len(ligand_concentrations) != 2:
+                raise ValueError(f'Unexpected number of ligand concentrations for transcription_factor {tf}')
             
-            # Can use different normalizations/fitness values for each antibiotic concentration is initial is a dictionary with
-            #     k = antibiotic concentration, v = initial to use
-            if type(initial) is dict:
-                init_list = [initial[c] for c in antibiotic_concentrations]
-            else:
-                init_list = [initial for c in antibiotic_concentrations]
-            
-            # can also use different values for min_err
-            if type(min_err) is dict:
-                min_err = np.array([min_err[c] for c in antibiotic_concentrations])
-            
-            y = np.array([st_row[f"fitness_S{s}_{init}"] for s, init in zip(samples, init_list)])
-            y_err = np.array([st_row[f"fitness_S{s}_err_{init}"] for s, init in zip(samples, init_list)])
-            
-            y_ref = np.array([st_row[f"fitness_S{ref_sample}_{init}"] for init in init_list])
-            y_ref_err = np.array([st_row[f"fitness_S{ref_sample}_err_{init}"] for init in init_list])
-            
-            y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2 + min_err**2)
-            y = (y - y_ref)/y_ref
+            y_arr = []
+            y_err_arr = []
+            for lig_conc in ligand_concentrations:
+                sample_map_lig = sample_map[sample_map[lig]==lig_conc]
                 
-            stan_data = {'ligand_id':lig, 'ligand_conc':lig_conc, 'y':y, 'y_err':y_err, 'N_antibiotic':len(y)}
+                samples = np.array(sample_map_lig[sample_map_lig.antibiotic_conc>0]['sample_id'])
+                antibiotic_concentrations = np.array(sample_map_lig[sample_map_lig.antibiotic_conc>0]['antibiotic_conc'])
+                
+                # Can use different normalizations/fitness values for each antibiotic concentration is initial is a dictionary with
+                #     k = antibiotic concentration, v = initial to use
+                if type(initial) is dict:
+                    init_list = [initial[c] for c in antibiotic_concentrations]
+                else:
+                    init_list = [initial for c in antibiotic_concentrations]
+                
+                # can also use different values for min_err
+                if type(min_err) is dict:
+                    min_err = np.array([min_err[c] for c in antibiotic_concentrations])
+                
+                # Reference sample has zero antibiotic:
+                ref_sample = sample_map_lig[sample_map_lig.antibiotic_conc==0]['sample_id']
+                if len(ref_sample) != 1:
+                    raise ValueError(f'Unexpected number of samples with zero antibiotic: len(ref_sample): {len(ref_sample)}')
+                else:
+                    ref_sample = ref_sample.iloc[0]
+                
+                y = np.array([st_row[f"fitness_S{s}_{init}"] for s, init in zip(samples, init_list)])
+                y_err = np.array([st_row[f"fitness_S{s}_err_{init}"] for s, init in zip(samples, init_list)])
+                
+                y_ref = np.array([st_row[f"fitness_S{ref_sample}_{init}"] for init in init_list])
+                y_ref_err = np.array([st_row[f"fitness_S{ref_sample}_err_{init}"] for init in init_list])
+                
+                y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2 + min_err**2)
+                y = (y - y_ref)/y_ref
+                
+                y_arr.append(y)
+                y_err_arr.append(y_err)
+            y_arr = np.array(y_arr)
+            y_err_arr = np.array(y_err_arr)
+                
+            stan_data = {'ligand_id':lig, 
+                         'ligand_concentrations':ligand_concentrations, 
+                         'y':y_arr, 
+                         'y_err':y_err_arr,
+                         'N_lig':len(ligand_concentrations),
+                         'N_antibiotic':len(y_arr[0])}
             
             fit_fitness_difference_params = self.fit_fitness_difference_params
             
@@ -4846,6 +4866,16 @@ def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid
     else:
         ret_dict['low_fitness'] = fit_fitness_difference_params[0][0]
     return ret_dict
+
+def init_stan_fit_single_point(stan_data):
+    sig = np.random.uniform(1, 3)
+    
+    return dict(sigma=sig, 
+                low_fitness=stan_data['low_fitness_mu'],
+                mid_g=stan_data['mid_g_mu'],
+                fitness_n=stan_data['fitness_n_mu']
+                )
+    
     
 def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand, plasmid='pVER'):
     sig = np.random.uniform(1, 3)
