@@ -4233,7 +4233,7 @@ class BarSeqFitnessFrame:
                 if 0 in x_fit_list:
                     x_plot_fit = np.array([0] + list(x_plot_fit))
                 y_plot_fit = fit_funct(x_plot_fit, *stan_popt)
-                ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='new fit');
+                ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='calibration fit');
                 
                 if turn_off_cmdstanpy_logger:
                     cmdstanpy_logger.disabled = False    
@@ -4280,7 +4280,9 @@ class BarSeqFitnessFrame:
             else:
                 self.fit_fitness_difference_params = stan_params_to_save
         
-        if return_fig:
+        if return_fig and return_resid_table:
+            return fig, axs, resid_frame
+        elif return_fig:
             return fig, axs
         elif return_resid_table:
             return resid_frame
@@ -4288,24 +4290,31 @@ class BarSeqFitnessFrame:
             return fit_data_ret
         
     
-    def set_ramr_fitness_correction(self, resid_frame, auto_save=True, overwrite=False):
+    def set_ramr_fitness_correction(self, resid_frame, auto_save=True, overwrite=False, plot_all_dates=True, return_plot=False):
         from sklearn.ensemble import GradientBoostingRegressor
         
         min_samples_split = 5
         
         def model_plots(model, params, print_stats=True):
-            plt.rcParams["figure.figsize"] = [6, 3]
-            fig, axs = plt.subplots(1, 2)
+            plt.rcParams["figure.figsize"] = [7, 3]
+            fig, axs = plt.subplots(1, 2, layout='tight')
             
             ax = axs[1]
-            df_label_list = [[resid_frame, 'All data']] + [[df, label] for label, df in resid_frame.groupby('exp_date')]
+            if plot_all_dates:
+                df_label_list = [[resid_frame, 'All data']] + [[df, label] for label, df in resid_frame.groupby('exp_date')]
+            else:
+                df_label_list = [[resid_frame, 'All data']]
             for df_label in df_label_list:
                 df = df_label[0]
                 label = df_label[1]
                 
                 ms = 8 if label == 'All data' else 6
                 alpha = 1 if label == 'All data' else 0.5
-                fillstyle = 'none' if label == 'All data' else None
+                
+                if not plot_all_dates:
+                    fillstyle = None
+                    ms = 6
+                    alpha = 0.3
                 
                 y = df['resid']
                 w = 1/df['resid_err']**2
@@ -4324,6 +4333,8 @@ class BarSeqFitnessFrame:
 
             xlim = ax.get_xlim()
             ax.plot(xlim, xlim, '--k');
+            ax.set_xlabel('actual deviation', size=16)
+            ax.set_ylabel('predicted deviation', size=16)
 
             ax = axs[0]
             feature_importance = model.feature_importances_
@@ -4332,7 +4343,9 @@ class BarSeqFitnessFrame:
 
             ax.barh(pos, feature_importance[sorted_idx], align="center")
             ax.set_yticks(pos, np.array(params)[sorted_idx])
-            ax.set_title("Feature Importance (MDI)");
+            ax.set_xlabel("Feature Importance (MDI)", size=14);
+            
+            return fig, axs
             
         params = ['lig_conc', 'fitness_effect', 'ref_fitness', 'early_fitness']
         self.ramr_fitness_correction_params = params
@@ -4343,12 +4356,15 @@ class BarSeqFitnessFrame:
         ramr_model = GradientBoostingRegressor(loss="squared_error", min_samples_split=min_samples_split)
         ramr_model.fit(X_train, y_train, sample_weight=w_train)
 
-        model_plots(ramr_model, params, print_stats=True);
+        fig, axs = model_plots(ramr_model, params, print_stats=True);
         
         self.ramr_fitness_correction = ramr_model
         
         if auto_save:
             self.save_as_pickle(overwrite=overwrite)
+        
+        if return_plot:
+            return fig, axs
     
     
     def plot_count_ratios_vs_time(self, plot_range=None,
