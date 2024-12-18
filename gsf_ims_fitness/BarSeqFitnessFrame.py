@@ -1293,8 +1293,8 @@ class BarSeqFitnessFrame:
             spike_1_init = 'sp09'
             spike_2_init = 'rs20'
         elif self.plasmid == 'Align-TF':
-            spike_1 = 'pRamR-norm-01'
-            spike_2 = 'pLacI-norm-01'
+            spike_1 = 'pRamR-norm-02'
+            spike_2 = 'pLacI-norm-02'
             spike_1_init = 'ramr'
             spike_2_init = 'laci'
         

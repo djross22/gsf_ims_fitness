@@ -1357,6 +1357,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
             spike_in_fitness_dict[t] = d
     
     elif plasmid == 'Align-TF':
+        '''
         tet_list = [0, 0.5, 1, 5]
         # Fitness values are from 2024-08-27_Align-TF_GBA_1_OD-test, 
         # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
@@ -1400,9 +1401,30 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         def fit_function(lig, conc):
             return (0.64319, 0.020423)
         dict_list[3]["pLacI-norm-01"] = fit_function
+        '''
         
+        tmp_list = [0, 0.3, 1, 3]
+        # Fitness values are from 2024-11-22_Align-TF_GBA_1_OD-test, 
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
         
-        for t, d in zip(tet_list, dict_list):
+        # "pRamR-norm-02", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            if lig == '1S-TIQ':
+                return (0.9795 - 0.0328*conc/250, 0.0094 + 0.0025*conc/250)
+            else:
+                return (0.9795, 0.0094)
+        dict_list = [{"pRamR-norm-02":fit_function}]*4
+        
+        # "pLacI-norm-02", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            if lig == '1S-TIQ':
+                return (0.9767 - 0.0328*conc/250, 0.0096 + 0.0025*conc/250)
+            else:
+                return (0.9767, 0.0096)
+        for d in dict_list:
+            d["pLacI-norm-02"] = fit_function
+        
+        for t, d in zip(tmp_list, dict_list):
             spike_in_fitness_dict[t] = d
             
             
@@ -1601,9 +1623,9 @@ def get_spike_in_name_from_inital(plasmid, initial):
             raise ValueError(f'spike-in initial not recognized: {initial}')
     elif plasmid == 'Align-TF':
         if initial[-4:] == 'laci':
-            spike_in = 'pLacI-norm-01'
+            spike_in = 'pLacI-norm-02'
         elif initial[-4:] == 'ramr':
-            spike_in = 'pRamR-norm-01'
+            spike_in = 'pRamR-norm-02'
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
             
