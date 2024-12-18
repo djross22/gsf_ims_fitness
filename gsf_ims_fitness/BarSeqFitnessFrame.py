@@ -3937,6 +3937,7 @@ class BarSeqFitnessFrame:
             x_fit_list = []
             y_fit_list = []
             y_err_list = []
+            identifier_list = []
             if color_by_ligand_conc is not None:
                 lig_color_conc_list = []
             
@@ -4102,6 +4103,7 @@ class BarSeqFitnessFrame:
                                         x_fit_list += list(x)
                                         y_fit_list += list(y)
                                         y_err_list += list(y_err)
+                                        identifier_list += [f'{RS_name} at x = {p:.2e}' for p in x]
                                         if color_by_ligand_conc is not None:
                                             lig_color_conc_list += list(lig_color_conc)
                                         
@@ -4132,6 +4134,7 @@ class BarSeqFitnessFrame:
             x_fit_list = np.array(x_fit_list)
             y_fit_list = np.array(y_fit_list)
             y_err_list = np.array(y_err_list)
+            identifier_list = np.array(identifier_list)
             
             if return_fit_data:
                 df_ret = pd.DataFrame({'x':x_fit_list, 'y':y_fit_list, 'yerr':y_err_list})
@@ -4181,6 +4184,7 @@ class BarSeqFitnessFrame:
                         
                 min_y_err = 0.1
                 y_err_list = np.sqrt(y_err_list**2 + min_y_err**2)
+                print()
                 print(f'Fitting with stan model from: {stan_model_file}')
                 if turn_off_cmdstanpy_logger:
                     import logging
@@ -4193,39 +4197,46 @@ class BarSeqFitnessFrame:
                 
                 num_stan_re_runs = 3 if repeat_after_dropping_outliers else 1
                 fit_data = stan_data
+                num_points = len(fit_data['x'])
+                drop_list = []
                 for run_num in range(num_stan_re_runs):
-                    num_points = len(fit_data['x'])
-                    print()
-                    print(f'Fit iteration: {run_num+1}, with {num_points} data points')
-                    stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4, show_progress=show_progress)
+                    if (run_num == 0) or (len(drop_list) != len(old_drop_list)) or (not np.all(old_drop_list == drop_list)):
+                        old_drop_list = drop_list
+                        num_points = len(fit_data['x'])
+                        print()
+                        print(f'Fit iteration: {run_num+1}, with {num_points} data points')
+                        if len(drop_list)>0:
+                            print('    Dropped outliers:')
+                            for d in drop_list:
+                                print(f'        {d}')
+                        stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4, show_progress=show_progress)
+                        
+                        if re_stan_on_rhat:
+                            print(f'    Checking r_hat...')
+                            rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                            if len(rhat_params) > 0:
+                                print(f'    Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                                stan_fit = fitness_model.sample(data=fit_data, iter_warmup=5000, iter_sampling=5000, inits=stan_init, chains=4, show_progress=show_progress)
+                            else:
+                                print(f'        ... r_hat below {rhat_cutoff} for all key parameters')
+                        
+                        stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in key_params]
+                        stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in key_params]
                     
-                    if re_stan_on_rhat:
-                        print('Checking r_hat...')
-                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
-                        if len(rhat_params) > 0:
-                            print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
-                            stan_fit = fitness_model.sample(data=fit_data, iter_warmup=5000, iter_sampling=5000, inits=stan_init, chains=4, show_progress=show_progress)
-                        else:
-                            print(f'    ... r_hat below {rhat_cutoff} for all key parameters')
-                    
-                    stan_popt = [ np.mean(stan_fit.stan_variable(p))  for p in key_params]
-                    stan_perr = [ np.std(stan_fit.stan_variable(p))  for p in key_params]
-                    
-                    num_str = [ f"{x:.4}" for x in stan_popt]
-                    print(f"    Fitness params: {num_str}")
-                    num_str = [ f"{x:.4}" for x in stan_perr ]
-                    print(f"    Error estimate: {num_str}")
-                
-                    resid_list = y_fit_list - fit_funct(x_fit_list, *stan_popt)
-                    dev_list = np.abs(resid_list)/y_err_list
-                    
-                    x_fit_list_2 = x_fit_list[dev_list<outlier_cutoff]
-                    y_fit_list_2 = y_fit_list[dev_list<outlier_cutoff]
-                    y_err_list_2 = y_err_list[dev_list<outlier_cutoff]
-                    
-                    fit_data = dict(x=x_fit_list_2, y = y_fit_list_2, y_err = y_err_list_2, N=len(x_fit_list_2))
-                    if robust_error_model:
-                        fit_data['nu'] = robust_nu
+                        resid_list = y_fit_list - fit_funct(x_fit_list, *stan_popt)
+                        dev_list = np.abs(resid_list)/y_err_list
+                        
+                        x_fit_list_2 = x_fit_list[dev_list<outlier_cutoff]
+                        y_fit_list_2 = y_fit_list[dev_list<outlier_cutoff]
+                        y_err_list_2 = y_err_list[dev_list<outlier_cutoff]
+                        identifier_list_2 = identifier_list[dev_list<outlier_cutoff]
+                        drop_list = identifier_list[dev_list>=outlier_cutoff]
+                        dropped_x_list = x_fit_list[dev_list>=outlier_cutoff]
+                        dropped_y_list = y_fit_list[dev_list>=outlier_cutoff]
+                        
+                        fit_data = dict(x=x_fit_list_2, y = y_fit_list_2, y_err = y_err_list_2, N=len(x_fit_list_2))
+                        if robust_error_model:
+                            fit_data['nu'] = robust_nu
                 
                 num_str = [ f"{x:.4}" for x in stan_popt]
                 print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
@@ -4240,11 +4251,18 @@ class BarSeqFitnessFrame:
                     rms_dev = np.sqrt(np.average(dev**2, weights=w))
                     print(f"           {w_str} RMS deviation: {rms_dev:.4}")
                 
+                dev_2 = y_fit_list_2 - fit_funct(x_fit_list_2, *stan_popt)
+                rms_dev = np.sqrt(np.mean((dev_2/y_err_list_2)**2))
+                print(f"           Rescaled RMS deviation: {rms_dev:.4} (after dropping outliers; should be 1 for properly calibrated uncertanties)")
+                
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/1.5), np.log10(1.2*max(x_fit_list)))
                 if 0 in x_fit_list:
                     x_plot_fit = np.array([0] + list(x_plot_fit))
                 y_plot_fit = fit_funct(x_plot_fit, *stan_popt)
                 ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='calibration fit');
+                
+                if len(drop_list)>0:
+                    ax.plot(dropped_x_list, dropped_y_list, 'o', color='k', fillstyle='none', ms=ms+3, label='dropped data')
                 
                 if turn_off_cmdstanpy_logger:
                     cmdstanpy_logger.disabled = False    
