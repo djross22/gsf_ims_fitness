@@ -3146,6 +3146,8 @@ class BarSeqFitnessFrame:
         antibiotic_conc_list = self.antibiotic_conc_list
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
+            if self.plasmid == 'Align-TF':
+                tf = row.transcription_factor
             for initial, fill_style, plot_st, plot_corr in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data, plot_w_ramr_correction):
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
@@ -3155,11 +3157,13 @@ class BarSeqFitnessFrame:
                             warnings.simplefilter("ignore")
                             ax.errorbar(x, y, s, marker='o', ms=8, color=color, fillstyle=fill_style)
                 else:
-                    for tet, marker in zip(antibiotic_conc_list, ['o', '<', '>', '^', 'v']):
-                        for j, (lig, color) in enumerate(zip(ligand_list, fit_plot_colors)):
+                    for tet, marker, antibiotic_color in zip(antibiotic_conc_list, ['o', '<', '>', '^', 'v'], fit_plot_colors):
+                        for j, (lig, lig_color) in enumerate(zip(ligand_list, fit_plot_colors)):
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
+                            if (self.plasmid == 'Align-TF') and (tf != 'all'):
+                                df = df[df.transcription_factor==tf]
                             x = df[lig]
                             if plot_slope_not_fitness:
                                 y = [row[f"fit_slope_S{i}_{initial}"]*fit_scale for i in df.sample_id]
@@ -3197,6 +3201,10 @@ class BarSeqFitnessFrame:
                                     s = [row[f"fitness_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             with warnings.catch_warnings():
                                 warnings.simplefilter("ignore")
+                                if self.plasmid == 'Align-TF':
+                                    color = antibiotic_color
+                                else:
+                                    color = lig_color
                                 ax.errorbar(x, y, s, marker=marker, ms=8, color=color, fillstyle=fill_style)
             
                 if initial == plot_initials[0]:
@@ -3214,7 +3222,10 @@ class BarSeqFitnessFrame:
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
                             transform=ax.transAxes, fontsize=fontsize, fontfamily=fontfamily)
                     ax.set_xscale('symlog', linthresh=linthresh)
-                    x_lab = '], ['.join(ligand_list)
+                    if (self.plasmid == 'Align-TF') and (tf != 'all'):
+                        x_lab = align_ligand_from_tf(tf)
+                    else:
+                        x_lab = '], ['.join(ligand_list)
                     ax.set_xlabel(f'[{x_lab}] (umol/L)', size=ax_label_size)
                     if plot_slope_not_fitness:
                         ax.set_ylabel(f'Log slope relative to {plot_initials}', size=ax_label_size)
