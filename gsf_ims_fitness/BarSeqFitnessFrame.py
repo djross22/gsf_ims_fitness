@@ -3741,7 +3741,7 @@ class BarSeqFitnessFrame:
                                             use_only_rs_variants=False,
                                             RS_list=None,
                                             wt_cutoff=0,
-                                            min_err=0.05,
+                                            min_err=0.05, # Either a single value (float), or a dictionary with keys equal to the antibiotic concentrations and values equalt to the min_err for that concentration
                                             show_old_fit=True,
                                             apply_ramr_correction=None,
                                             turn_off_cmdstanpy_logger=True,
@@ -4094,7 +4094,13 @@ class BarSeqFitnessFrame:
                                             lig_color_conc = lig_conc
                                         else:
                                             lig_color_conc = [0]*len(lig_conc)
-
+                                    
+                                    # Enforce the min_err here, just before adding the values to the y_err_list and plotting
+                                    if type(min_err) == dict:
+                                        y_err = np.sqrt(y_err**2 + min_err[tet]**2)
+                                    else:
+                                        y_err = np.sqrt(y_err**2 + min_err**2)
+                                    
                                     sel = RS_name in rs_exclude_list
                                     if sel:
                                         fill_style = 'none'  
@@ -4175,16 +4181,19 @@ class BarSeqFitnessFrame:
                 ax.plot(x_plot_fit, y_plot_fit, '--r', zorder=100, label=lab);
             
             
+            print()
+            if type(min_err) == dict:
+                print(f'Plotting and fitting with minimum fitness error: {min_err[tet]} for [{self.antibiotic}] = {tet}')
+            else:
+                print(f'Plotting and fitting with minimum fitness error: {min_err}')
+            
             if run_stan_fit:
                 
                 if plasmid in ['pVER', 'pCymR', 'Align-TF']:
                     key_params = ["low_level", "IC_50", "hill_n"]
                 elif plasmid == 'pRamR':
                     key_params = ["high_level", "IC_50", "hill_n"]
-                        
-                min_y_err = 0.1
-                y_err_list = np.sqrt(y_err_list**2 + min_y_err**2)
-                print()
+                
                 print(f'Fitting with stan model from: {stan_model_file}')
                 if turn_off_cmdstanpy_logger:
                     import logging
