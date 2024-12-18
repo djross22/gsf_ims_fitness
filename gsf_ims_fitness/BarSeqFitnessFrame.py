@@ -4883,7 +4883,7 @@ class BarSeqFitnessFrame:
             sample_map = self.sample_plate_map
             sample_map = sample_map[sample_map.growth_plate==2].sort_values(by=['antibiotic_conc'])
                 
-            # For Align-TF project, initial, min_err, and anti_list are synchromized lists 
+            # For Align-TF project, initial, min_err, and anti_list are synchronized lists 
             #     of normalization/fit initials, min errors, and antibiotic concentrations
             anti_conc_list = anti_list
             init_list = initial
