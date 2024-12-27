@@ -33,7 +33,7 @@ parameters {
   vector[num_mut] logit_ginf_mut;
   vector[num_epi_var] logit_ginf_epi;
   
-  real log_ec50_wt;                 // log10(EC_50)
+  real log_ec50_wt;                 // log(EC_50)
   vector[num_mut] log_ec50_mut;
   vector[num_epi_var] log_ec50_epi;
   
