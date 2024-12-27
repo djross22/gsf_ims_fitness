@@ -39,7 +39,8 @@ parameters {
   vector[num_var] log_g0_var;                                                // log-transformed g0
   vector[num_var] log_ginf_var;                                              // log-transformed ginf
   vector<lower=log_ec50_min, upper=log_ec50_max>[num_var] log_ec50_var;      // log(EC_50)
-  vector[num_var] log_n_eff_var;                                             // effective cooperativity, i.e., Hill cooeficient.
+  
+  vector[num_var] n_eff_var;                                             // effective cooperativity, i.e., Hill cooeficient.
   
   real<lower=0> sigma;                        // scale factor for standard deviation of noise in log_y
   real<lower=0> offset_sigma;                 // scale factor for standard deviation of replicate variability in g_min
@@ -56,7 +57,6 @@ transformed parameters {
   vector[num_var] g0;
   vector[num_var] ginf;
   vector[num_var] ec50;
-  vector[num_var] n_eff;
   
   vector[N] log_mean_y;
   
@@ -66,12 +66,11 @@ transformed parameters {
   g0 = exp(log_g0_var);
   ginf = exp(log_ginf_var);
   ec50 = exp(log_ec50_var);
-  n_eff = exp(log_n_eff_var);
   
   for (i in 1:N) {
 	real dose_response;
 	
-    dose_response = g0[variant[i]] + (ginf[variant[i]] - g0[variant[i]])*(x[i]^n_eff[variant[i]])/(ec50[variant[i]]^n_eff[variant[i]] + x[i]^n_eff[variant[i]]);
+    dose_response = g0[variant[i]] + (ginf[variant[i]] - g0[variant[i]])*(x[i]^n_eff_var[variant[i]])/(ec50[variant[i]]^n_eff_var[variant[i]] + x[i]^n_eff_var[variant[i]]);
     
     log_mean_y[i] = log(dose_response) + log_rep_ratio[rep[i]];
 	
@@ -83,6 +82,8 @@ transformed parameters {
 }
 
 model {
+  // Prior on n_eff_var; <weibull> ~ sensor_n_sigma*GammaFunct(1+1/sensor_n_alpha)
+  n_eff_var ~ weibull(sensor_n_alpha, sensor_n_sigma);
   
   // prior on scale parameter for log-normal measurement error
   sigma ~ normal(0, 1);
@@ -108,18 +109,18 @@ generated quantities {
   real log_g0_wt;
   real log_ginf_wt;
   real log_ec50_wt;
-  real log_n_eff_wt;
+  real n_eff_wt;
   
   log_g0_wt = log_g0_var[1];
   log_ginf_wt = log_ginf_var[1];
   log_ec50_wt = log_ec50_var[1];
-  log_n_eff_wt = log_n_eff_var[1];
+  n_eff_wt = n_eff_var[1];
   
   
   
   for (variant_num in 1:num_var) {
     for (i in 1:19) {
-      y_out[variant_num, i] = g0[variant_num] + (ginf[variant_num] - g0[variant_num])*(x_out[i]^n_eff[variant_num])/(ec50[variant_num]^n_eff[variant_num] + x_out[i]^n_eff[variant_num]);
+      y_out[variant_num, i] = g0[variant_num] + (ginf[variant_num] - g0[variant_num])*(x_out[i]^n_eff_var[variant_num])/(ec50[variant_num]^n_eff_var[variant_num] + x_out[i]^n_eff_var[variant_num]);
 	      
     }
 	
