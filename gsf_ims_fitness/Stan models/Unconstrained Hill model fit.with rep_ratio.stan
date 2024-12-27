@@ -40,7 +40,7 @@ parameters {
   vector[num_var] log_ginf_var;                                              // log-transformed ginf
   vector<lower=log_ec50_min, upper=log_ec50_max>[num_var] log_ec50_var;      // log(EC_50)
   
-  vector[num_var] n_eff_var;                                             // effective cooperativity, i.e., Hill cooeficient.
+  vector<lower=0>[num_var] n_eff_var;                                             // effective cooperativity, i.e., Hill cooeficient.
   
   real<lower=0> sigma;                        // scale factor for standard deviation of noise in log_y
   real<lower=0> offset_sigma;                 // scale factor for standard deviation of replicate variability in g_min
