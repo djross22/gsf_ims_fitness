@@ -6,6 +6,10 @@ data {
 #include Free_energy_model.data.shared.stan
   
 #include Hill_model.data.hill.stan
+
+  // data specific to the unconstrained Hill model
+  real log_g_min;        // lower bound on log_g0 and log_ginf
+  real log_g_max;        // upper bound on log_g0 and log_ginf
   
 }
 
@@ -36,11 +40,11 @@ parameters {
   // log_ec50 is constrained between min and max to handle flat-line variants.
   //      The only other constraints are that the parameters must be >0, which is enforced using the log-transformed paramters.
   
-  vector[num_var] log_g0_var;                                                // log-transformed g0
-  vector[num_var] log_ginf_var;                                              // log-transformed ginf
+  vector<lower=log_g_min, upper=log_g_max>[num_var] log_g0_var;                                                // log-transformed g0
+  vector<lower=log_g_min, upper=log_g_max>[num_var] log_ginf_var;                                              // log-transformed ginf
   vector<lower=log_ec50_min, upper=log_ec50_max>[num_var] log_ec50_var;      // log(EC_50)
   
-  vector<lower=0>[num_var] n_eff_var;                                             // effective cooperativity, i.e., Hill cooeficient.
+  vector<lower=0, upper=4>[num_var] n_eff_var;                                             // effective cooperativity, i.e., Hill cooeficient.
   
   real<lower=0> sigma;                        // scale factor for standard deviation of noise in log_y
   real<lower=0> offset_sigma;                 // scale factor for standard deviation of replicate variability in g_min
