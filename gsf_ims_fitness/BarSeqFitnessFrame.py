@@ -3876,6 +3876,9 @@ class BarSeqFitnessFrame:
                     
             elif plasmid == 'Align-TF':
                 plas = f'{rs_name}_mScar'
+                
+                if plas == 'pRamR-WT-fin_mScar':
+                    plas = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
                     
             return plas
             
