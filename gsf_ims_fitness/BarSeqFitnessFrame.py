@@ -2164,7 +2164,8 @@ class BarSeqFitnessFrame:
         rng = np.random.default_rng()
         def stan_fit_row(st_row, return_fit=False):
             st_index = st_row.name
-            tf = st_row.transcription_factor
+            rs_name = st_row.RS_name
+            tf = align_tf_from_RS_name(rs_name)
             ligand = align_ligand_from_tf(tf)
             print()
             now = datetime.datetime.now()
@@ -2179,7 +2180,7 @@ class BarSeqFitnessFrame:
                                                 is_gp_model=False)
                                                 
             if stan_data is None:
-                # This is the expected case for normalization variants, i.e., variants with tf == 'all'
+                # This is the expected case for normalization variants, i.e., 'pLAcI-norm-02'
                 
                 # TODO: replace '2' with more general result for a different number of ligand concentrations per TF
                 stan_log_g_mean = np.full((2), np.nan)
@@ -4917,9 +4918,10 @@ class BarSeqFitnessFrame:
             min_err_list = np.array(min_err)
             
             # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
-            tf = st_row.transcription_factor
-            if tf == 'all':
+            rs_name = st_row.RS_name
+            if 'norm' in rs_name:
                 return None
+            tf = align_tf_from_RS_name(rs_name)
             lig = align_ligand_from_tf(tf)
             sample_map = sample_map[sample_map.transcription_factor==tf]
             
