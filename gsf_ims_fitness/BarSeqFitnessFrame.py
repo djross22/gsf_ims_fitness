@@ -4267,6 +4267,12 @@ class BarSeqFitnessFrame:
                 dev_2 = y_fit_list_2 - fit_funct(x_fit_list_2, *stan_popt)
                 rms_dev = np.sqrt(np.mean((dev_2/y_err_list_2)**2))
                 print(f"           Rescaled RMS deviation: {rms_dev:.4} (after dropping outliers; should be 1 for properly calibrated uncertanties)")
+                    
+                spear_r = stats.spearmanr(x_fit_list, y_fit_list).statistic
+                print(f"           Spearman R with outliers: {spear_r:.4}")
+                    
+                spear_r = stats.spearmanr(x_fit_list_2, y_fit_list_2).statistic
+                print(f"           Spearman R without outliers: {spear_r:.4}")
                 
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/1.5), np.log10(1.2*max(x_fit_list)))
                 if 0 in x_fit_list:
