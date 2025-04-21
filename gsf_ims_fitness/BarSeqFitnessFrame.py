@@ -3955,15 +3955,7 @@ class BarSeqFitnessFrame:
             
             if color_by_ligand_conc is not None:
                 lig_color_conc_list = []
-            
-            resid_frame_rs_name = []
-            resid_frame_lig = []
-            resid_frame_samp = []
-            
-            resid_frame_lig_conc = []
-            resid_frame_ref = []
-            resid_frame_early_fitness = []
-            
+                        
             for RS_name in RS_list:
                 for lig in ligand_plot_list:
                     i = np.where(np.array(self.ligand_list)==lig)[0][0]
@@ -4355,8 +4347,11 @@ class BarSeqFitnessFrame:
             return fit_data_ret
         
     
-    def set_ramr_fitness_correction(self, resid_frame, auto_save=True, overwrite=False, plot_all_dates=True, return_plot=False):
+    def set_ramr_fitness_correction(self, resid_frame, auto_save=True, overwrite=False, plot_all_dates=True, return_plot=False, params=None):
         from sklearn.ensemble import GradientBoostingRegressor
+        
+        if params is None:
+            params = ['lig_conc', 'fitness_effect', 'ref_fitness', 'early_fitness']
         
         min_samples_split = 5
         
@@ -4391,9 +4386,11 @@ class BarSeqFitnessFrame:
                 if print_stats:
                     resid_test = y - model.predict(X)
                     rms_resid = np.sqrt(np.mean(resid_test**2))
+                    rms_pre_model = np.sqrt(np.mean(y**2))
                     print(label)
-                    print(f'    {rms_resid}')
-                    print(f'    {model.score(X, y, sample_weight=w)}')
+                    print(f'    RMS residual before model: {rms_pre_model:.4f}')
+                    print(f'    correction model RMS residual: {rms_resid:.4f}')
+                    print(f'    correction model R2: {model.score(X, y, sample_weight=w):.2f}')
                     print()
 
             xlim = ax.get_xlim()
@@ -4412,7 +4409,7 @@ class BarSeqFitnessFrame:
             
             return fig, axs
             
-        params = ['lig_conc', 'fitness_effect', 'ref_fitness', 'early_fitness']
+        
         self.ramr_fitness_correction_params = params
         y_train = resid_frame['resid']
         w_train = 1/resid_frame['resid_err']**2
