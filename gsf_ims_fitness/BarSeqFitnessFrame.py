@@ -3931,6 +3931,8 @@ class BarSeqFitnessFrame:
             stan_params_to_save = []
         if return_fit_data:
             fit_data_ret = []
+        if return_resid_table:
+            resid_table_list = []
         for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, plot_fit_params):
             fmt = 'o'
             ms = 8
@@ -3942,6 +3944,15 @@ class BarSeqFitnessFrame:
             y_fit_list = []
             y_err_list = []
             identifier_list = []
+            
+            resid_frame_lists = {}
+            for k in ['rs_name', 'sample', 'ligand', 'lig_conc', 'ref_fitness', 'fitness']:
+                resid_frame_lists[k] = []
+            resid_frame_lists['antibiotic_conc'] = tet
+
+            if f"fitness_S1_ea.{spike_in_initial}" in bs_frame.columns:
+                resid_frame_lists['early_fitness'] = []
+            
             if color_by_ligand_conc is not None:
                 lig_color_conc_list = []
             
@@ -4118,14 +4129,21 @@ class BarSeqFitnessFrame:
                                             lig_color_conc_list += list(lig_color_conc)
                                         
                                         if return_resid_table:
-                                            resid_frame_rs_name += [RS_name]*len(x)
-                                            resid_frame_lig += [lig]*len(x)
-                                            resid_frame_samp += list(samples)
+                                            resid_frame_lists['rs_name'] += [RS_name]*len(x)
+                                            resid_frame_lists['ligand'] += [lig]*len(x)
+                                            resid_frame_lists['sample'] += list(samples)
                                             
-                                            resid_frame_lig_conc += list(lig_conc)
-                                            y_ref = stan_data['y_ref']
-                                            resid_frame_ref += [y_ref]*len(x)
-                                            resid_frame_early_fitness += [HiSeq_row[f"fitness_S{smp}_ea.{spike_in_initial}"] for smp in samples]
+                                            resid_frame_lists['lig_conc'] += list(lig_conc)
+                                            if plasmid == 'Align-TF':
+                                                resid_frame_lists['ref_fitness'] += list(y_ref)
+                                            else:
+                                                y_ref = stan_data['y_ref']
+                                                resid_frame_lists['ref_fitness'] += [y_ref]*len(x)
+                                            
+                                            resid_frame_lists['fitness'] += [HiSeq_row[f"fitness_S{smp}_{spike_in_initial}"] for smp in samples]
+                                            
+                                            if 'early_fitness' in resid_frame_lists:
+                                                resid_frame_lists['early_fitness'] += [HiSeq_row[f"fitness_S{smp}_ea.{spike_in_initial}"] for smp in samples]
                                         
                                     include_data_in_plot = show_exclude_data or (not sel)
                                     if (include_data_in_plot) and (color_by_ligand_conc is None):
@@ -4293,18 +4311,17 @@ class BarSeqFitnessFrame:
                     popt = old_fit_params[:3]
                 
                 resid_list = y_fit_list - fit_funct(x_fit_list, *popt)
-                resid_frame = pd.DataFrame(dict(rs_name=resid_frame_rs_name,
-                                                sample=resid_frame_samp,
-                                                ligand=resid_frame_lig,
-                                                gene_expression=x_fit_list,
-                                                lig_conc=resid_frame_lig_conc,
-                                                fitness_effect=y_fit_list,
-                                                fitness_effect_err=y_err_list,
-                                                resid=resid_list,
-                                                resid_err=y_err_list,
-                                                ref_fitness=resid_frame_ref,
-                                                early_fitness=resid_frame_early_fitness))
                 
+                resid_frame = pd.DataFrame(resid_frame_lists)
+                resid_frame['gene_expression'] = x_fit_list
+                resid_frame['fitness_effect'] = y_fit_list
+                resid_frame['fitness_effect_err'] = y_err_list
+                resid_frame['resid'] = resid_list
+                resid_frame['resid_err'] = y_err_list
+                resid_table_list.append(resid_frame)
+                
+        if return_resid_table:
+            resid_frame = pd.concat(resid_table_list, ignore_index=True)
         if plasmid == 'pRamR':
             ncol = int(len(RS_list)*len(lig_list)/40)
         elif plasmid == 'Align-TF':
