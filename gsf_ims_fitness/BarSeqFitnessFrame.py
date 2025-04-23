@@ -4007,19 +4007,22 @@ class BarSeqFitnessFrame:
                                         # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
                                         tf = align_tf_from_ligand(lig)
                                         plot_df_align = plot_df
-                                        plot_df_align = plot_df_align[plot_df_align.transcription_factor==tf]
+                                        plot_df_align = plot_df_align[(plot_df_align.transcription_factor==tf)|(plot_df_align.ligand=='none')]
                                         plot_df_align = plot_df_align[plot_df_align.antibiotic_conc==tet]
                                         
                                         samples = np.array(plot_df_align['sample_id'])
-                                        lig_conc = np.array(plot_df_align[lig])
+                                        sample_ligand_list = np.array(plot_df_align['ligand'])
+                                        sample_tf_list = np.array(plot_df_align['transcription_factor'])
+                                        ligand_conc_list = np.array(plot_df_align[lig])
                                         
                                         # make array of ref_samples in the same order as samples (using ligand concentration to set ordering):
                                         ref_samples = []
-                                        for lig_ref in lig_conc:
+                                        for lig_ref, tf_ref in zip(sample_ligand_list, sample_tf_list):
                                             df_ref = plot_df
-                                            df_ref = df_ref[df_ref.transcription_factor==tf]
+                                            df_ref = df_ref[(df_ref.transcription_factor==tf)|(df_ref.ligand=='none')]
                                             df_ref = df_ref[df_ref.antibiotic_conc==0]
-                                            df_ref = df_ref[df_ref[lig]==lig_ref]
+                                            df_ref = df_ref[df_ref.ligand==lig_ref]
+                                            df_ref = df_ref[df_ref.transcription_factor==tf_ref]
                                             if len(df_ref) != 1:
                                                 raise ValueError('length of df_ref != 1')
                                             ref_samples.append(df_ref.iloc[0].sample_id)
@@ -4033,7 +4036,6 @@ class BarSeqFitnessFrame:
                                         if not plot_raw_fitness:
                                             y_ref = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in ref_samples])
                                             y_ref_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in ref_samples])
-                                            
                                             y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2)
                                             y = (y - y_ref)/y_ref
                                         
@@ -4041,13 +4043,13 @@ class BarSeqFitnessFrame:
                                         x = []
                                         xerr = []
                                         min_xerr = np.log10(1.2)
-                                        for lig_ref in lig_conc:
-                                            if lig_ref == 0:
+                                        for lig_conc in ligand_conc_list:
+                                            if lig_conc == 0:
                                                 g = cytom_row['log_g0']
                                                 gerr = np.sqrt(cytom_row['log_g0_err']**2 + min_xerr**2)
                                             else:
-                                                g = cytom_row[f'log_g_{int(lig_ref)}_{lig}']
-                                                gerr = np.sqrt(cytom_row[f'log_g_{int(lig_ref)}_{lig}_err']**2 + min_xerr**2)
+                                                g = cytom_row[f'log_g_{int(lig_conc)}_{lig}']
+                                                gerr = np.sqrt(cytom_row[f'log_g_{int(lig_conc)}_{lig}_err']**2 + min_xerr**2)
                                                 
                                             gerr = fitness.log_plot_errorbars(log_mu=g, log_sig=gerr)
                                             g = 10**g
@@ -4059,7 +4061,7 @@ class BarSeqFitnessFrame:
                                         
                                     elif (len(ligand_plot_list) > 1) or (plasmid == 'pCymR'):
                                         # For RamR and CymR
-                                        lig_conc = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
+                                        ligand_conc_list = np.array([0, 0] + list(stan_data[f'x_{i+1}']))
                                         samples = np.array(list(stan_data[f'samp_0']) + list(stan_data[f'samp_{i+1}']))
                                         if plot_raw_fitness:
                                             y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
@@ -4072,17 +4074,17 @@ class BarSeqFitnessFrame:
                                         # For LacI
                                         if tet == plot_antibiotic_list[0]:
                                             if f'x_{i+1}' in stan_data:
-                                                lig_conc = np.array([0] + list(stan_data[f'x_{i+1}']))
+                                                ligand_conc_list = np.array([0] + list(stan_data[f'x_{i+1}']))
                                                 samples = np.array([stan_data[f'samp_0_low_tet']] + list(stan_data[f'samp_{i+1}_low_tet']))
                                                 y = np.array([stan_data[f'y_0_low_tet']] + list(stan_data[f'y_{i+1}_low_tet']))
                                                 y_err = np.array([stan_data[f'y_0_low_tet_err']] + list(stan_data[f'y_{i+1}_low_tet_err']))
                                             else:
-                                                lig_conc = np.array(stan_data['x'])
+                                                ligand_conc_list = np.array(stan_data['x'])
                                                 samples = np.array(stan_data['samp'])
                                                 y = np.array(stan_data['y'])
                                                 y_err = np.array(stan_data[f'y_err'])
                                         elif tet == plot_antibiotic_list[1]:
-                                            lig_conc = np.array(stan_data[f'x_{i+1}'])
+                                            ligand_conc_list = np.array(stan_data[f'x_{i+1}'])
                                             samples = np.array(stan_data[f'samp_{i+1}_high_tet'])
                                             y = np.array(stan_data[f'y_{i+1}_high_tet'])
                                             y_err = np.array(stan_data[f'y_{i+1}_high_tet_err'])
@@ -4094,13 +4096,13 @@ class BarSeqFitnessFrame:
                                     if plasmid != 'Align-TF':
                                         if np.any(np.isinf(hill_params)):
                                             hill_params = [0]*len(hill_params)
-                                        x = hill_funct(lig_conc, *hill_params)
+                                        x = hill_funct(ligand_conc_list, *hill_params)
                                     
                                     if color_by_ligand_conc is not None:
                                         if lig == color_by_ligand_conc:
-                                            lig_color_conc = lig_conc
+                                            lig_color_conc = ligand_conc_list
                                         else:
-                                            lig_color_conc = [0]*len(lig_conc)
+                                            lig_color_conc = [0]*len(ligand_conc_list)
                                     
                                     # Enforce the min_err here, just before adding the values to the y_err_list and plotting
                                     if type(min_err) == dict:
@@ -4125,7 +4127,7 @@ class BarSeqFitnessFrame:
                                             resid_frame_lists['ligand'] += [lig]*len(x)
                                             resid_frame_lists['sample'] += list(samples)
                                             
-                                            resid_frame_lists['lig_conc'] += list(lig_conc)
+                                            resid_frame_lists['lig_conc'] += list(ligand_conc_list)
                                             if plasmid == 'Align-TF':
                                                 resid_frame_lists['ref_fitness'] += list(y_ref)
                                             else:
