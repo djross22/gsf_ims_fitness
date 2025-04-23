@@ -3742,7 +3742,7 @@ class BarSeqFitnessFrame:
                                             use_only_rs_variants=False,
                                             RS_list=None,
                                             wt_cutoff=0,
-                                            min_err=0.05, # Either a single value (float), or a dictionary with keys equal to the antibiotic concentrations and values equalt to the min_err for that concentration
+                                            min_err=0.05, # Either a single value (float), or a dictionary with keys equal to the antibiotic concentrations and values equal to the min_err for that concentration
                                             show_old_fit=True,
                                             apply_ramr_correction=None,
                                             turn_off_cmdstanpy_logger=True,
@@ -4015,7 +4015,7 @@ class BarSeqFitnessFrame:
                                         sample_tf_list = np.array(plot_df_align['transcription_factor'])
                                         ligand_conc_list = np.array(plot_df_align[lig])
                                         
-                                        # make array of ref_samples in the same order as samples (using ligand concentration to set ordering):
+                                        # make array of ref_samples in the same order as samples (using ligand ID and tf to set ordering):
                                         ref_samples = []
                                         for lig_ref, tf_ref in zip(sample_ligand_list, sample_tf_list):
                                             df_ref = plot_df
@@ -4028,7 +4028,7 @@ class BarSeqFitnessFrame:
                                             ref_samples.append(df_ref.iloc[0].sample_id)
                                         ref_samples = np.array(ref_samples)
                                         
-                                        # samples and ref_samples should each have two values, one without ligand and one with
+                                        # samples and ref_samples should each have the same number of values (4), three without ligand and one with
                                         
                                         y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
                                         y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples])
