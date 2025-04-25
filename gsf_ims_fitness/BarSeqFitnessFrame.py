@@ -2165,7 +2165,10 @@ class BarSeqFitnessFrame:
         def stan_fit_row(st_row, return_fit=False):
             st_index = st_row.name
             rs_name = st_row.RS_name
-            tf = align_tf_from_RS_name(rs_name)
+            if rs_name == '':
+                tf = st_row.transcription_factor
+            else:
+                tf = align_tf_from_RS_name(rs_name)
             ligand = align_ligand_from_tf(tf)
             print()
             now = datetime.datetime.now()
@@ -2180,7 +2183,8 @@ class BarSeqFitnessFrame:
                                                 is_gp_model=False)
                                                 
             if stan_data is None:
-                # This is the expected case for normalization variants, i.e., 'pLAcI-norm-02'
+                # This is the expected case for normalization variants, i.e., 'pLAcI-norm-02', 
+                #     or for rows where the transcription_factor can't be assigned based on the barcode count data.
                 
                 # TODO: replace '2' with more general result for a different number of ligand concentrations per TF
                 stan_log_g_mean = np.full((2), np.nan)
@@ -2196,7 +2200,10 @@ class BarSeqFitnessFrame:
                 ligand = 'none'
                 
                 print()
-                print(f"Skipping Stan fit for normalization variant, {st_row.RS_name}, at index {st_index}")
+                if tf == '':
+                    print(f"Skipping Stan fit for row at index {st_index}, because transcription_factor is unassigned")
+                else:
+                    print(f"Skipping Stan fit for normalization variant, {st_row.RS_name}, at index {st_index}")
                 
             else:
                 
@@ -4946,7 +4953,14 @@ class BarSeqFitnessFrame:
             rs_name = st_row.RS_name
             if 'norm' in rs_name:
                 return None
-            tf = align_tf_from_RS_name(rs_name)
+            
+            tf = st_row.transcription_factor
+            if rs_name != '':
+                tf = align_tf_from_RS_name(rs_name)
+            
+            if tf == '': # If the row does not have an identifiable transcription factor
+                return None
+            
             lig = align_ligand_from_tf(tf)
             sample_map = sample_map[sample_map.transcription_factor==tf]
             
