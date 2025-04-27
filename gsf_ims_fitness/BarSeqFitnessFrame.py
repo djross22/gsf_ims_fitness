@@ -2139,7 +2139,7 @@ class BarSeqFitnessFrame:
             print(f"      min fitness error: {m}")
             print(f"        popt: {self.fit_fitness_difference_params[i][c]['popt']}")
             print(f"        perr: {self.fit_fitness_difference_params[i][c]['perr']}")
-        print("      Method version from 2024-09-23")
+        print("      Method version from 2025-04-25")
         
         barcode_frame = self.barcode_frame
         
