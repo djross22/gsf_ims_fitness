@@ -241,9 +241,12 @@ class BarSeqFitnessFrame:
                 growth_plate_layout_file = self.find_growth_plate_layout_file()
             self.set_sample_plate_map(auto_save=False, growth_plate_layout_file=growth_plate_layout_file, plasmid=self.plasmid)
             
-            
             self.antibiotic_conc_list = list(np.unique(self.sample_plate_map.antibiotic_conc))
-            lig_id_list = list(np.unique(self.sample_plate_map['ligand']))
+            
+            if plasmid == 'Align-Protease':
+                lig_id_list = list(np.unique(self.sample_plate_map['inducer1'])) + list(np.unique(self.sample_plate_map['inducer2']))
+            else:
+                lig_id_list = list(np.unique(self.sample_plate_map['ligand']))
             if 'none' in lig_id_list:
                 lig_id_list.remove('none')
             inducer_conc_lists = []

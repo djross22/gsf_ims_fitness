@@ -301,17 +301,25 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         
         gp_frame = pd.read_csv(growth_plate_layout_file)
         df = gp_frame
-        df = df[[type(x) is str for x in df.inducerUnits]]
-        if len(df) > 0:
-            print(f'input inducer units: {np.unique(df.inducerUnits)}')
-            if 'mmol/L' in np.unique(df.inducerUnits):
-                if 'umol/L' in np.unique(df.inducerUnits):
-                    raise ValueError(f'Growth plate file contains multiple inducer units (inducerUnits), {growth_plate_layout_file}')
-                gp_frame['inducerUnits'] = 'umol/L'
-                gp_frame['inducerConcentration'] = gp_frame['inducerConcentration']*1000
-                print(f'change to inducer units: umol/L')
+        
+        if plasmid == 'Align-Protease':
+            inducer_column_list = ['inducer1', 'inducer2'] # The protease experiment has two inducers.
         else:
-            print('Warning: No inducer units found!')
+            inducer_column_list = ['inducer'] # Other experiments have only one inducer.
+        
+        for ind_col in inducer_column_list:
+            unit_str = f'{ind_col}Units'
+            df = df[[type(x) is str for x in df[unit_str]]]
+            if len(df) > 0:
+                print(f'input {ind_col} units: {np.unique(df[unit_str])}')
+                if 'mmol/L' in np.unique(df[unit_str]):
+                    if 'umol/L' in np.unique(df[unit_str]):
+                        raise ValueError(f'Growth plate file contains multiple {ind_col} units ({ind_col}Units), {growth_plate_layout_file}')
+                    gp_frame[unit_str] = 'umol/L'
+                    gp_frame[f'{ind_col}Concentration'] = gp_frame[f'{ind_col}Concentration']*1000
+                    print(f'change to inducer units for {ind_col}: umol/L')
+            else:
+                print('Warning: No inducer units found!')
         
         antibiotic = list(np.unique(gp_frame.selectorId))
         if 'none' in antibiotic:
@@ -326,10 +334,24 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         bs_wells = wells()
         
         sample_id = []
-        ligand_list = []
         with_tet = []
         antibiotic_conc = []
-        ligand_conc = []
+        
+        if plasmid == 'Align-Protease':
+            df = gp_frame
+            df = df[df.inducer1Id!='none']
+            inducer1_id = df.inducer1Id.iloc[0]
+            
+            df = gp_frame
+            df = df[df.inducer2Id!='none']
+            inducer2_id = df.inducer2Id.iloc[0]
+            
+            inducer1_conc = []
+            inducer2_conc = []
+        else:
+            ligand_list = []
+            ligand_conc = []
+        
         if plasmid == 'Align-TF':
             tf_list = []
         for bs_w in bs_wells:
@@ -342,11 +364,17 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             
             gp_row = gp_frame[gp_frame.well==gp_w].iloc[0]
             
-            ligand_list.append(gp_row.inducerId)
             tet_conc = gp_row.selectorConc
             with_tet.append(tet_conc > 0)
             antibiotic_conc.append(tet_conc)
-            ligand_conc.append(gp_row.inducerConcentration)
+            
+            
+            if plasmid == 'Align-Protease':
+                inducer1_conc.append(gp_row.inducer1Concentration)
+                inducer2_conc.append(gp_row.inducer2Concentration)
+            else:
+                ligand_list.append(gp_row.inducerId)
+                ligand_conc.append(gp_row.inducerConcentration)
             
             if plasmid == 'Align-TF':
                 tf = gp_row.plasmid
@@ -355,25 +383,32 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             
         sample_plate_map = pd.DataFrame({"well": bs_wells}, dtype='string')
         sample_plate_map['sample_id'] = sample_id
-        sample_plate_map['ligand'] = ligand_list
+        
         
         sample_plate_map['with_tet'] = with_tet
         sample_plate_map['antibiotic_conc'] = antibiotic_conc
         
+        if plasmid == 'Align-Protease':
+            for ind_num, ind_id, conc_list in zip([1, 2], [inducer1_id, inducer2_id], [inducer1_conc, inducer2_conc]):
+                sample_plate_map[ind_id] = conc_list
+                sample_plate_map[f'inducer{ind_num}'] = ind_id
+        else:
+            sample_plate_map['ligand'] = ligand_list
+        
+            lig_id_list = list(np.unique(sample_plate_map['ligand']))
+            if 'none' in lig_id_list:
+                lig_id_list.remove('none')
+            for lig_id in lig_id_list:
+                conc_list = []
+                for lig, conc in zip(ligand_list, ligand_conc):
+                    if lig == lig_id:
+                        conc_list.append(conc)
+                    else:
+                        conc_list.append(0)
+                sample_plate_map[lig_id] = conc_list
+            
         if plasmid == 'Align-TF':
             sample_plate_map['transcription_factor'] = tf_list
-        
-        lig_id_list = list(np.unique(sample_plate_map['ligand']))
-        if 'none' in lig_id_list:
-            lig_id_list.remove('none')
-        for lig_id in lig_id_list:
-            conc_list = []
-            for lig, conc in zip(ligand_list, ligand_conc):
-                if lig == lig_id:
-                    conc_list.append(conc)
-                else:
-                    conc_list.append(0)
-            sample_plate_map[lig_id] = conc_list
             
         gp_list = []
         for w in sample_plate_map.well:
