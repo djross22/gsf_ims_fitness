@@ -627,9 +627,17 @@ class BarSeqFitnessFrame:
             st_list = []
             for ind, row2 in df.iterrows():
                 st = f'S{row2.sample_id}, '
-                lig = row2.ligand
-                if lig != 'none':
-                    st += f'{row2[lig]} {lig}, '
+                if self.plasmid == 'Align-Protease':
+                    for ind_col in ['inducer1', 'inducer2']:
+                        ind_id = row2[ind_col]
+                        ind_conc = row2[ind_id]
+                        if ind_conc > 0:
+                            st += f'{ind_conc:.2f} {ind_id}, '
+                else:
+                    lig = row2.ligand
+                    if lig != 'none':
+                        st += f'{row2[lig]} {lig}, '
+                    
                 st += f'{row2.antibiotic_conc} {antibiotic}'
                 
                 if self.plasmid == 'Align-TF':
@@ -1300,6 +1308,11 @@ class BarSeqFitnessFrame:
             spike_2 = 'pLacI-norm-02'
             spike_1_init = 'ramr'
             spike_2_init = 'laci'
+        elif self.plasmid == 'Align-Protease':
+            spike_1 = 'pRamR-norm-02'
+            spike_2 = 'pNorm-mDHFR-03'
+            spike_1_init = 'nrm02'
+            spike_2_init = 'nrm03'
         
         if early_slope:
             early_initial = 'ea.'
@@ -1656,6 +1669,12 @@ class BarSeqFitnessFrame:
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid == 'Align-TF':
+                    # For this plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                    ligand = 'none'
+                    lig_conc = 0
+                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
+                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
+                elif plasmid == 'Align-Protease':
                     # For this plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
                     ligand = 'none'
                     lig_conc = 0
@@ -3109,6 +3128,8 @@ class BarSeqFitnessFrame:
                 plot_initials=["sp09", "rs20"]
             elif self.plasmid == 'Align-TF':
                 plot_initials=["ramr", "laci"]
+            elif self.plasmid == 'Align-Protease':
+                plot_initials=["nrm02", "nrm03"]
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -5134,6 +5155,8 @@ class BarSeqFitnessFrame:
             initial = 'sp09'
         elif plasmid == 'Align-TF':
             initial = 'laci'
+        elif plasmid == 'Align-Protease':
+            initial = 'nrm03'
         
         return initial
 

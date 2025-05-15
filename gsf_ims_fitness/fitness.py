@@ -1461,6 +1461,26 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         
         for t, d in zip(tmp_list, dict_list):
             spike_in_fitness_dict[t] = d
+    
+    elif plasmid == 'Align-Protease':
+        
+        tmp_list = [0, 3]
+        # Fitness values are from 2025-04-23_Mar-Pro_OD-test-5-plates, 
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
+        
+        # "pRamR-norm-02", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            return (0.9977, 0.0055)
+        dict_list = [{"pRamR-norm-02":fit_function}]*2
+        
+        # "pNorm-mDHFR-03", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            return (0.997878, 0.00456)
+        for d in dict_list:
+            d["pNorm-mDHFR-03"] = fit_function
+        
+        for t, d in zip(tmp_list, dict_list):
+            spike_in_fitness_dict[t] = d
             
             
             
@@ -1660,6 +1680,13 @@ def get_spike_in_name_from_inital(plasmid, initial):
         if initial[-4:] == 'laci':
             spike_in = 'pLacI-norm-02'
         elif initial[-4:] == 'ramr':
+            spike_in = 'pRamR-norm-02'
+        else:
+            raise ValueError(f'spike-in initial not recognized: {initial}')
+    elif plasmid == 'Align-Protease':
+        if initial[-5:] == 'nrm03':
+            spike_in = 'pNorm-mDHFR-03'
+        elif initial[-5:] == 'nrm02':
             spike_in = 'pRamR-norm-02'
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
