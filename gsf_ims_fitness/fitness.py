@@ -1438,7 +1438,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         dict_list[3]["pLacI-norm-01"] = fit_function
         '''
         
-        tmp_list = [0, 0.3, 1, 3]
+        tmp_list = [0, 0.3, 1, 3, 6]
         # Fitness values are from 2024-11-22_Align-TF_GBA_1_OD-test, 
         # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
         
@@ -1448,7 +1448,7 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
                 return (0.9795 - 0.0328*conc/250, 0.0094 + 0.0025*conc/250)
             else:
                 return (0.9795, 0.0094)
-        dict_list = [{"pRamR-norm-02":fit_function}]*4
+        dict_list = [{"pRamR-norm-02":fit_function}]*5
         
         # "pLacI-norm-02", does not depend on [TMP]:
         def fit_function(lig, conc):
