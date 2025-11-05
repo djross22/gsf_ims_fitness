@@ -3901,7 +3901,7 @@ class BarSeqFitnessFrame:
                 if 'RS' in rs_name:
                     plas = 'pCymR-' + rs_name
                 elif 'wt' in rs_name:
-                    plas = 'pRamR-WT'
+                    plas = 'pCymR-WT'
                 else:
                     plas = rs_name
                     
