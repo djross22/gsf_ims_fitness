@@ -4347,7 +4347,10 @@ class BarSeqFitnessFrame:
                 
         if return_resid_table:
             resid_frame = pd.concat(resid_table_list, ignore_index=True)
-        if plasmid == 'pRamR':
+        
+        if color_by_ligand_conc is not None:
+            ncol = 1
+        elif plasmid == 'pRamR':
             ncol = int(len(RS_list)*len(lig_list)/40)
         elif plasmid == 'Align-TF':
             ncol = int(np.round(len(RS_list)/12))
@@ -4355,6 +4358,7 @@ class BarSeqFitnessFrame:
             ncol = int(len(RS_list)*len(lig_list)/20)
         if ncol == 0:
             ncol = 1
+        
         if len(plot_antibiotic_list)<=2:
             axs[-1].legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=ncol, borderaxespad=0, frameon=True);
         else:
