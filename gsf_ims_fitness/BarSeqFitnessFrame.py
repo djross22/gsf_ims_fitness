@@ -4355,7 +4355,7 @@ class BarSeqFitnessFrame:
         elif plasmid == 'Align-TF':
             ncol = int(np.round(len(RS_list)/12))
         else:
-            ncol = int(len(RS_list)*len(lig_list)/20)
+            ncol = int(len(RS_list)*len(lig_list)/40)
         if ncol == 0:
             ncol = 1
         
