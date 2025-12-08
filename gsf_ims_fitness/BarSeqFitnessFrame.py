@@ -3319,15 +3319,18 @@ class BarSeqFitnessFrame:
                            show_GP=True,
                            log_g_scale=True,
                            box_size=6,
-                           show_mut_codes=True):
+                           ax=None):
         
         plot_row = self.barcode_frame.loc[plot_index]
         
         antibiotic_conc_list = self.antibiotic_conc_list
         ligand_list = self.ligand_list
         
-        plt.rcParams["figure.figsize"] = [box_size, box_size*2/3]
-        fig, axg = plt.subplots()
+        if ax is None:
+            plt.rcParams["figure.figsize"] = [box_size, box_size*2/3]
+            fig, axg = plt.subplots()
+        else:
+            axg = ax
         
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
@@ -3384,7 +3387,8 @@ class BarSeqFitnessFrame:
         
         axg.set_xscale('symlog', linthresh=linthresh)
         
-        return fig, axg
+        if ax is None:
+            return fig, axg
     
 
     def plot_fitness_and_difference_curves(self,
