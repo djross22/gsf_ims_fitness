@@ -2459,7 +2459,7 @@ class BarSeqFitnessFrame:
             params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
             
             g_arr_list = ['constr_log_g']
-            g_ratio_arr_list = []
+            g_ratio_arr_list = ['log_g_ratio']
             dg_arr_list = ['dlog_g']
             f_arr_list = ['mean_y']
             
