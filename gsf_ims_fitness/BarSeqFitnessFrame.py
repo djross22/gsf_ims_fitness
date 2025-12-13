@@ -3860,7 +3860,7 @@ class BarSeqFitnessFrame:
         
         fit_plot_colors = sns.color_palette()
         
-        def cytom_plasmid_from_rs_name(rs_name):
+        def cytom_variant_from_rs_name(rs_name):
             if plasmid == 'pVER':
                 if 'RS' in rs_name:
                     plas = 'pVER-RS-' + rs_name[2:]
@@ -3888,12 +3888,13 @@ class BarSeqFitnessFrame:
                     plas = rs_name
                     
             elif plasmid == 'Align-TF':
-                plas = f'{rs_name}_mScar'
+                var = f'{rs_name}_mScar'
                 
-                if plas == 'pRamR-WT-fin_mScar':
-                    plas = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
+                if var == 'pRamR-WT-fin_mScar':
+                    var = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
                     
-            return plas
+                
+            return var
             
         # Fitness calibration function is Hill function with either low or high value to zero:
         def hill_funct(x, low, high, mid, n):
@@ -3972,19 +3973,19 @@ class BarSeqFitnessFrame:
             for RS_name in RS_list:
                 for lig in ligand_plot_list:
                     i = np.where(np.array(self.ligand_list)==lig)[0][0]
-                    plas = cytom_plasmid_from_rs_name(RS_name)
+                    var = cytom_variant_from_rs_name(RS_name)
 
                     df = calibration_data_table
-                    df = df[df.variant==plas]
+                    df = df[df.variant==var]
                     if (len(ligand_plot_list)>1) or (plasmid == 'pCymR'):
                         df = df[df.ligand==lig]
 
                     lab = f'{RS_name}, {lig}'
 
                     if len(df)==1:
-                        cytom_row = df.iloc[0]
+                        calibration_row = df.iloc[0]
                                           
-                        hill_params = [10**cytom_row[x] for x in ['log_g0', 'log_ginf', 'log_ec50']] + [cytom_row['n']]
+                        hill_params = [10**calibration_row[x] for x in ['log_g0', 'log_ginf', 'log_ec50']] + [calibration_row['n']]
                         if not np.any(np.isnan(hill_params)):
                             HiSeq_df = bs_frame[bs_frame['RS_name']==RS_name]
                             if 'wt' in RS_name:
@@ -4058,11 +4059,11 @@ class BarSeqFitnessFrame:
                                         min_xerr = np.log10(1.2)
                                         for lig_conc in ligand_conc_list:
                                             if lig_conc == 0:
-                                                g = cytom_row['log_g0']
-                                                gerr = np.sqrt(cytom_row['log_g0_err']**2 + min_xerr**2)
+                                                g = calibration_row['log_g0']
+                                                gerr = np.sqrt(calibration_row['log_g0_err']**2 + min_xerr**2)
                                             else:
-                                                g = cytom_row[f'log_g_{int(lig_conc)}_{lig}']
-                                                gerr = np.sqrt(cytom_row[f'log_g_{int(lig_conc)}_{lig}_err']**2 + min_xerr**2)
+                                                g = calibration_row[f'log_g_{int(lig_conc)}_{lig}']
+                                                gerr = np.sqrt(calibration_row[f'log_g_{int(lig_conc)}_{lig}_err']**2 + min_xerr**2)
                                                 
                                             gerr = fitness.log_plot_errorbars(log_mu=g, log_sig=gerr)
                                             g = 10**g
@@ -4159,8 +4160,8 @@ class BarSeqFitnessFrame:
                     elif len(df) == 0:
                         if plasmid == 'Align-TF':
                             tf = align_tf_from_ligand(lig)
-                            if ('norm' not in RS_name) and (tf in plas):
-                                print(f'No cytometry data for {RS_name}, {plas} with {lig}')
+                            if ('norm' not in RS_name) and (tf in var):
+                                print(f'No cytometry data for {RS_name}, {var} with {lig}')
                     else:
                         raise ValueError('length of df != 1')
             
