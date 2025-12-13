@@ -1330,10 +1330,10 @@ class BarSeqFitnessFrame:
             print(f"{spike_2}: {sp_2}")
             print()
         
-        # Fit to barcode log(ratios) over time to get slopes = fitness
+        # Fit to barcode log(ratios) over time to get slopes ~ fitness
         #     use both spike-ins as reference (separately)
         # Samples without tet are fit to simple linear function.
-        # Samples with tet are fit to bi-linear function, with initial slope equal to corresponding without-tet sample (or average)
+        # This is old: Samples with tet are fit to bi-linear function, with initial slope equal to corresponding without-tet sample (or average)
         
         if plots_not_fits:
             if plot_range is None:
