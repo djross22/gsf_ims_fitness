@@ -304,6 +304,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         
         if plasmid == 'Align-Protease':
             inducer_column_list = ['inducer1', 'inducer2'] # The protease experiment has two inducers.
+        elif plasmid == 'Align-T7RNAP_1':
+            inducer_column_list = [] # The first version of the T7RNAP experiment has zero inducers.
         else:
             inducer_column_list = ['inducer'] # Other experiments have only one inducer.
         
@@ -348,6 +350,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             
             inducer1_conc = []
             inducer2_conc = []
+        elif plasmid == 'Align-T7RNAP_1':
+            pass
         else:
             ligand_list = []
             ligand_conc = []
@@ -372,6 +376,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             if plasmid == 'Align-Protease':
                 inducer1_conc.append(gp_row.inducer1Concentration)
                 inducer2_conc.append(gp_row.inducer2Concentration)
+            elif plasmid == 'Align-T7RNAP_1':
+                pass
             else:
                 ligand_list.append(gp_row.inducerId)
                 ligand_conc.append(gp_row.inducerConcentration)
@@ -392,6 +398,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             for ind_num, ind_id, conc_list in zip([1, 2], [inducer1_id, inducer2_id], [inducer1_conc, inducer2_conc]):
                 sample_plate_map[ind_id] = conc_list
                 sample_plate_map[f'inducer{ind_num}'] = ind_id
+        elif plasmid == 'Align-T7RNAP_1':
+            pass
         else:
             sample_plate_map['ligand'] = ligand_list
         

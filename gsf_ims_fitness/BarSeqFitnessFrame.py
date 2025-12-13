@@ -245,6 +245,8 @@ class BarSeqFitnessFrame:
             
             if plasmid == 'Align-Protease':
                 lig_id_list = list(np.unique(self.sample_plate_map['inducer1'])) + list(np.unique(self.sample_plate_map['inducer2']))
+            elif plasmid == 'Align-T7RNAP_1':
+                lig_id_list = []
             else:
                 lig_id_list = list(np.unique(self.sample_plate_map['ligand']))
             if 'none' in lig_id_list:
@@ -633,6 +635,8 @@ class BarSeqFitnessFrame:
                         ind_conc = row2[ind_id]
                         if ind_conc > 0:
                             st += f'{ind_conc:.2f} {ind_id}, '
+                if self.plasmid == 'Align-T7RNAP_1':
+                    pass
                 else:
                     lig = row2.ligand
                     if lig != 'none':
@@ -5163,6 +5167,8 @@ class BarSeqFitnessFrame:
         elif plasmid == 'Align-TF':
             initial = 'laci'
         elif plasmid == 'Align-Protease':
+            initial = 'nrm03'
+        elif plasmid == 'Align-T7RNAP_1':
             initial = 'nrm03'
         
         return initial
