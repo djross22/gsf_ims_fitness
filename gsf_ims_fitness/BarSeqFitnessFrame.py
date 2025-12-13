@@ -1312,7 +1312,7 @@ class BarSeqFitnessFrame:
             spike_2 = 'pLacI-norm-02'
             spike_1_init = 'ramr'
             spike_2_init = 'laci'
-        elif self.plasmid == 'Align-Protease':
+        elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
             spike_1 = 'pRamR-norm-02'
             spike_2 = 'pNorm-mDHFR-03'
             spike_1_init = 'nrm02'
@@ -3132,7 +3132,7 @@ class BarSeqFitnessFrame:
                 plot_initials=["sp09", "rs20"]
             elif self.plasmid == 'Align-TF':
                 plot_initials=["ramr", "laci"]
-            elif self.plasmid == 'Align-Protease':
+            elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
                 plot_initials=["nrm02", "nrm03"]
         
         if plot_range is None:
