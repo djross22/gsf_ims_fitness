@@ -1597,7 +1597,7 @@ class BarSeqFitnessFrame:
         sample_plate_map = self.sample_plate_map
         sample_list = np.unique(sample_plate_map.sample_id)
         
-        # Dictionary of dictionaries
+        # spike_in_fitness_dict is a dictionary of dictionaries
         #     first key is tet concentration
         #     second key is spike-in name
         #     units for fitness values are 10-fold per plate. 
@@ -1651,8 +1651,9 @@ class BarSeqFitnessFrame:
                     lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
-                elif plasmid == 'Align-Protease':
-                    # For this plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
+                    # For this Align-Protease plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                    # For this Align-T7RNAP_1 plasmid system, there is not ligand, so :
                     ligand = 'none'
                     lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
