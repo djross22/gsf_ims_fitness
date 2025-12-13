@@ -3743,7 +3743,7 @@ class BarSeqFitnessFrame:
     
     
     def calibrate_fitness_difference_params(self,
-                                            all_cytometry_Hill_fits,
+                                            calibration_data_table,
                                             spike_in_initial=None,
                                             run_stan_fit=False,
                                             plot_raw_fitness=False,
@@ -3974,7 +3974,7 @@ class BarSeqFitnessFrame:
                     i = np.where(np.array(self.ligand_list)==lig)[0][0]
                     plas = cytom_plasmid_from_rs_name(RS_name)
 
-                    df = all_cytometry_Hill_fits
+                    df = calibration_data_table
                     df = df[df.variant==plas]
                     if (len(ligand_plot_list)>1) or (plasmid == 'pCymR'):
                         df = df[df.ligand==lig]
