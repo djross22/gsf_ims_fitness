@@ -1278,16 +1278,6 @@ class BarSeqFitnessFrame:
         
         if plot_samples is None:
             plot_samples = samples_with_tet + samples_without_tet
-        # Dictionary of dictionaries
-        #     first key is tet concentration
-        #     second key is spike-in name
-        #     units for fitness values are 10-fold per plate. 
-        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeat cycle 
-        # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
-        #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
-        #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
-        #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
-        #spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid, barseq_directory=self.notebook_dir)
         
         antibiotic_conc_list = self.antibiotic_conc_list
         high_tet = antibiotic_conc_list[-1]
@@ -1327,24 +1317,7 @@ class BarSeqFitnessFrame:
         else:
             early_initial = ''
         
-        '''
-        if len(antibiotic_conc_list)==2: #Case for one non-zero antibiotic concentration
-            ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
-            ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
-        else:
-            low_tet = antibiotic_conc_list[1]
-            ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[low_tet][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
-            ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[low_tet][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
-            
-        if not plots_not_fits:
-            print(f'Reference fitness values, {spike_1}: {ref_fit_str_B}, {spike_2}: {ref_fit_str_E}')
-            print()
-        '''
-    
-        #ref_index_b = barcode_frame[barcode_frame["RS_name"]==spike_1].index[0]
-        #ref_index_e = barcode_frame[barcode_frame["RS_name"]==spike_2].index[0]
-    
-        #spike_in_row_dict = {spike_1: barcode_frame[ref_index_b:ref_index_b+1], spike_2: barcode_frame[ref_index_e:ref_index_e+1]}
+        
         spike_in_row_dict = {spike_1: barcode_frame[barcode_frame["RS_name"]==spike_1].iloc[0],
                              spike_2: barcode_frame[barcode_frame["RS_name"]==spike_2].iloc[0]}
         
