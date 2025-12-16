@@ -1596,6 +1596,11 @@ def log_g_limits(plasmid="pVER"):
         log_g_max = np.log10(100000)
         log_g_prior_scale = np.nan
         wild_type_ginf = np.nan
+    elif plasmid == "Align-T7RNAP_1":
+        log_g_min = np.log10(30)
+        log_g_max = np.log10(3000)
+        log_g_prior_scale = np.nan
+        wild_type_ginf = np.nan
     else:
         log_g_min = 1
         log_g_max = 4.5
