@@ -110,12 +110,15 @@ generated quantities {
   real log_alpha;
   real log_sigma;
   vector[N] dlog_g; // derivative of the gp
+  vector[N] log_g_ratio; // log-g-ratio from the gp
   
   rms_resid = distance(y, mean_y)/sqrt(N);
   
   log_rho = log10(rho);
   log_alpha = log10(alpha);
   log_sigma = log10(sigma);
+  
+  log_g_ratio = constr_log_g - constr_log_g[1];
 
   // derivative calculation
   {

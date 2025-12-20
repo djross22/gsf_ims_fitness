@@ -304,6 +304,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         
         if plasmid == 'Align-Protease':
             inducer_column_list = ['inducer1', 'inducer2'] # The protease experiment has two inducers.
+        elif plasmid == 'Align-T7RNAP_1':
+            inducer_column_list = [] # The first version of the T7RNAP experiment has zero inducers.
         else:
             inducer_column_list = ['inducer'] # Other experiments have only one inducer.
         
@@ -348,6 +350,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             
             inducer1_conc = []
             inducer2_conc = []
+        elif plasmid == 'Align-T7RNAP_1':
+            pass
         else:
             ligand_list = []
             ligand_conc = []
@@ -372,6 +376,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             if plasmid == 'Align-Protease':
                 inducer1_conc.append(gp_row.inducer1Concentration)
                 inducer2_conc.append(gp_row.inducer2Concentration)
+            elif plasmid == 'Align-T7RNAP_1':
+                pass
             else:
                 ligand_list.append(gp_row.inducerId)
                 ligand_conc.append(gp_row.inducerConcentration)
@@ -392,6 +398,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             for ind_num, ind_id, conc_list in zip([1, 2], [inducer1_id, inducer2_id], [inducer1_conc, inducer2_conc]):
                 sample_plate_map[ind_id] = conc_list
                 sample_plate_map[f'inducer{ind_num}'] = ind_id
+        elif plasmid == 'Align-T7RNAP_1':
+            pass
         else:
             sample_plate_map['ligand'] = ligand_list
         
@@ -1482,6 +1490,25 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         for t, d in zip(tmp_list, dict_list):
             spike_in_fitness_dict[t] = d
             
+    elif plasmid == 'Align-T7RNAP_1':
+        
+        tmp_list = [0, 3]
+        # Fitness values are from 2025-10-23_DAMP_SpxFitness, 
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
+        
+        # "pRamR-norm-02", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            return (0.9447, 0.0064)
+        dict_list = [{"pRamR-norm-02":fit_function}]*2
+        
+        # "pNorm-mDHFR-03", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            return (0.9460, 0.0083)
+        for d in dict_list:
+            d["pNorm-mDHFR-03"] = fit_function
+        
+        for t, d in zip(tmp_list, dict_list):
+            spike_in_fitness_dict[t] = d
             
             
     return spike_in_fitness_dict
@@ -1567,6 +1594,11 @@ def log_g_limits(plasmid="pVER"):
     elif plasmid == "Align-TF":
         log_g_min = np.log10(5)
         log_g_max = np.log10(100000)
+        log_g_prior_scale = np.nan
+        wild_type_ginf = np.nan
+    elif plasmid == "Align-T7RNAP_1":
+        log_g_min = np.log10(30)
+        log_g_max = np.log10(3000)
         log_g_prior_scale = np.nan
         wild_type_ginf = np.nan
     else:
@@ -1683,7 +1715,7 @@ def get_spike_in_name_from_inital(plasmid, initial):
             spike_in = 'pRamR-norm-02'
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
-    elif plasmid == 'Align-Protease':
+    elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
         if initial[-5:] == 'nrm03':
             spike_in = 'pNorm-mDHFR-03'
         elif initial[-5:] == 'nrm02':

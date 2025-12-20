@@ -245,6 +245,8 @@ class BarSeqFitnessFrame:
             
             if plasmid == 'Align-Protease':
                 lig_id_list = list(np.unique(self.sample_plate_map['inducer1'])) + list(np.unique(self.sample_plate_map['inducer2']))
+            elif plasmid == 'Align-T7RNAP_1':
+                lig_id_list = []
             else:
                 lig_id_list = list(np.unique(self.sample_plate_map['ligand']))
             if 'none' in lig_id_list:
@@ -633,6 +635,8 @@ class BarSeqFitnessFrame:
                         ind_conc = row2[ind_id]
                         if ind_conc > 0:
                             st += f'{ind_conc:.2f} {ind_id}, '
+                if self.plasmid == 'Align-T7RNAP_1':
+                    pass
                 else:
                     lig = row2.ligand
                     if lig != 'none':
@@ -1274,16 +1278,6 @@ class BarSeqFitnessFrame:
         
         if plot_samples is None:
             plot_samples = samples_with_tet + samples_without_tet
-        # Dictionary of dictionaries
-        #     first key is tet concentration
-        #     second key is spike-in name
-        #     units for fitness values are 10-fold per plate. 
-        #         So, fitness=1 means that the cells grow 10-fold over the time for one plate repeat cycle 
-        # The values in the dictionaries are either float values for the constant fitness of the spike-ins,
-        #     or a 2-tuple of interpolating functions (scipy.interpolate.interpolate.interp1d)
-        #         the first interpolating function is the mean estimate for the fitness as a function of ligand concentration
-        #         the second interpolating function is the posterior std for the fitness as a function of ligand concentration
-        #spike_in_fitness_dict = fitness.fitness_calibration_dict(plasmid=self.plasmid, barseq_directory=self.notebook_dir)
         
         antibiotic_conc_list = self.antibiotic_conc_list
         high_tet = antibiotic_conc_list[-1]
@@ -1308,7 +1302,7 @@ class BarSeqFitnessFrame:
             spike_2 = 'pLacI-norm-02'
             spike_1_init = 'ramr'
             spike_2_init = 'laci'
-        elif self.plasmid == 'Align-Protease':
+        elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
             spike_1 = 'pRamR-norm-02'
             spike_2 = 'pNorm-mDHFR-03'
             spike_1_init = 'nrm02'
@@ -1323,24 +1317,7 @@ class BarSeqFitnessFrame:
         else:
             early_initial = ''
         
-        '''
-        if len(antibiotic_conc_list)==2: #Case for one non-zero antibiotic concentration
-            ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
-            ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
-        else:
-            low_tet = antibiotic_conc_list[1]
-            ref_fit_str_B = str(spike_in_fitness_dict[0][spike_1]) + ';' + str(spike_in_fitness_dict[low_tet][spike_1]) + ';' + str(spike_in_fitness_dict[high_tet][spike_1])
-            ref_fit_str_E = str(spike_in_fitness_dict[0][spike_2]) + ';' + str(spike_in_fitness_dict[low_tet][spike_2]) + ';' + str(spike_in_fitness_dict[high_tet][spike_2])
-            
-        if not plots_not_fits:
-            print(f'Reference fitness values, {spike_1}: {ref_fit_str_B}, {spike_2}: {ref_fit_str_E}')
-            print()
-        '''
-    
-        #ref_index_b = barcode_frame[barcode_frame["RS_name"]==spike_1].index[0]
-        #ref_index_e = barcode_frame[barcode_frame["RS_name"]==spike_2].index[0]
-    
-        #spike_in_row_dict = {spike_1: barcode_frame[ref_index_b:ref_index_b+1], spike_2: barcode_frame[ref_index_e:ref_index_e+1]}
+        
         spike_in_row_dict = {spike_1: barcode_frame[barcode_frame["RS_name"]==spike_1].iloc[0],
                              spike_2: barcode_frame[barcode_frame["RS_name"]==spike_2].iloc[0]}
         
@@ -1353,10 +1330,10 @@ class BarSeqFitnessFrame:
             print(f"{spike_2}: {sp_2}")
             print()
         
-        # Fit to barcode log(ratios) over time to get slopes = fitness
+        # Fit to barcode log(ratios) over time to get slopes ~ fitness
         #     use both spike-ins as reference (separately)
         # Samples without tet are fit to simple linear function.
-        # Samples with tet are fit to bi-linear function, with initial slope equal to corresponding without-tet sample (or average)
+        # This is old: Samples with tet are fit to bi-linear function, with initial slope equal to corresponding without-tet sample (or average)
         
         if plots_not_fits:
             if plot_range is None:
@@ -1620,7 +1597,7 @@ class BarSeqFitnessFrame:
         sample_plate_map = self.sample_plate_map
         sample_list = np.unique(sample_plate_map.sample_id)
         
-        # Dictionary of dictionaries
+        # spike_in_fitness_dict is a dictionary of dictionaries
         #     first key is tet concentration
         #     second key is spike-in name
         #     units for fitness values are 10-fold per plate. 
@@ -1674,8 +1651,9 @@ class BarSeqFitnessFrame:
                     lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
-                elif plasmid == 'Align-Protease':
-                    # For this plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
+                    # For this Align-Protease plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                    # For this Align-T7RNAP_1 plasmid system, there is not ligand, so :
                     ligand = 'none'
                     lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
@@ -2127,7 +2105,7 @@ class BarSeqFitnessFrame:
                                         rhat_cutoff=1.05):
         
         plasmid = self.plasmid
-        if plasmid != 'Align-TF':
+        if plasmid not in ['Align-TF', 'Align-T7RNAP_1']:
             raise NotImplementedError(f"stan_single_fitness_to_function() is not yet implemented for plasmid: {plasmid}")
                     
         cmdstanpy_logger = logging.getLogger("cmdstanpy")
@@ -2161,14 +2139,18 @@ class BarSeqFitnessFrame:
             print(f"      min fitness error: {m}")
             print(f"        popt: {self.fit_fitness_difference_params[i][c]['popt']}")
             print(f"        perr: {self.fit_fitness_difference_params[i][c]['perr']}")
-        print("      Method version from 2025-04-25")
+        print("      Method version from 2025-12-15")
         
         barcode_frame = self.barcode_frame
         
-        sm_file = 'Single point fitness to function.stan'
+        if plasmid == 'Align-TF':
+            sm_file = 'Single point fitness to function.stan'
+            fitness_params_list = ['low_fitness', 'mid_g', 'fitness_n']
+        if plasmid == 'Align-T7RNAP_1':
+            sm_file = 'Single point fitness to function.general.stan'
+            fitness_params_list = ['low_fitness', 'high_fitness', 'mid_g', 'fitness_n']
         
         function_param = 'log_g'
-        fitness_params_list = ['low_fitness', 'mid_g', 'fitness_n']
         #quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
         
         # key_params are the parameters to check for Stan fit convergence:
@@ -2187,16 +2169,22 @@ class BarSeqFitnessFrame:
         def stan_fit_row(st_row, return_fit=False):
             st_index = st_row.name
             rs_name = st_row.RS_name
-            if rs_name == '':
-                tf = st_row.transcription_factor
-            else:
-                tf = align_tf_from_RS_name(rs_name)
-            ligand = align_ligand_from_tf(tf)
-            print()
-            now = datetime.datetime.now()
-            print(f"{now}, fitting row index: {st_index}, for ligand {ligand} and TF {tf}")
             
-            ret_dict = {'ligand':ligand}
+            if plasmid == 'Align-TF':
+                if rs_name == '':
+                    tf = st_row.transcription_factor
+                else:
+                    tf = align_tf_from_RS_name(rs_name)
+                ligand = align_ligand_from_tf(tf)
+                print()
+                now = datetime.datetime.now()
+                print(f"{now}, fitting row index: {st_index}, for ligand {ligand} and TF {tf}")
+                
+                ret_dict = {'ligand':ligand}
+            elif plasmid == 'Align-T7RNAP_1':
+                print()
+                now = datetime.datetime.now()
+                print(f"{now}, fitting row index: {st_index}, for T7RNAP_1")
                 
             stan_data = self.bs_frame_stan_data(st_row, 
                                                 initial=initial_list, 
@@ -2208,10 +2196,24 @@ class BarSeqFitnessFrame:
                 # This is the expected case for normalization variants, i.e., 'pLAcI-norm-02', 
                 #     or for rows where the transcription_factor can't be assigned based on the barcode count data.
                 
-                # TODO: replace '2' with more general result for a different number of ligand concentrations per TF
-                stan_log_g_mean = np.full((2), np.nan)
-                stan_log_g_std = np.full((2), np.nan)
-                ligand_concentrations = np.array([0, 1])
+                print()
+                # TODO: replace '2' or '12' with more general result for a different number of ligand concentrations per TF
+                if plasmid == 'Align-TF':
+                    num_lig = 2
+                    ligand_concentrations = np.array([0, 1])
+                    ligand = 'none'
+                    
+                    if tf == '':
+                        print(f"    Skipping Stan fit for row at index {st_index}, because transcription_factor is unassigned")
+                    else:
+                        print(f"    Skipping Stan fit for normalization variant, {st_row.RS_name}, at index {st_index}")
+                    
+                elif plasmid == 'Align-T7RNAP_1':
+                    num_lig = 12 # For the T7RNAP_1 plasmid, this is not really the number of ligand concentrations, but the number of replicate columns in the growth plate
+                    print(f"    Skipping Stan fit for normalization variant, {st_row.RS_name}, at index {st_index}")
+                    
+                stan_log_g_mean = np.full((num_lig), np.nan)
+                stan_log_g_std = np.full((num_lig), np.nan)
                 
                 n_anti = len(antibiotic_conc_list)
                 stan_fitness_params_mean = [np.full((n_anti), np.nan) for p in fitness_params_list]
@@ -2219,29 +2221,21 @@ class BarSeqFitnessFrame:
                 
                 stan_resid = np.nan
                 
-                ligand = 'none'
-                
-                print()
-                if tf == '':
-                    print(f"Skipping Stan fit for row at index {st_index}, because transcription_factor is unassigned")
-                else:
-                    print(f"Skipping Stan fit for normalization variant, {st_row.RS_name}, at index {st_index}")
-                
             else:
-                
-                ligand_concentrations = stan_data['ligand_concentrations']
-                
-                st_lig = stan_data['ligand_id']
-                if st_lig != ligand:
-                    raise ValueError(f'Stan data ligand_id ({st_lig}) does not match exprected value ({ligand}) for index {st_index}')
-                    
                 fit_data = dict(stan_data)
-                del fit_data['ligand_id']
+                if plasmid == 'Align-TF':
+                    ligand_concentrations = stan_data['ligand_concentrations']
+                    
+                    st_lig = stan_data['ligand_id']
+                    if st_lig != ligand:
+                        raise ValueError(f'Stan data ligand_id ({st_lig}) does not match exprected value ({ligand}) for index {st_index}')
+                        
+                    del fit_data['ligand_id']
                 
                 stan_init = init_stan_fit_single_point(stan_data)
                 
                 try:
-                    if tf == 'all':
+                    if (plasmid == 'Align-TF') and (tf == 'all'):
                         raise NotImplementedError(f"stan_single_fitness_to_function() is not yet implemented for variants present in multiple sub-libraries")
                     
                     #print("fit_data:")
@@ -2273,8 +2267,13 @@ class BarSeqFitnessFrame:
                     stan_log_g_mean = np.mean(stan_fit.stan_variable('log_g'), axis=0)
                     stan_log_g_std = np.std(stan_fit.stan_variable('log_g'), axis=0)
                     
-                    stan_fitness_params_mean = [np.mean(stan_fit.stan_variable(p)) for p in fitness_params_list]
-                    stan_fitness_params_std = [np.std(stan_fit.stan_variable(p)) for p in fitness_params_list]
+                    if fitness_params_list[0] in stan_fit.stan_variables():
+                        stan_fitness_params_mean = [np.mean(stan_fit.stan_variable(p)) for p in fitness_params_list]
+                        stan_fitness_params_std = [np.std(stan_fit.stan_variable(p)) for p in fitness_params_list]
+                    else:
+                        mu_params = [f'{p}_mu' for p in fitness_params_list]
+                        stan_fitness_params_mean = [fit_data[p] for p in mu_params]
+                        stan_fitness_params_std = [np.full((fit_data['N_antibiotic']), 0) for p in fitness_params_list]
                     
                     stan_resid = np.mean(stan_fit.stan_variable("rms_resid"))
                 
@@ -2293,14 +2292,15 @@ class BarSeqFitnessFrame:
             
             
             ret_result = {}
-            ret_result['ligand_concentrations'] = ligand_concentrations
             ret_result['stan_log_g_mean'] = stan_log_g_mean
             ret_result['stan_log_g_std'] = stan_log_g_std
             ret_result['stan_fitness_params_mean'] = stan_fitness_params_mean
             ret_result['stan_fitness_params_std'] = stan_fitness_params_std
             ret_result['stan_resid'] = stan_resid
             ret_result['st_index'] = st_index
-            ret_result['ligand'] = ligand
+            if plasmid == 'Align-TF':
+                ret_result['ligand_concentrations'] = ligand_concentrations
+                ret_result['ligand'] = ligand
             
             return ret_result
         
@@ -2310,7 +2310,7 @@ class BarSeqFitnessFrame:
             #fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
         else:
             if return_fit:
-                return stan_fit_row(row_to_fit, return_fit=True)
+                return stan_fit_row(barcode_frame.loc[refit_indexes[0]], return_fit=True)
             
             print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
             print(f'    selected rows: {refit_indexes}')
@@ -2322,48 +2322,63 @@ class BarSeqFitnessFrame:
         fit_list = [stan_fit_row(row) for row in row_list]
         
         # Then, add the fit results to barcode_frame:
-        tf_list = np.unique(sample_plate_map.transcription_factor)
-        ligand_list = [align_ligand_from_tf(tf) for tf in tf_list]
-        non_zero_lig_conc_dict = {}
-        for tf, lig in zip(tf_list, ligand_list):
-            df = sample_plate_map
-            df = df[df.transcription_factor==tf]
-            df = df[df[lig]>0]
-            conc = np.unique(df[lig])
-            if len(conc) == 1:
-                non_zero_lig_conc_dict[lig] = int(conc[0])
-            else:
-                raise ValueError(f'Unexpected number of ligand concentrations for transcription_factor {tf} and ligand {lig}')
+        
+        if plasmid == 'Align-TF':
+            tf_list = np.unique(sample_plate_map.transcription_factor)
+            ligand_list = [align_ligand_from_tf(tf) for tf in tf_list]
+            non_zero_lig_conc_dict = {}
+            for tf, lig in zip(tf_list, ligand_list):
+                df = sample_plate_map
+                df = df[df.transcription_factor==tf]
+                df = df[df[lig]>0]
+                conc = np.unique(df[lig])
+                if len(conc) == 1:
+                    non_zero_lig_conc_dict[lig] = int(conc[0])
+                else:
+                    raise ValueError(f'Unexpected number of ligand concentrations for transcription_factor {tf} and ligand {lig}')
             
-        output_columns = ['log_g0']
-        output_columns += [f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}' for lig in ligand_list]
+            output_columns = ['log_g0']
+            output_columns += [f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}' for lig in ligand_list]
+            
+        elif plasmid == 'Align-T7RNAP_1':
+            output_columns = [f'log_g_{n}' for n in range(1, 13)]
+        
         output_columns += [f'{c}_err' for c in output_columns]
-        output_columns += ['stan_fitness_params_mean', 'stan_fitness_params_std']
+        output_columns += ['stan_fitness_params_mean', 'stan_fitness_params_std', 'stan_resid']
         
         output_results_list = []
         for ret_result in fit_list: # iterate over fit results for each barcode/row
-            ligand = ret_result['ligand']
-            non_zero_ligand_conc = [x for x in ret_result['ligand_concentrations'] if x != 0][0]
-            
             output_dict = {}
-            for c, log_g_mu, lig_g_sig in zip(ret_result['ligand_concentrations'], 
-                                              ret_result['stan_log_g_mean'], 
-                                              ret_result['stan_log_g_std']):
-                if ligand == 'none':
-                    out_col = 'log_g0'
-                elif c == 0:
-                    out_col = 'log_g0'
-                else:
-                    out_col = f'log_g_{int(c)}_{ligand}'
+            if plasmid == 'Align-TF':
+                ligand = ret_result['ligand']
+                non_zero_ligand_conc = [x for x in ret_result['ligand_concentrations'] if x != 0][0]
                 
-                output_dict[out_col] = log_g_mu
-                output_dict[f'{out_col}_err'] = lig_g_sig
-            
-            for lig in ligand_list:
-                if lig != ligand:
-                    output_dict[f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}'] = np.nan
-                    output_dict[f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}_err'] = np.nan
-            
+                for c, log_g_mu, lig_g_sig in zip(ret_result['ligand_concentrations'], 
+                                                  ret_result['stan_log_g_mean'], 
+                                                  ret_result['stan_log_g_std']):
+                    if ligand == 'none':
+                        out_col = 'log_g0'
+                    elif c == 0:
+                        out_col = 'log_g0'
+                    else:
+                        out_col = f'log_g_{int(c)}_{ligand}'
+                    
+                    output_dict[out_col] = log_g_mu
+                    output_dict[f'{out_col}_err'] = lig_g_sig
+                
+                for lig in ligand_list:
+                    if lig != ligand:
+                        output_dict[f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}'] = np.nan
+                        output_dict[f'log_g_{non_zero_lig_conc_dict[lig]}_{lig}_err'] = np.nan
+                
+            elif plasmid == 'Align-T7RNAP_1':
+                for log_g_mu, lig_g_sig, out_col in zip(ret_result['stan_log_g_mean'], 
+                                                        ret_result['stan_log_g_std'],
+                                                        output_columns):
+                    output_dict[out_col] = log_g_mu
+                    output_dict[f'{out_col}_err'] = lig_g_sig
+                
+                
             for c in ['stan_fitness_params_mean', 'stan_fitness_params_std']:
                 output_dict[c] = list(ret_result[c])
                 
@@ -2459,7 +2474,7 @@ class BarSeqFitnessFrame:
             params_list = ['low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet', 'log_rho', 'log_alpha', 'log_sigma']
             
             g_arr_list = ['constr_log_g']
-            g_ratio_arr_list = []
+            g_ratio_arr_list = ['log_g_ratio']
             dg_arr_list = ['dlog_g']
             f_arr_list = ['mean_y']
             
@@ -3128,7 +3143,7 @@ class BarSeqFitnessFrame:
                 plot_initials=["sp09", "rs20"]
             elif self.plasmid == 'Align-TF':
                 plot_initials=["ramr", "laci"]
-            elif self.plasmid == 'Align-Protease':
+            elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
                 plot_initials=["nrm02", "nrm03"]
         
         if plot_range is None:
@@ -3319,15 +3334,18 @@ class BarSeqFitnessFrame:
                            show_GP=True,
                            log_g_scale=True,
                            box_size=6,
-                           show_mut_codes=True):
+                           ax=None):
         
         plot_row = self.barcode_frame.loc[plot_index]
         
         antibiotic_conc_list = self.antibiotic_conc_list
         ligand_list = self.ligand_list
         
-        plt.rcParams["figure.figsize"] = [box_size, box_size*2/3]
-        fig, axg = plt.subplots()
+        if ax is None:
+            plt.rcParams["figure.figsize"] = [box_size, box_size*2/3]
+            fig, axg = plt.subplots()
+        else:
+            axg = ax
         
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
@@ -3384,7 +3402,8 @@ class BarSeqFitnessFrame:
         
         axg.set_xscale('symlog', linthresh=linthresh)
         
-        return fig, axg
+        if ax is None:
+            return fig, axg
     
 
     def plot_fitness_and_difference_curves(self,
@@ -3761,7 +3780,7 @@ class BarSeqFitnessFrame:
     
     
     def calibrate_fitness_difference_params(self,
-                                            all_cytometry_Hill_fits,
+                                            calibration_data_table,
                                             spike_in_initial=None,
                                             run_stan_fit=False,
                                             plot_raw_fitness=False,
@@ -3848,6 +3867,18 @@ class BarSeqFitnessFrame:
                 n = 1.1 #np.random.normal(1, 0.2) * 3
                 sig = np.random.normal(1, 0.2) * 0.1
                 return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
+        elif plasmid == 'Align-T7RNAP_1':
+            stan_model_file = "Hill equation fit.basic.stan"
+            
+            ligand_plot_list = [None]
+            
+            def init_fitness_fit(y_data):
+                low = -0.8 #np.mean(y_data[:2])
+                high = -0.2 #np.mean(y_data[:2])
+                mid = 100 #np.random.normal(1, 0.2) * 10000
+                n = 1.1 #np.random.normal(1, 0.2) * 3
+                sig = np.random.normal(1, 0.2) * 0.1
+                return dict(low_level=low, high_level=high, IC_50=mid, hill_n=n, sigma=sig)
         
         if plot_ligands is not None:
             ligand_plot_list = [x for x in ligand_plot_list if x in plot_ligands]
@@ -3866,19 +3897,19 @@ class BarSeqFitnessFrame:
             RS_list = np.unique(RS_list)
         
         sample_plate_map = self.sample_plate_map
-        lig_list = list(np.unique(sample_plate_map.ligand))
-        if 'none' in lig_list:
-            lig_list.remove('none')
-        
         plot_df = sample_plate_map
-        plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=lig_list)
+        if 'ligand' in sample_plate_map.columns:
+            lig_list = list(np.unique(sample_plate_map.ligand))
+            if 'none' in lig_list:
+                lig_list.remove('none')
+            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by=lig_list)
+        else:
+            plot_df = plot_df[plot_df.growth_plate==2].sort_values(by='sample_id')
         
-        x_list = np.array([np.array(plot_df[x]) for x in lig_list]).flatten()
-        linthresh = min(x_list[x_list>0])
         
         fit_plot_colors = sns.color_palette()
         
-        def cytom_plasmid_from_rs_name(rs_name):
+        def cytom_variant_from_rs_name(rs_name):
             if plasmid == 'pVER':
                 if 'RS' in rs_name:
                     plas = 'pVER-RS-' + rs_name[2:]
@@ -3906,12 +3937,17 @@ class BarSeqFitnessFrame:
                     plas = rs_name
                     
             elif plasmid == 'Align-TF':
-                plas = f'{rs_name}_mScar'
+                var = f'{rs_name}_mScar'
                 
-                if plas == 'pRamR-WT-fin_mScar':
-                    plas = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
+                if var == 'pRamR-WT-fin_mScar':
+                    var = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
                     
-            return plas
+            elif plasmid == 'Align-T7RNAP_1':
+                # RS names:       'T7_D240E', 'T7_D240G', 'T7_E207K', 'T7_F21Y', 'T7_N748D', 'T7_P266L', 'T7_WT'
+                # cytom variants: 'pT7-78-D240E', 'pT7-78-D240G', 'pT7-78-E207K', 'pT7-78-F21Y', 'pT7-78-N748D', 'pT7-78-P266L', 'pT7-78-WT'
+                var = rs_name.replace('T7_', 'pT7-78-')
+                
+            return var
             
         # Fitness calibration function is Hill function with either low or high value to zero:
         def hill_funct(x, low, high, mid, n):
@@ -3920,6 +3956,9 @@ class BarSeqFitnessFrame:
         if plasmid in ['pVER', 'pCymR', 'Align-TF']:
             def fit_funct(x, low, mid, n):
                 return hill_funct(x, low, 0, mid, n)
+        elif plasmid in ['Align-T7RNAP_1']:
+            def fit_funct(x, low, high, mid, n):
+                return hill_funct(x, low, high, mid, n)
         elif plasmid == 'pRamR':
             def fit_funct(x, high, mid, n):
                 return hill_funct(x, 0, high, mid, n)
@@ -3940,7 +3979,7 @@ class BarSeqFitnessFrame:
         
         
         if show_old_fit:
-            if plasmid == 'Align-TF':
+            if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
                 if (type(self.fit_fitness_difference_params) is dict) and (spike_in_initial in self.fit_fitness_difference_params):
                     params = self.fit_fitness_difference_params[spike_in_initial]
                     plot_fit_params = [params[tet]['popt'] + params[tet]['perr'] for tet in plot_antibiotic_list]
@@ -3956,7 +3995,7 @@ class BarSeqFitnessFrame:
         else:
             plot_fit_params = [None]*len(axs)
         
-        if plasmid == 'Align-TF':
+        if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
             stan_params_to_save = {}
         else:
             stan_params_to_save = []
@@ -3977,7 +4016,11 @@ class BarSeqFitnessFrame:
             identifier_list = []
             
             resid_frame_lists = {}
-            for k in ['rs_name', 'sample', 'ligand', 'lig_conc', 'ref_fitness', 'fitness']:
+            if len(self.ligand_list) == 0:
+                resid_frame_keys = ['rs_name', 'sample', 'ref_fitness', 'fitness']
+            else:
+                resid_frame_keys = ['rs_name', 'sample', 'ligand', 'lig_conc', 'ref_fitness', 'fitness']
+            for k in resid_frame_keys:
                 resid_frame_lists[k] = []
             resid_frame_lists['antibiotic_conc'] = tet
 
@@ -3989,21 +4032,27 @@ class BarSeqFitnessFrame:
                         
             for RS_name in RS_list:
                 for lig in ligand_plot_list:
-                    i = np.where(np.array(self.ligand_list)==lig)[0][0]
-                    plas = cytom_plasmid_from_rs_name(RS_name)
+                    if lig is not None:
+                        i = np.where(np.array(self.ligand_list)==lig)[0][0]
+                    var = cytom_variant_from_rs_name(RS_name)
 
-                    df = all_cytometry_Hill_fits
-                    df = df[df.variant==plas]
+                    df = calibration_data_table
+                    df = df[df.variant==var]
                     if (len(ligand_plot_list)>1) or (plasmid == 'pCymR'):
                         df = df[df.ligand==lig]
-
-                    lab = f'{RS_name}, {lig}'
+                    if lig is None:
+                        lab = f'{RS_name}'
+                    else:
+                        lab = f'{RS_name}, {lig}'
 
                     if len(df)==1:
-                        cytom_row = df.iloc[0]
-                                          
-                        hill_params = [10**cytom_row[x] for x in ['log_g0', 'log_ginf', 'log_ec50']] + [cytom_row['n']]
-                        if not np.any(np.isnan(hill_params)):
+                        calibration_row = df.iloc[0]
+                        
+                        if lig is not None:
+                            calibration_params = [10**calibration_row[x] for x in ['log_g0', 'log_ginf', 'log_ec50']] + [calibration_row['n']]
+                        else:
+                            calibration_params = [calibration_row['transcription_rate_mean']]
+                        if not np.any(np.isnan(calibration_params)):
                             HiSeq_df = bs_frame[bs_frame['RS_name']==RS_name]
                             if 'wt' in RS_name:
                                 HiSeq_df = HiSeq_df[HiSeq_df.total_counts>wt_cutoff]
@@ -4027,39 +4076,49 @@ class BarSeqFitnessFrame:
                                         lab = None
                                     var_labeled = True
                                     
-                                    if plasmid != 'Align-TF':
+                                    if plasmid not in ['Align-TF', 'Align-T7RNAP_1']:
                                         stan_data = self.bs_frame_stan_data(HiSeq_row, 
                                                                             initial=spike_in_initial,
                                                                             min_err=min_err,
                                                                             apply_ramr_correction=apply_ramr_correction)
                                         xerr = None
                                     
-                                    if plasmid == 'Align-TF':
-                                        # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
-                                        tf = align_tf_from_ligand(lig)
+                                    if plasmid in ['Align-TF', 'Align-T7RNAP_1']: # Can't use else here.
                                         plot_df_align = plot_df
-                                        plot_df_align = plot_df_align[(plot_df_align.transcription_factor==tf)|(plot_df_align.ligand=='none')]
                                         plot_df_align = plot_df_align[plot_df_align.antibiotic_conc==tet]
                                         
+                                        if plasmid == 'Align-TF':
+                                            # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
+                                            tf = align_tf_from_ligand(lig)
+                                            plot_df_align = plot_df_align[(plot_df_align.transcription_factor==tf)|(plot_df_align.ligand=='none')]
+                                        
                                         samples = np.array(plot_df_align['sample_id'])
-                                        sample_ligand_list = np.array(plot_df_align['ligand'])
-                                        sample_tf_list = np.array(plot_df_align['transcription_factor'])
-                                        ligand_conc_list = np.array(plot_df_align[lig])
+                                        if plasmid == 'Align-TF':
+                                            sample_ligand_list = np.array(plot_df_align['ligand'])
+                                            sample_tf_list = np.array(plot_df_align['transcription_factor'])
+                                            ligand_conc_list = np.array(plot_df_align[lig])
                                         
-                                        # make array of ref_samples in the same order as samples (using ligand ID and tf to set ordering):
-                                        ref_samples = []
-                                        for lig_ref, tf_ref in zip(sample_ligand_list, sample_tf_list):
+                                            # For Align-TF, make array of ref_samples in the same order as samples (using ligand ID and tf to set ordering):
+                                            ref_samples = []
+                                            for lig_ref, tf_ref in zip(sample_ligand_list, sample_tf_list):
+                                                df_ref = plot_df
+                                                df_ref = df_ref[(df_ref.transcription_factor==tf)|(df_ref.ligand=='none')]
+                                                df_ref = df_ref[df_ref.antibiotic_conc==0]
+                                                df_ref = df_ref[df_ref.ligand==lig_ref]
+                                                df_ref = df_ref[df_ref.transcription_factor==tf_ref]
+                                                if len(df_ref) != 1:
+                                                    raise ValueError('length of df_ref != 1')
+                                                ref_samples.append(df_ref.iloc[0].sample_id)
+                                            ref_samples = np.array(ref_samples)
+                                        else:
+                                            # For Align-T7RNAP_1, make array of ref_samples in the same order as samples
                                             df_ref = plot_df
-                                            df_ref = df_ref[(df_ref.transcription_factor==tf)|(df_ref.ligand=='none')]
                                             df_ref = df_ref[df_ref.antibiotic_conc==0]
-                                            df_ref = df_ref[df_ref.ligand==lig_ref]
-                                            df_ref = df_ref[df_ref.transcription_factor==tf_ref]
-                                            if len(df_ref) != 1:
-                                                raise ValueError('length of df_ref != 1')
-                                            ref_samples.append(df_ref.iloc[0].sample_id)
-                                        ref_samples = np.array(ref_samples)
+                                            ref_samples = np.array(df_ref['sample_id'])
                                         
-                                        # samples and ref_samples should each have the same number of values (4), three without ligand and one with
+                                        # samples and ref_samples should each have the same number of values:
+                                        #    For Align-TF: (4), three without ligand and one with
+                                        #    For Align-T7RNAP_1: (12), which are all replicates
                                         
                                         y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
                                         y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples])
@@ -4071,24 +4130,29 @@ class BarSeqFitnessFrame:
                                             y = (y - y_ref)/y_ref
                                         
                                         # Get x values (gene expression) from asymmetric Hill fit for Align-TF data:
-                                        x = []
-                                        xerr = []
-                                        min_xerr = np.log10(1.2)
-                                        for lig_conc in ligand_conc_list:
-                                            if lig_conc == 0:
-                                                g = cytom_row['log_g0']
-                                                gerr = np.sqrt(cytom_row['log_g0_err']**2 + min_xerr**2)
-                                            else:
-                                                g = cytom_row[f'log_g_{int(lig_conc)}_{lig}']
-                                                gerr = np.sqrt(cytom_row[f'log_g_{int(lig_conc)}_{lig}_err']**2 + min_xerr**2)
+                                        if plasmid == 'Align-TF':
+                                            x = []
+                                            xerr = []
+                                            min_xerr = np.log10(1.2)
+                                            for lig_conc in ligand_conc_list:
+                                                if lig_conc == 0:
+                                                    g = calibration_row['log_g0']
+                                                    gerr = np.sqrt(calibration_row['log_g0_err']**2 + min_xerr**2)
+                                                else:
+                                                    g = calibration_row[f'log_g_{int(lig_conc)}_{lig}']
+                                                    gerr = np.sqrt(calibration_row[f'log_g_{int(lig_conc)}_{lig}_err']**2 + min_xerr**2)
+                                                    
+                                                gerr = fitness.log_plot_errorbars(log_mu=g, log_sig=gerr)
+                                                g = 10**g
                                                 
-                                            gerr = fitness.log_plot_errorbars(log_mu=g, log_sig=gerr)
-                                            g = 10**g
-                                            
-                                            x.append(g)
-                                            xerr.append(gerr)
-                                        x = np.array(x)
-                                        xerr = np.array(xerr).transpose()
+                                                x.append(g)
+                                                xerr.append(gerr)
+                                            x = np.array(x)
+                                            xerr = np.array(xerr).transpose()
+                                        
+                                        else:# Get x values (transcription_rate_mean) from calibration data for Align-T7RNAP_1 data:
+                                            x = np.array([calibration_row['transcription_rate_mean']]*len(y))
+                                            xerr = np.array([calibration_row['transcription_rate_std']]*len(y))
                                         
                                     elif (len(ligand_plot_list) > 1) or (plasmid == 'pCymR'):
                                         # For RamR and CymR
@@ -4101,7 +4165,7 @@ class BarSeqFitnessFrame:
                                             y = np.array(list(stan_data[f'y_0']) + list(stan_data[f'y_{i+1}']))
                                             y_err = np.array(list(stan_data[f'y_0_err']) + list(stan_data[f'y_{i+1}_err']))
                                          
-                                    else:
+                                    else: # For LacI
                                         # For LacI
                                         if tet == plot_antibiotic_list[0]:
                                             if f'x_{i+1}' in stan_data:
@@ -4124,10 +4188,10 @@ class BarSeqFitnessFrame:
                                             y = np.array([HiSeq_row[f"fitness_S{s}_{spike_in_initial}"] for s in samples])
                                             y_err = np.array([HiSeq_row[f"fitness_S{s}_err_{spike_in_initial}"] for s in samples]) 
                                     
-                                    if plasmid != 'Align-TF':
-                                        if np.any(np.isinf(hill_params)):
-                                            hill_params = [0]*len(hill_params)
-                                        x = hill_funct(ligand_conc_list, *hill_params)
+                                    if plasmid not in ['Align-TF', 'Align-T7RNAP_1']:
+                                        if np.any(np.isinf(calibration_params)):
+                                            calibration_params = [0]*len(calibration_params)
+                                        x = hill_funct(ligand_conc_list, *calibration_params)
                                     
                                     if color_by_ligand_conc is not None:
                                         if lig == color_by_ligand_conc:
@@ -4155,11 +4219,12 @@ class BarSeqFitnessFrame:
                                         
                                         if return_resid_table:
                                             resid_frame_lists['rs_name'] += [RS_name]*len(x)
-                                            resid_frame_lists['ligand'] += [lig]*len(x)
+                                            if 'ligand' in resid_frame_keys:
+                                                resid_frame_lists['ligand'] += [lig]*len(x)
+                                                resid_frame_lists['lig_conc'] += list(ligand_conc_list)
                                             resid_frame_lists['sample'] += list(samples)
                                             
-                                            resid_frame_lists['lig_conc'] += list(ligand_conc_list)
-                                            if plasmid == 'Align-TF':
+                                            if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
                                                 resid_frame_lists['ref_fitness'] += list(y_ref)
                                             else:
                                                 y_ref = stan_data['y_ref']
@@ -4177,10 +4242,10 @@ class BarSeqFitnessFrame:
                     elif len(df) == 0:
                         if plasmid == 'Align-TF':
                             tf = align_tf_from_ligand(lig)
-                            if ('norm' not in RS_name) and (tf in plas):
-                                print(f'No cytometry data for {RS_name}, {plas} with {lig}')
+                            if ('norm' not in RS_name) and (tf in var):
+                                print(f'No cytometry data for {RS_name}, {var} with {lig}')
                     else:
-                        raise ValueError('length of df != 1')
+                        raise ValueError('length of df > 1')
             
             
             
@@ -4209,7 +4274,7 @@ class BarSeqFitnessFrame:
                 
             ylim = ax.get_ylim()
             ax.set_xscale("symlog")
-            ax.set_xlabel('Sensor Output (MEF)');
+            ax.set_xlabel('Function (MEF)');
             ax.set_title(f'{tet} {self.antibiotic}', size=14)
             if plot_raw_fitness:
                 ax.set_ylabel(f'Fitness')
@@ -4220,7 +4285,12 @@ class BarSeqFitnessFrame:
                 x_plot_fit = np.logspace(np.log10((min(x_fit_list[x_fit_list>0]))/3), np.log10(1.2*max(x_fit_list)))
                 if 0 in x_fit_list:
                     x_plot_fit = np.array([0] + list(x_plot_fit))
-                y_plot_fit = fit_funct(x_plot_fit, *old_fit_params[:3])
+                
+                if plasmid == 'Align-T7RNAP_1':
+                    y_plot_fit = fit_funct(x_plot_fit, *old_fit_params[:4])
+                else:
+                    y_plot_fit = fit_funct(x_plot_fit, *old_fit_params[:3])
+                
                 if run_stan_fit:
                     lab = 'old fit'
                 else:
@@ -4238,6 +4308,8 @@ class BarSeqFitnessFrame:
                 
                 if plasmid in ['pVER', 'pCymR', 'Align-TF']:
                     key_params = ["low_level", "IC_50", "hill_n"]
+                elif plasmid in ['Align-T7RNAP_1']:
+                    key_params = ["low_level", "high_level", "IC_50", "hill_n"]
                 elif plasmid == 'pRamR':
                     key_params = ["high_level", "IC_50", "hill_n"]
                 
@@ -4250,6 +4322,8 @@ class BarSeqFitnessFrame:
                 if robust_error_model:
                     stan_data['nu'] = robust_nu
                 stan_init = init_fitness_fit(y)
+                if plasmid == 'Align-T7RNAP_1':
+                    stan_init = dict(low_level=-0.9, high_level=-0.15, IC_50=300, hill_n=2, sigma=1)
                 
                 num_stan_re_runs = 3 if repeat_after_dropping_outliers else 1
                 fit_data = stan_data
@@ -4265,6 +4339,7 @@ class BarSeqFitnessFrame:
                             print('    Dropped outliers:')
                             for d in drop_list:
                                 print(f'        {d}')
+                        
                         stan_fit = fitness_model.sample(data=fit_data, iter_warmup=500, iter_sampling=500, inits=stan_init, chains=4, show_progress=show_progress)
                         
                         if re_stan_on_rhat:
@@ -4298,7 +4373,7 @@ class BarSeqFitnessFrame:
                 print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
                 num_str = [ f"{x:.4}" for x in stan_perr ]
                 print(f"                 Error estimate: {num_str}")
-                if plasmid == 'Align-TF':
+                if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
                     stan_params_to_save[tet] = {'popt':list(stan_popt), 'perr':list(stan_perr)}
                 else:
                     stan_params_to_save.append(list(stan_popt) + list(stan_perr))
@@ -4352,7 +4427,7 @@ class BarSeqFitnessFrame:
             ncol = 1
         elif plasmid == 'pRamR':
             ncol = int(len(RS_list)*len(lig_list)/40)
-        elif plasmid == 'Align-TF':
+        elif plasmid in ['Align-TF', 'Align-T7RNAP_1']:
             ncol = int(np.round(len(RS_list)/12))
         else:
             ncol = int(len(RS_list)*len(lig_list)/40)
@@ -4366,7 +4441,7 @@ class BarSeqFitnessFrame:
                 ax.legend(loc='upper left', bbox_to_anchor= (1.03, 0.97), ncol=ncol, borderaxespad=0, frameon=True);
             
         if run_stan_fit and save_fitness_difference_params:
-            if plasmid == 'Align-TF':
+            if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
                 if type(self.fit_fitness_difference_params) is dict:
                     self.fit_fitness_difference_params[spike_in_initial] = stan_params_to_save
                 else:
@@ -5066,6 +5141,85 @@ class BarSeqFitnessFrame:
             return stan_data
         
         
+        
+        if self.plasmid == 'Align-T7RNAP_1':
+            rs_name = st_row.RS_name
+            if 'norm' in rs_name.lower():
+                return None
+            sample_map = self.sample_plate_map
+            sample_map = sample_map[sample_map.growth_plate==2].sort_values(by=['antibiotic_conc', 'sample_id'])
+            
+            df_ref = sample_map[sample_map.antibiotic_conc==0]
+            ref_samples = np.array(df_ref['sample_id'])
+                
+            # For Align-T7RNAP_1 project, initial, min_err, and anti_list are synchronized lists 
+            #     of normalization/fit initials, min errors, and antibiotic concentrations
+            anti_conc_list = anti_list
+            init_list = initial
+            min_err_list = np.array(min_err)
+            
+            # For Align-T7RNAP_1 project, there is no induction.
+            y_arr = []
+            y_err_arr = []
+            # Use the N_lig parameter in the Stan model to represent the 12 different replicate measurements (all at zero ligand)
+            for ref_sample in ref_samples:
+                samp_num = ref_sample + 12 # Pair the samples with and without antibiotic by column in the growth plate
+                
+                samples = [samp_num]
+                
+                y = np.array([st_row[f"fitness_S{s}_{init}"] for s, init in zip(samples, init_list)])
+                y_err = np.array([st_row[f"fitness_S{s}_err_{init}"] for s, init in zip(samples, init_list)])
+                
+                y_ref = np.array([st_row[f"fitness_S{ref_sample}_{init}"] for init in init_list])
+                y_ref_err = np.array([st_row[f"fitness_S{ref_sample}_err_{init}"] for init in init_list])
+                
+                y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2 + min_err_list**2)
+                y = (y - y_ref)/y_ref
+                
+                y_arr.append(y)
+                y_err_arr.append(y_err)
+            
+            y_arr = np.array(y_arr)
+            y_err_arr = np.array(y_err_arr)
+                
+            stan_data = {'y':y_arr, 
+                         'y_err':y_err_arr,
+                         'N_lig':12,
+                         'N_antibiotic':1}
+            
+            fit_fitness_difference_params = self.fit_fitness_difference_params
+            
+            low_fitness_mu = np.array([fit_fitness_difference_params[init][c]['popt'][0] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['low_fitness_mu'] = low_fitness_mu
+            
+            high_fitness_mu = np.array([fit_fitness_difference_params[init][c]['popt'][1] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['high_fitness_mu'] = high_fitness_mu
+            
+            mid_g_mu = np.array([fit_fitness_difference_params[init][c]['popt'][2] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['mid_g_mu'] = mid_g_mu
+            
+            fitness_n_mu = np.array([fit_fitness_difference_params[init][c]['popt'][3] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['fitness_n_mu'] = fitness_n_mu
+            
+            low_fitness_std = np.array([fit_fitness_difference_params[init][c]['perr'][0] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['low_fitness_std'] = low_fitness_std
+            
+            high_fitness_std = np.array([fit_fitness_difference_params[init][c]['perr'][1] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['high_fitness_std'] = high_fitness_std
+            
+            mid_g_std = np.array([fit_fitness_difference_params[init][c]['perr'][2] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['mid_g_std'] = mid_g_std
+            
+            fitness_n_std = np.array([fit_fitness_difference_params[init][c]['perr'][3] for c, init in zip(anti_conc_list, init_list)])
+            stan_data['fitness_n_std'] = fitness_n_std
+            
+            log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=self.plasmid)
+            stan_data['log_g_min'] = log_g_min
+            stan_data['log_g_max'] = log_g_max
+            
+            return stan_data
+        
+        
         if self.plasmid == 'pRamR':
             if apply_ramr_correction is None:
                 apply_ramr_correction = True
@@ -5160,6 +5314,8 @@ class BarSeqFitnessFrame:
         elif plasmid == 'Align-TF':
             initial = 'laci'
         elif plasmid == 'Align-Protease':
+            initial = 'nrm03'
+        elif plasmid == 'Align-T7RNAP_1':
             initial = 'nrm03'
         
         return initial
@@ -5289,11 +5445,16 @@ def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid
 def init_stan_fit_single_point(stan_data):
     sig = np.random.uniform(1, 3)
     
-    return dict(sigma=sig, 
+    init_dict = dict(sigma=sig, 
                 low_fitness=stan_data['low_fitness_mu'],
                 mid_g=stan_data['mid_g_mu'],
                 fitness_n=stan_data['fitness_n_mu']
                 )
+    
+    if 'high_fitness_mu' in stan_data:
+        init_dict['high_fitness'] = stan_data['high_fitness_mu']
+        
+    return init_dict
     
     
 def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand, plasmid='pVER'):
