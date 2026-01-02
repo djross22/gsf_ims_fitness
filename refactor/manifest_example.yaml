@@ -1,0 +1,312 @@
+# BarSeq Experiment Manifest
+# Align-to-Innovate Transcription Factor Fitness Pipeline
+
+# ========================================================================================
+# Experiment Metadata
+# ========================================================================================
+
+metadata:
+  experiment_id: Align-TF_GBA_1
+  experiment_name: "Align-TF LacI/RamR/VanR Pilot Study"
+  created: 2024-06-22T10:30:00Z
+  analyst: adhroso
+  description: "Full transcription factor variant library fitness-function characterization"
+  notes: |
+    This experiment characterizes ~1.3M TF variants across three systems:
+    LacI, RamR, and VanR. Each variant is barcoded and tracked through serial
+    passages under various antibiotic and inducer conditions.
+
+# ========================================================================================
+# Biological System Configuration
+# ========================================================================================
+
+system:
+  plasmid: Align-TF
+  transcription_factors: [LacI, RamR, VanR]
+  host_strain: E. coli DH5α
+  selection_marker: dhfr  # Trimethoprim resistance gene
+  
+  # Plasmid lengths for QC
+  plasmid_lengths:
+    RamR: 4164
+    VanR: 4298
+    LacI: 4653
+
+# ========================================================================================
+# Experimental Design
+# ========================================================================================
+
+experiment:
+  # Reference samples (no fitness selection)
+  # Note: Sample 5 excluded (has 250 µmol/L 1S-TIQ + zero TMP)
+  ref_samples: [1, 9, 13, 17, 21]
+  
+  # Serial passage timepoints (hours)
+  timepoints: [0, 24, 48, 72]
+  
+  # Antibiotic selection
+  antibiotics:
+    - name: TMP  # Trimethoprim
+      concentrations: [0.0, 0.3, 3.0, 6.0]  # µg/mL
+      units: µg/mL
+
+  # Inducers/ligands by transcription factor
+  inducers:
+    LacI:
+      ligand: IPTG
+      concentrations: [0, 2000]  # µmol/L
+      units: µmol/L
+    RamR:
+      ligand: 1S-TIQ
+      concentrations: [0, 250]   # µmol/L
+      units: µmol/L
+    VanR:
+      ligand: Vancomycin
+      concentrations: [0, 100]   # µmol/L
+      units: µmol/L
+  
+  # Plate layout
+  num_plates: 5
+  samples_per_plate: 24
+  plate_format: 96-well
+
+# ========================================================================================
+# Sequencing Data
+# ========================================================================================
+
+sequencing:
+  # NovaSeq short-read data (barcode counting)
+  novaseq:
+    platform: NovaSeq
+    lane: 1
+    read_type: paired-end
+    forward_length: 150
+    reverse_length: 150
+  
+  # Nanopore long-read data (CDS assignment)
+  nanopore:
+    platform: MinION
+    flowcell: FLO-MIN106
+    datasets:
+      - 2V8TQC
+      - 88XNVC
+      - JJY9G7
+      - LB34XD
+      - NZVCK3
+      - VB2LWJ
+      - YKGXH7
+
+# ========================================================================================
+# Processing Parameters
+# ========================================================================================
+
+processing:
+  # Stage 1: Barcode Clustering
+  clustering:
+    min_read_count: 200
+    merge_dist_cutoff: 3        # Levenshtein distance threshold
+    merge_ratio_cutoff: 200.0   # Read count ratio threshold
+    single_barcode_mode: true   # Merge forward/reverse BC errors
+  
+  # Stage 2: QC Filtering
+  qc:
+    min_samples_detected: 10    # Barcode must appear in ≥10 samples
+    max_zero_counts: 5          # Allow ≤5 zero count samples
+    min_total_reads: 1000       # Total reads across all samples
+  
+  # Stage 3: Fitness Calculation
+  fitness:
+    # Spike-in reference sequences (expected fitness = 0)
+    spike_ins: [pRamR-norm-02, pLacI-norm-02]
+    
+    # Error floor for log counts
+    min_log_count_error: 0.03
+    
+    # Normalization schemes to apply
+    normalization_schemes: [laci, ramr, all.laci, all.ramr]
+  
+  # Stage 4: Stan Bayesian Modeling
+  stan:
+    # Number of parallel batches
+    num_batches: 32
+    
+    # Fitness vs antibiotic concentration
+    fitness_difference:
+      model: fitness_difference_curves.stan
+      
+      # Error parameters by TMP concentration
+      min_err_by_tmp:
+        0.3: 0.015
+        3.0: 0.03
+        6.0: 0.03
+      
+      # MCMC sampling parameters
+      adapt_delta: 0.95
+      chains: 4
+      iter_warmup: 1000
+      iter_sampling: 1000
+      max_treedepth: 10
+    
+    # Fitness to function (Hill equation parameters)
+    fitness_to_function:
+      model: single_fitness_to_function.stan
+      
+      # Error parameters by TMP concentration
+      min_err_by_tmp:
+        0.3: 0.03
+        3.0: 0.05
+        6.0: 0.05
+      
+      # MCMC sampling parameters
+      adapt_delta: 0.95
+      chains: 4
+      iter_warmup: 1000
+      iter_sampling: 1000
+  
+  # Stage 5: CDS Assignment (Nanopore)
+  cds_assignment:
+    min_nanopore_reads: 4       # Minimum reads to call consensus
+    min_consensus_fraction: 0.6 # Fraction of reads agreeing
+    max_plasmid_length_ratio: 1.001  # QC: reject if >0.1% over expected
+  
+  # Stage 6: TF-Specific Processing
+  tf_processing:
+    # Filters for confident CDS assignment
+    min_cds_seq_count: 4
+    require_confident_cds: true
+    max_amino_mutations: 50     # Flag potential frameshifts
+
+# ========================================================================================
+# File Locations
+# ========================================================================================
+
+files:
+  # Input data (raw sequencing)
+  barcode_counts: raw/2024-06-22_Align-TF_GBA_1_DNA-5-plates_trimmed_sorted_counts.csv
+  forward_clusters: raw/forward_merged_cluster.csv
+  reverse_clusters: raw/reverse_merged_cluster.csv
+  
+  # Plate layout and metadata
+  plate_layout: plate_layouts/Align-TF_5_plates.csv
+  reference_sequences: reference_sequences.csv
+  
+  # Wild-type CDS sequences
+  wt_cds_fasta: long_read_data/Align-TF_GOI_CDSs.fasta
+  
+  # Nanopore data directory
+  nanopore_dir: long_read_data/log_read_post_processing/
+  nanopore_flanking: long_read_data/log_read_post_processing/seq_flanking.csv
+  nanopore_markers: long_read_data/log_read_post_processing/seq_markers.csv
+  
+  # Output locations
+  output_dir: results/
+  intermediate_dir: results/intermediate/
+  final_parquet: results/Align-TF_GBA_1_final.parquet
+  final_csv: results/Align-TF_GBA_1_summary.csv
+
+# ========================================================================================
+# Pipeline Execution State (updated by Nextflow)
+# ========================================================================================
+
+pipeline:
+  version: 2.0.0
+  nextflow_version: null
+  execution_id: null
+  started_at: null
+  completed_at: null
+  
+  stages:
+    stage_0_ingest:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+    
+    stage_1_clustering:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+    
+    stage_2_qc:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+    
+    stage_3_plate_mapping:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+    
+    stage_4_fitness:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+    
+    stage_5_stan:
+      status: pending
+      started_at: null
+      completed_at: null
+      num_batches: 32
+      completed_batches: 0
+      output: null
+    
+    stage_6_cds:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+    
+    stage_7_tf_processing:
+      status: pending
+      started_at: null
+      completed_at: null
+      outputs:
+        LacI: null
+        RamR: null
+        VanR: null
+        unassigned: null
+    
+    stage_8_final_qc:
+      status: pending
+      started_at: null
+      completed_at: null
+      output: null
+
+# ========================================================================================
+# Quality Control Metrics (updated by pipeline)
+# ========================================================================================
+
+qc:
+  # Raw data
+  total_raw_barcodes: null
+  total_raw_reads: null
+  
+  # After filtering
+  barcodes_after_clustering: null
+  barcodes_after_qc: null
+  barcodes_after_filtering: null
+  
+  # Spike-in validation
+  spike_in_fitness_mean: null
+  spike_in_fitness_std: null
+  spike_in_count: null
+  
+  # Fitness quality
+  mean_r_squared: null
+  median_r_squared: null
+  
+  # TF distribution
+  num_LacI: null
+  num_RamR: null
+  num_VanR: null
+  num_unassigned: null
+  
+  # CDS assignment
+  total_nanopore_reads: null
+  barcodes_with_cds: null
+  confident_cds_assignments: null
+  mean_nanopore_reads_per_barcode: null
