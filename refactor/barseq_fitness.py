@@ -27,7 +27,7 @@ import cmocean
 import seaborn as sns
 sns.set()
 
-from . import fitness
+from . import fitness_utils
 from . import stan_utility
 
 from state_io import save_state_v1
@@ -60,7 +60,7 @@ def load_barseq_data(
     manifest["notebook_dir"] = str(notebook_dir)
 
     if experiment is None:
-        experiment = fitness.get_exp_id(str(notebook_dir))
+        experiment = fitness_utils.get_exp_id(str(notebook_dir))
     manifest["experiment"] = experiment
 
     print(f"Importing BarSeq count data for experiment: {experiment}")
@@ -183,7 +183,7 @@ def load_barseq_data(manifest, notebook_dir=None, experiment=None, barcode_file=
     manifest['notebook_dir'] = notebook_dir
     
     if experiment is None:
-        experiment = fitness.get_exp_id(notebook_dir)
+        experiment = fitness_utils.get_exp_id(notebook_dir)
     
     manifest['experiment'] = experiment
     
@@ -248,7 +248,7 @@ def load_barseq_data(manifest, notebook_dir=None, experiment=None, barcode_file=
                 bc_list = [for_barcode_center_dict[y] for y in x]
                 for bc, y in zip(bc_list[1:], x[1:]):
                     if len(bc)==len(bc_list[0]):
-                        dist = fitness.hamming_distance(bc_list[0], bc)
+                        dist = fitness_utils.hamming_distance(bc_list[0], bc)
                         if dist > merge_dist_cutoff:
                             log_file.write(f'    Warning, forward barcodes NOT merged with Hamming distance > cutoff, {dist}:\n')
                             log_file.write(f'        {bc_list[0]}, ID: {x[0]}, count: {for_barcode_count_dict[x[0]]}\n')
@@ -262,7 +262,7 @@ def load_barseq_data(manifest, notebook_dir=None, experiment=None, barcode_file=
                             log_file.write(f'        {bc_list[0]}, ID: {x[0]}, count: {for_barcode_count_dict[x[0]]}\n')
                             log_file.write(f'        {bc}, ID: {y}, count: {for_barcode_count_dict[y]}\n')
                     else:
-                        dist = fitness.levenshtein_distance(bc_list[0], bc)
+                        dist = fitness_utils.levenshtein_distance(bc_list[0], bc)
                         len_diff = np.abs(len(bc_list[0]) - len(bc))
                         if dist - len_diff > merge_dist_cutoff:
                             log_file.write(f'    Warning, forward barcodes NOT merged with Levenshtein distance > cutoff, {dist}:\n')
@@ -303,7 +303,7 @@ def load_barseq_data(manifest, notebook_dir=None, experiment=None, barcode_file=
                     #     the case for all rows in df having the same reverse barcode was covered in the previous setp (merging forward BCs)
                     
                     # Check rev comp against forw BC
-                    rc_rev_bc = [fitness.rev_complement(s) for s in rev_bc_list]
+                    rc_rev_bc = [fitness_utils.rev_complement(s) for s in rev_bc_list]
                     if len(np.unique(rev_bc_list)) > 1:
                         merge = []
                         metric_list = []
@@ -311,10 +311,10 @@ def load_barseq_data(manifest, notebook_dir=None, experiment=None, barcode_file=
                         for rc_bc in rc_rev_bc:
                             len_diff = np.abs(len(for_bc) - len(rc_bc))
                             if len_diff == 0:
-                                dist = fitness.hamming_distance(for_bc, rc_bc)
+                                dist = fitness_utils.hamming_distance(for_bc, rc_bc)
                                 dist_metric = 'Hamming'
                             else:
-                                dist = fitness.levenshtein_distance(for_bc, rc_bc)
+                                dist = fitness_utils.levenshtein_distance(for_bc, rc_bc)
                                 dist_metric = 'Levenshtein'
 
                             merge.append(dist - len_diff <= merge_dist_cutoff)
@@ -328,7 +328,7 @@ def load_barseq_data(manifest, notebook_dir=None, experiment=None, barcode_file=
                     if np.any(merge):
                         merge_df = df[merge]
                         new_row = merge_df.iloc[0].copy()
-                        for w in fitness.wells():
+                        for w in fitness_utils.wells():
                             new_row[w] = merge_df[w].sum()
                         new_row['total_counts'] = merge_df['total_counts'].sum()
                         new_row['reverse_BC'] = ''
@@ -474,7 +474,7 @@ def trim_and_sum_barcodes(
     print(f"Calculating read fraction for each barcode in each sample")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        for w in fitness.wells():
+        for w in fitness_utils.wells():
             label = 'fraction_' + w
             barcode_frame[label] = barcode_frame[w] / barcode_frame[w].sum()
 
@@ -485,9 +485,9 @@ def trim_and_sum_barcodes(
 
     print(f"Calculating read totals and fractions for each barcode in samples from first time point")
     total = []
-    for _, row in barcode_frame[fitness.wells_by_column()[:24]].iterrows():
+    for _, row in barcode_frame[fitness_utils.wells_by_column()[:24]].iterrows():
         counts = 0
-        for t in fitness.wells_by_column()[:24]:
+        for t in fitness_utils.wells_by_column()[:24]:
             counts += row[t]
         total.append(counts)
 
@@ -497,7 +497,7 @@ def trim_and_sum_barcodes(
         barcode_frame['total_counts_plate_2'].sum()
     )
 
-    fraction_list = ["fraction_" + w for w in fitness.wells_by_column()[:24]]
+    fraction_list = ["fraction_" + w for w in fitness_utils.wells_by_column()[:24]]
     barcode_frame["fraction_p2_std"] = barcode_frame[fraction_list].std(axis=1)
 
     # ----------------------------
@@ -1007,7 +1007,7 @@ def display_viewable_plate_layouts(manifest, data):
     col_contents = []
     antibiotic = manifest.get('antibiotic')
     plasmid = manifest.get('plasmid')
-    for row in fitness.rows():
+    for row in fitness_utils.rows():
         sel = [row in w for w in sample_plate_map.well]
         df = sample_plate_map[sel]
         st_list = []
@@ -1033,7 +1033,7 @@ def display_viewable_plate_layouts(manifest, data):
             
             st_list.append(st)
         col_contents.append(st_list)
-    plate_layout_frame_2 = pd.DataFrame({r:cont for r, cont in zip(fitness.rows(), col_contents)}, 
+    plate_layout_frame_2 = pd.DataFrame({r:cont for r, cont in zip(fitness_utils.rows(), col_contents)}, 
                                         index=[i+1 for i in range(12)])
     plate_layout_frame_2 = plate_layout_frame_2.transpose()
 
@@ -1097,7 +1097,7 @@ def set_sample_plate_map(
 
     sample_plate_map = manifest.get('sample_plate_map', None)
     if sample_plate_map is None:
-        sample_plate_map, anti_out = fitness.get_sample_plate_map(
+        sample_plate_map, anti_out = fitness_utils.get_sample_plate_map(
             growth_plate_layout_file=growth_plate_layout_file,
             inducer_list=ligand_list,
             inducer_conc_lists=inducer_conc_lists,
@@ -1448,7 +1448,7 @@ def stan_barcode_slope_index(manifest,
                     print(f'y: {y}')
                     print(f's: {s}')
                     
-                    popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
+                    popt, pcov = curve_fit(fitness_utils.line_funct, x, y, sigma=s, absolute_sigma=True)
                     print(f'popt: {popt}')
                     log_slope = popt[0]
                     log_intercept = popt[1] - log_starting_ratio
@@ -1597,7 +1597,7 @@ def plot_count_ratio_per_sample(manifest,
     if spike_in_initial is None:
         spike_in_initial = get_default_initial(manifest)
         
-    spike_in = fitness.get_spike_in_name_from_inital(manifest.get('plasmid'), spike_in_initial)
+    spike_in = fitness_utils.get_spike_in_name_from_inital(manifest.get('plasmid'), spike_in_initial)
     
     barcode_frame = data
     spike_in_row = barcode_frame[barcode_frame.RS_name==spike_in].iloc[0]
@@ -1819,7 +1819,7 @@ def plot_or_fit_barcode_ratios(
                     slope_list.append(row[f'fit_slope_S{samp}_{initial}'])
                 else:
                     if len(x) > 1:
-                        popt, pcov = curve_fit(fitness.line_funct, x, y, sigma=s, absolute_sigma=True)
+                        popt, pcov = curve_fit(fitness_utils.line_funct, x, y, sigma=s, absolute_sigma=True)
                         f_est_list.append(popt[0])
                         f_err_list.append(np.sqrt(pcov[0, 0]))
                     else:
@@ -1873,9 +1873,9 @@ def plot_or_fit_barcode_ratios(
                 if not plots_not_fits:
                     if len(x) > 1:
                         fit_funct = (
-                            fitness.line_funct
+                            fitness_utils.line_funct
                             if early_slope or mid_slope
-                            else lambda xp, mp, bp: fitness.bi_linear_funct(
+                            else lambda xp, mp, bp: fitness_utils.bi_linear_funct(
                                 xp - 2, mp, bp, slope_0, alpha=bi_linear_alpha
                             )
                         )
@@ -1946,7 +1946,7 @@ def add_fitness_from_slopes(
 
     # spike_in_fitness_dict:
     #   {tet_conc -> {spike_in_name -> float or (interp_fn, interp_err_fn)}}
-    spike_in_fitness_dict = fitness.fitness_calibration_dict(
+    spike_in_fitness_dict = fitness_utils.fitness_calibration_dict(
         plasmid=plasmid,
         barseq_directory=manifest.get('notebook_dir'),
         is_on_aws=is_on_aws,
@@ -1959,7 +1959,7 @@ def add_fitness_from_slopes(
     if initial is None:
         initial = get_default_initial(manifest)
 
-    spike_in = fitness.get_spike_in_name_from_inital(plasmid, initial)
+    spike_in = fitness_utils.get_spike_in_name_from_inital(plasmid, initial)
 
     for samp in sample_list:
         df = sample_plate_map[sample_plate_map["sample_id"] == samp]
@@ -2160,7 +2160,7 @@ def set_fit_fitness_difference_params(
 
     else:
         params = [
-            fitness.fit_fitness_difference_params(
+            fitness_utils.fit_fitness_difference_params(
                 plasmid=plasmid,
                 tet_conc=x
             )
@@ -2319,7 +2319,7 @@ def stan_fitness_difference_curves(
     quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
     quantile_dim = len(quantile_list)
 
-    log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+    log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness_utils.log_g_limits(plasmid=plasmid)
     print(f'log_g_limits: {log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf}')
 
     rng = np.random.default_rng()
@@ -2824,7 +2824,7 @@ def merge_barcodes(
 
     new_row = barcode_frame.loc[big_bc_index].copy()
 
-    for w in fitness.wells():
+    for w in fitness_utils.wells():
         new_row[w] = merge_df[w].sum()
 
     new_row['total_counts'] = merge_df['total_counts'].sum()
@@ -2925,14 +2925,14 @@ def plot_read_counts(manifest, data, save_plots=False, pdf_file=None, vmin=0):
 
     BC_totals = []
     index_list = []
-    for i, w in enumerate(fitness.wells()):
+    for i, w in enumerate(fitness_utils.wells()):
         BC_totals.append(barcode_frame[w].sum())
         index_list.append(i+1)
     
     BC_total_arr = []
-    for r in fitness.rows():
+    for r in fitness_utils.rows():
         subarr = []
-        for c in fitness.columns():
+        for c in fitness_utils.columns():
             subarr.append(barcode_frame[r + str(c)].sum())
         BC_total_arr.append(subarr)
 
@@ -2964,7 +2964,7 @@ def plot_read_counts(manifest, data, save_plots=False, pdf_file=None, vmin=0):
         warnings.simplefilter("ignore")
         ax.set_xticklabels([i+1 for i in range(12)], size=16);
         ax.set_xticks([i for i in range(12)]);
-        ax.set_yticklabels([ r + " " for r in fitness.rows()[::-1] ], size=16);
+        ax.set_yticklabels([ r + " " for r in fitness_utils.rows()[::-1] ], size=16);
         ax.set_yticks([i for i in range(8)]);
     ax.set_ylim(-0.5, 7.5);
     ax.tick_params(length=0);
@@ -3014,7 +3014,7 @@ def plot_read_fractions(manifest, data,
             y = []
             x = []
             c = []
-            for i, w in enumerate(fitness.wells_by_column()):
+            for i, w in enumerate(fitness_utils.wells_by_column()):
                 col = int(w[1:])
                 df = sample_plate_map
                 df = df[df.well==w]
@@ -3077,7 +3077,7 @@ def plot_stdev(manifest, data,
         
     f_x = f_data['fraction_total_p2']
     f_x_min = f_data[f_data['fraction_total_p2']>0]['fraction_total_p2'].min()
-    wells_to_plot = fitness.wells_by_column()[:24]
+    wells_to_plot = fitness_utils.wells_by_column()[:24]
     if reverse_well_order:
         wells_to_plot = wells_to_plot[::-1]
     per_well_log_std = []
@@ -3236,7 +3236,7 @@ def plot_fitness_curves(manifest, data,
         barcode_frame = pd.concat([barcode_frame, RS_count_frame])
         
     if real_fitness_units:
-        fit_scale = fitness.fitness_scale()
+        fit_scale = fitness_utils.fitness_scale()
         fit_units = '1/h'
     else:
         fit_scale = 1
@@ -3886,7 +3886,7 @@ def calibrate_fitness_difference_params(manifest, data,
                                         show_progress=True):
     if spike_in_initial is None:
         spike_in_initial = get_default_initial(manifest)
-    spike_in = fitness.get_spike_in_name_from_inital(manifest.get('plasmid'), spike_in_initial)
+    spike_in = fitness_utils.get_spike_in_name_from_inital(manifest.get('plasmid'), spike_in_initial)
     print(f'Calibrating with counts normalized to {spike_in}, initial: {spike_in_initial}')
     plasmid = manifest.get('plasmid')
     
@@ -4217,7 +4217,7 @@ def calibrate_fitness_difference_params(manifest, data,
                                                 g = calibration_row[f'log_g_{int(lig_conc)}_{lig}']
                                                 gerr = np.sqrt(calibration_row[f'log_g_{int(lig_conc)}_{lig}_err']**2 + min_xerr**2)
                                                 
-                                            gerr = fitness.log_plot_errorbars(log_mu=g, log_sig=gerr)
+                                            gerr = fitness_utils.log_plot_errorbars(log_mu=g, log_sig=gerr)
                                             g = 10**g
                                             
                                             x.append(g)
@@ -4708,12 +4708,12 @@ def plot_counts_vs_time(self, plot_range,
     
     with_tet = []
     plate_list = []
-    for r in fitness.rows():
-        for c in fitness.columns():
+    for r in fitness_utils.rows():
+        for c in fitness_utils.columns():
             plate_list.append( int(2+(c-1)/3) )
-            with_tet.append(r in fitness.rows()[1::2])
+            with_tet.append(r in fitness_utils.rows()[1::2])
 
-    sample_plate_map = pd.DataFrame({"well": fitness.wells()})
+    sample_plate_map = pd.DataFrame({"well": fitness_utils.wells()})
     sample_plate_map['with_tet'] = with_tet
     sample_plate_map[inducer] = inducer_conc_list_in_plate
     sample_plate_map['growth_plate'] = plate_list
@@ -4876,10 +4876,10 @@ def plot_hill_params(manifest, data, input_frames, in_labels=None, in_colors=Non
         in_labels = [""] * len (input_frames)
     
     if in_colors is None:
-        in_colors = [fitness.gray_out("indigo")] * len (input_frames)
+        in_colors = [fitness_utils.gray_out("indigo")] * len (input_frames)
         
     if everything_color is None:
-        everything_color = fitness.gray_out("xkcd:tea green", s_factor=0.7, v_factor=0.8)
+        everything_color = fitness_utils.gray_out("xkcd:tea green", s_factor=0.7, v_factor=0.8)
         
     plt.rcParams["figure.figsize"] = [2*box_size, 2*box_size]
     fig, axs_grid = plt.subplots(2, 2)
@@ -4919,10 +4919,10 @@ def plot_hill_params(manifest, data, input_frames, in_labels=None, in_colors=Non
             
             yerr = err_y
             xerr = err_x
-            xerr = fitness.log_plot_errorbars(params_x, xerr)
+            xerr = fitness_utils.log_plot_errorbars(params_x, xerr)
             x = 10**params_x
             if plot_g0_vs_ginf or (ax is not axs[-1]):
-                yerr = fitness.log_plot_errorbars(params_y, yerr)
+                yerr = fitness_utils.log_plot_errorbars(params_y, yerr)
                 y = 10**params_y
             else:
                 y = params_y
@@ -5069,7 +5069,7 @@ def plot_hill_param_density_scatter(manifest, data, plot_frame=None, log_z=True,
     if plot_frame is None:
         plot_frame = data
     
-    cmap = fitness.density_scatter_cmap()
+    cmap = fitness_utils.density_scatter_cmap()
     cmap = cmocean.tools.crop_by_percent(cmap, 10, which='min', N=None)
 
     bins = 51
@@ -5113,7 +5113,7 @@ def plot_hill_param_density_scatter(manifest, data, plot_frame=None, log_z=True,
         params_x = np.array(params_x[sel])
         params_y = np.array(params_y[sel])
 
-        hist_ret = fitness.density_scatter_plot(params_x, params_y, ax=ax, sort=True, bins=bins, log_y=log_y,
+        hist_ret = fitness_utils.density_scatter_plot(params_x, params_y, ax=ax, sort=True, bins=bins, log_y=log_y,
                                                 cmap=cmap, z_cutoff=8, alpha=0.5, rasterized=True)
         if ax==axs[1]:
             cbar = fig.colorbar(hist_ret[1], cax=cb_ax)#, ticks=[])
@@ -5328,7 +5328,7 @@ def bs_frame_stan_data(
             ]
         )
 
-        log_g_min, log_g_max, _, _ = fitness.log_g_limits(plasmid=plasmid)
+        log_g_min, log_g_max, _, _ = fitness_utils.log_g_limits(plasmid=plasmid)
         stan_data["log_g_min"] = log_g_min
         stan_data["log_g_max"] = log_g_max
 
@@ -5452,7 +5452,7 @@ def bs_frame_stan_data(
             ]
         )
 
-        log_g_min, log_g_max, _, _ = fitness.log_g_limits(plasmid=plasmid)
+        log_g_min, log_g_max, _, _ = fitness_utils.log_g_limits(plasmid=plasmid)
         stan_data["log_g_min"] = log_g_min
         stan_data["log_g_max"] = log_g_max
 
@@ -5586,7 +5586,7 @@ def bs_frame_stan_data_(manifest, data, st_row,
         fitness_n_std = np.array([fit_fitness_difference_params[init][c]['perr'][2] for c, init in zip(anti_conc_list, init_list)])
         stan_data['fitness_n_std'] = fitness_n_std
         
-        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=self.plasmid)
+        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness_utils.log_g_limits(plasmid=self.plasmid)
         stan_data['log_g_min'] = log_g_min
         stan_data['log_g_max'] = log_g_max
         
@@ -5665,7 +5665,7 @@ def bs_frame_stan_data_(manifest, data, st_row,
         fitness_n_std = np.array([fit_fitness_difference_params[init][c]['perr'][3] for c, init in zip(anti_conc_list, init_list)])
         stan_data['fitness_n_std'] = fitness_n_std
         
-        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=manifest.get('plasmid'))
+        log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness_utils.log_g_limits(plasmid=manifest.get('plasmid'))
         stan_data['log_g_min'] = log_g_min
         stan_data['log_g_max'] = log_g_max
         
@@ -5982,11 +5982,11 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                   ramr_resid_frame=None,
                   ):
     
-    log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+    log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness_utils.log_g_limits(plasmid=plasmid)
     
     antibiotic_conc_list = np.array(antibiotic_conc_list)
     
-    spike_in = fitness.get_spike_in_name_from_inital(plasmid, initial)
+    spike_in = fitness_utils.get_spike_in_name_from_inital(plasmid, initial)
     
     if old_style_columns:
         high_tet = antibiotic_conc_list[1]
@@ -6031,7 +6031,7 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 x = np.array(df[lig])
                 samples = np.array(df.sample_id)
                 # Correction factor for non-constant ref fitness (i.e., fitness decreases with [ligand]
-                ref_correction = np.array([fitness.ref_fit_correction(z, plasmid, ligand=lig, spike_in=spike_in) for z in x])
+                ref_correction = np.array([fitness_utils.ref_fit_correction(z, plasmid, ligand=lig, spike_in=spike_in) for z in x])
                 y = np.array([st_row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
                 raw_fitness = y.copy()
                 s = np.array([st_row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
