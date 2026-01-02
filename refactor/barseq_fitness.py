@@ -1265,10 +1265,10 @@ def stan_barcode_slope_index(manifest,
     if use_all_samples_model:
         if ref_samples == samples_without_tet:
             # model with all zero-tet samples in reference group
-            sm_file = 'Barcode_fitness_all samples_2.stan'
+            sm_file = 'Barcode_fitness_all_samples_2.stan'
         else:
             # model with some some zero-tet samples in refernce group and some in no_tet group
-            sm_file = 'Barcode_fitness_all samples.stan'
+            sm_file = 'Barcode_fitness_all_samples.stan'
         stan_model = stan_utility.compile_model(sm_file, verbose=verbose)
     else:
         sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
@@ -2263,7 +2263,7 @@ def stan_fitness_difference_curves(
     antibiotic_conc_list = manifest.get('antibiotic_conc_list')
 
     if len(ligand_list) == 1:
-        sm_file = 'Double Hill equation fit.stan'
+        sm_file = 'Double_Hill_equation_fit.stan'
         params_list = [
             'log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
             'low_fitness_high_tet', 'mid_g_high_tet', 'fitness_n_high_tet'
@@ -2273,7 +2273,7 @@ def stan_fitness_difference_curves(
         params_dim = len(params_list)
 
     elif len(ligand_list) == 2:
-        sm_file = 'Double Hill equation fit.two-lig.two-tet.stan'
+        sm_file = 'Double_Hill_equation_fit.two-lig.two-tet.stan'
         params_list = [
             'log_g0',
             'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 'log_ginf_g0_ratio_1',
@@ -2296,10 +2296,10 @@ def stan_fitness_difference_curves(
         ]
         if plasmid == 'pRamR':
             params_list += ['high_fitness', 'mid_g', 'fitness_n']
-            sm_file = 'Double Hill equation fit.three-lig.inverted.stan'
+            sm_file = 'Double_Hill_equation_fit.three-lig.inverted.stan'
         else:
             params_list += ['low_fitness', 'mid_g', 'fitness_n']
-            sm_file = 'Double Hill equation fit.three-lig.stan'
+            sm_file = 'Double_Hill_equation_fit.three-lig.stan'
 
         log_g0_ind = params_list.index('log_g0')
         log_ginf_g0_ind_1 = params_list.index('log_ginf_g0_ratio_1')
@@ -3895,7 +3895,7 @@ def calibrate_fitness_difference_params(manifest, data,
         show_old_fit = False
     
     if plasmid == 'pVER':
-        stan_model_file = "Hill equation fit-zero high.stan"
+        stan_model_file = "Hill_equation_fit-zero_high.stan"
         
         ligand_plot_list = manifest.get('ligand_list')[:1]
         
@@ -3906,7 +3906,7 @@ def calibrate_fitness_difference_params(manifest, data,
             sig = np.random.normal(1, 0.2) * 0.1
             return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
     elif plasmid == 'pRamR':
-        stan_model_file = "Hill equation fit-zero low.stan"
+        stan_model_file = "Hill_equation_fit-zero_low.stan"
         
         ligand_plot_list = manifest.get('ligand_list')
         
@@ -3921,7 +3921,7 @@ def calibrate_fitness_difference_params(manifest, data,
             sig = np.random.normal(1, 0.2) * 0.1
             return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig, high_level=high)
     elif plasmid == 'pCymR':
-        stan_model_file = "Hill equation fit-zero high.stan"
+        stan_model_file = "Hill_equation_fit-zero_high.stan"
         
         ligand_plot_list = manifest.get('ligand_list')
         
@@ -3932,7 +3932,7 @@ def calibrate_fitness_difference_params(manifest, data,
             sig = np.random.normal(1, 0.2) * 0.1
             return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
     elif plasmid == 'Align-TF':
-        stan_model_file = "Hill equation fit-zero high.stan"
+        stan_model_file = "Hill_equation_fit-zero_high.stan"
         
         ligand_plot_list = manifest.get('ligand_list')
         
@@ -3943,7 +3943,7 @@ def calibrate_fitness_difference_params(manifest, data,
             sig = np.random.normal(1, 0.2) * 0.1
             return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
     elif plasmid == 'Align-T7RNAP_1':
-        stan_model_file = "Hill equation fit.basic.stan"
+        stan_model_file = "Hill_equation_fit.basic.stan"
         
         ligand_plot_list = [None]
         
