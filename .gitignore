@@ -1,0 +1,12 @@
+__pycache__
+
+.vs
+
+gsf_ims_fitness.egg-info/**
+notebooks/.ipynb_checkpoints/**
+*pkl
+
+*.bak
+
+venv
+.venv
