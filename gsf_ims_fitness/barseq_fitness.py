@@ -28,9 +28,8 @@ import seaborn as sns
 sns.set()
 
 from . import fitness_utils
-from . import stan_utility
-
-from state_io import save_state_v1
+from . import stan_utils
+from .state_io import save_state_v1
 
 sns.set_style("white")
 sns.set_style("ticks", {'xtick.direction':'in', 'xtick.top':True, 'ytick.direction':'in', 'ytick.right':True})
@@ -1269,10 +1268,10 @@ def stan_barcode_slope_index(manifest,
         else:
             # model with some some zero-tet samples in refernce group and some in no_tet group
             sm_file = 'Barcode_fitness_all_samples.stan'
-        stan_model = stan_utility.compile_model(sm_file, verbose=verbose)
+        stan_model = stan_utils.compile_model(sm_file, verbose=verbose)
     else:
         sm_no_tet_file = 'Barcode_fitness_no_tet.stan'
-        stan_model_no_tet = stan_utility.compile_model(sm_no_tet_file, verbose=verbose)
+        stan_model_no_tet = stan_utils.compile_model(sm_no_tet_file, verbose=verbose)
     
     if use_all_samples_model:
         stan_data = dict(N=len(x0),
@@ -1370,7 +1369,7 @@ def stan_barcode_slope_index(manifest,
                 stan_fit_list.append(stan_fit)
             # Run fits for samples with antibiotic
             sm_with_tet_file = 'Barcode_fitness_with_tet.stan'
-            stan_model_with_tet = stan_utility.compile_model(sm_with_tet_file, verbose=verbose)
+            stan_model_with_tet = stan_utils.compile_model(sm_with_tet_file, verbose=verbose)
             
             fit_result = stan_fit.stan_variable('log_slope')
             slope_0_mu = np.mean(fit_result)
@@ -2314,7 +2313,7 @@ def stan_fitness_difference_curves(
     key_params = params_list
 
     print(f'    Using model from file: {sm_file}')
-    stan_model = stan_utility.compile_model(sm_file)
+    stan_model = stan_utils.compile_model(sm_file)
 
     quantile_list = [0.05, 0.25, 0.5, 0.75, 0.95]
     quantile_dim = len(quantile_list)
@@ -2357,7 +2356,7 @@ def stan_fitness_difference_curves(
             )
 
             if re_stan_on_rhat:
-                rhat_params = stan_utility.check_rhat_by_params(
+                rhat_params = stan_utils.check_rhat_by_params(
                     stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params
                 )
                 if len(rhat_params) > 0:
@@ -2373,7 +2372,7 @@ def stan_fitness_difference_curves(
                         output_dir=stan_output_dir,
                     )
 
-                    rhat_params = stan_utility.check_rhat_by_params(
+                    rhat_params = stan_utils.check_rhat_by_params(
                         stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params
                     )
                     if len(rhat_params) > 0:
@@ -2658,7 +2657,7 @@ def stan_GP_curves(
     params_dim = len(params_list)
 
     print(f'    Using model from file: {stan_GP_model}')
-    stan_model = stan_utility.compile_model(stan_GP_model)
+    stan_model = stan_utils.compile_model(stan_GP_model)
 
     rng = np.random.default_rng()
 
@@ -2693,7 +2692,7 @@ def stan_GP_curves(
             )
 
             if re_stan_on_rhat:
-                rhat = stan_utility.check_rhat_by_params(
+                rhat = stan_utils.check_rhat_by_params(
                     stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params
                 )
                 if rhat:
@@ -3962,7 +3961,7 @@ def calibrate_fitness_difference_params(manifest, data,
         stan_model_file = stan_model_file[:-4] + "robust.stan"
         
     if run_stan_fit:
-        fitness_model = stan_utility.compile_model(stan_model_file)
+        fitness_model = stan_utils.compile_model(stan_model_file)
     
     bs_frame = data
     if RS_list is None:
@@ -4419,7 +4418,7 @@ def calibrate_fitness_difference_params(manifest, data,
                     
                     if re_stan_on_rhat:
                         print(f'    Checking r_hat...')
-                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        rhat_params = stan_utils.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
                         if len(rhat_params) > 0:
                             print(f'    Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
                             stan_fit = fitness_model.sample(data=fit_data, iter_warmup=5000, iter_sampling=5000, inits=stan_init, chains=4, show_progress=show_progress)
