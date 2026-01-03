@@ -1960,8 +1960,8 @@ class BarSeqFitnessFrame:
                 g0_samples = 10**stan_samples_arr[log_g0_ind]
                 hill_on_at_zero_prob = len(g0_samples[g0_samples>wild_type_ginf/4])/len(g0_samples)
                 if len(lig_list) == 1:
-                    g_ratio_samples = stan_samples_arr[log_ginf_g0_ind]
-                    hill_invert_prob = len(g_ratio_samples[g_ratio_samples<0])/len(g_ratio_samples)
+                    g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind]]
+                    hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
                 elif len(ligand_list) == 2:
                     g_ratio_samples = [stan_samples_arr[k] for k in [log_ginf_g0_ind_1, log_ginf_g0_ind_2]]
                     hill_invert_prob = [len(s[s<0])/len(s) for s in g_ratio_samples]
@@ -1978,7 +1978,7 @@ class BarSeqFitnessFrame:
                 hill_on_at_zero_prob = np.nan
                 
                 if len(lig_list) == 1:
-                    hill_invert_prob = np.nan
+                    hill_invert_prob = [np.nan]
                 else:
                     hill_invert_prob = [np.nan]*len(lig_list)
                 
@@ -1994,6 +1994,7 @@ class BarSeqFitnessFrame:
             fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
         else:
             if return_fit:
+                row_to_fit = barcode_frame.loc[refit_indexes[0]]
                 return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
             
             print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
