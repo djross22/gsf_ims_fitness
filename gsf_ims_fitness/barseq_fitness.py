@@ -4389,7 +4389,7 @@ def calibrate_fitness_difference_params(manifest, data,
             
             print(f'Fitting with stan model from: {stan_model_file}')
             if turn_off_cmdstanpy_logger:
-                import logging
+                
                 cmdstanpy_logger = logging.getLogger("cmdstanpy")
                 cmdstanpy_logger.disabled = True
             stan_data = dict(x=x_fit_list, y = y_fit_list, y_err = y_err_list, N=len(x_fit_list))
