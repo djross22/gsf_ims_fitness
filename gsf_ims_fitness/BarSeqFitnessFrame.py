@@ -3913,29 +3913,29 @@ class BarSeqFitnessFrame:
         def cytom_variant_from_rs_name(rs_name):
             if plasmid == 'pVER':
                 if 'RS' in rs_name:
-                    plas = 'pVER-RS-' + rs_name[2:]
+                    var = 'pVER-RS-' + rs_name[2:]
                 elif 'wt' in rs_name:
-                    plas = 'pVER-IPTG-WT'
+                    var = 'pVER-IPTG-WT'
                 else:
-                    plas = rs_name.replace('DT_IPTG_', 'pVER-IPTG-')
+                    var = rs_name.replace('DT_IPTG_', 'pVER-IPTG-')
                 if '(' in rs_name:
-                    plas = rs_name.replace('WT', 'pVER-IPTG-WT')
+                    var = rs_name.replace('WT', 'pVER-IPTG-WT')
                     
             elif plasmid == 'pRamR':
                 if 'RS' in rs_name:
-                    plas = 'RamR-' + rs_name
+                    var = 'RamR-' + rs_name
                 elif 'wt' in rs_name:
-                    plas = 'pRamR-WT'
+                    var = 'pRamR-WT'
                 else:
-                    plas = rs_name
+                    var = rs_name
                     
             elif plasmid == 'pCymR':
                 if 'RS' in rs_name:
-                    plas = 'pCymR-' + rs_name
+                    var = 'pCymR-' + rs_name
                 elif 'wt' in rs_name:
-                    plas = 'pCymR-WT'
+                    var = 'pCymR-WT'
                 else:
-                    plas = rs_name
+                    var = rs_name
                     
             elif plasmid == 'Align-TF':
                 var = f'{rs_name}_mScar'
