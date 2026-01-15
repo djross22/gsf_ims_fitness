@@ -635,7 +635,7 @@ class BarSeqFitnessFrame:
                         ind_conc = row2[ind_id]
                         if ind_conc > 0:
                             st += f'{ind_conc:.2f} {ind_id}, '
-                if self.plasmid == 'Align-T7RNAP_1':
+                elif self.plasmid == 'Align-T7RNAP_1':
                     pass
                 else:
                     lig = row2.ligand
