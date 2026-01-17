@@ -1283,30 +1283,24 @@ class BarSeqFitnessFrame:
         high_tet = antibiotic_conc_list[-1]
         
         if self.plasmid == 'pVER':
-            spike_1 = "AO-B"
-            spike_2 = "AO-E"
-            spike_1_init = 'b'
-            spike_2_init = 'e'
+            spike_in_list = ["AO-B", "AO-E"]
+            spike_in_initial_list = ['b', 'e']
         elif self.plasmid == 'pRamR':
-            spike_1 = "ON-01"
-            spike_2 = "ON-02"
-            spike_1_init = 'sp01'
-            spike_2_init = 'sp02'
+            spike_in_list = ["ON-01", "ON-02"]
+            spike_in_initial_list = ['sp01', 'sp02']
         elif self.plasmid == 'pCymR':
-            spike_1 = 'AO-09'
-            spike_2 = 'RS-20'
-            spike_1_init = 'sp09'
-            spike_2_init = 'rs20'
+            spike_in_list = ["AO-09", "RS-20"]
+            spike_in_initial_list = ['sp09', 'rs20']
         elif self.plasmid == 'Align-TF':
-            spike_1 = 'pRamR-norm-02'
-            spike_2 = 'pLacI-norm-02'
-            spike_1_init = 'ramr'
-            spike_2_init = 'laci'
+            spike_in_list = ["pRamR-norm-02", "pLacI-norm-02"]
+            spike_in_initial_list = ['ramr', 'laci']
         elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
-            spike_1 = 'pRamR-norm-02'
-            spike_2 = 'pNorm-mDHFR-03'
-            spike_1_init = 'nrm02'
-            spike_2_init = 'nrm03'
+            spike_in_list = ["pRamR-norm-02", "pNorm-mDHFR-03"]
+            spike_in_initial_list = ['nrm02', 'nrm03']
+            if self.plasmid == 'Align-Protease':
+                spike_in_list += ["pDRAC27", "pDRAC28"]
+                spike_in_initial_list += ['nrm27', 'nrm28']
+                
         
         if early_slope:
             early_initial = 'ea.'
@@ -1318,17 +1312,16 @@ class BarSeqFitnessFrame:
             early_initial = ''
         
         
-        spike_in_row_dict = {spike_1: barcode_frame[barcode_frame["RS_name"]==spike_1].iloc[0],
-                             spike_2: barcode_frame[barcode_frame["RS_name"]==spike_2].iloc[0]}
+        spike_in_row_dict = {x: barcode_frame[barcode_frame["RS_name"]==x].iloc[0] for x in spike_in_list}
         
-        # These are only used for printing out info: the read counts for the 1st reference sample
-        samp = self.ref_samples[0]
-        sp_1 = spike_in_row_dict[spike_1][["RS_name", f"read_count_S{samp}"]]
-        sp_2 = spike_in_row_dict[spike_2][["RS_name", f"read_count_S{samp}"]]
+        
         if not plots_not_fits:
-            print(f"{spike_1}: {sp_1}")
-            print(f"{spike_2}: {sp_2}")
-            print()
+            # These are only used for printing out info: the read counts for the 1st reference sample
+            samp = self.ref_samples[0]
+            for k, v in spike_in_row_dict.items():
+                sp_str = v[["RS_name", f"read_count_S{samp}"]]
+                print(f"{k}: {sp_str}")
+                print()
         
         # Fit to barcode log(ratios) over time to get slopes ~ fitness
         #     use both spike-ins as reference (separately)
@@ -1351,7 +1344,7 @@ class BarSeqFitnessFrame:
         
         x0 = np.array([2, 3, 4, 5])
         print()
-        for spike_in, initial in zip([spike_1, spike_2], [spike_1_init, spike_2_init]):
+        for spike_in, initial in zip(spike_in_list, spike_in_initial_list):
             no_tet_slope_lists = []
             
             for samp in samples_without_tet:
@@ -1652,12 +1645,44 @@ class BarSeqFitnessFrame:
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
-                    # For this Align-Protease plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
-                    # For this Align-T7RNAP_1 plasmid system, there is not ligand, so :
-                    ligand = 'none'
-                    lig_conc = 0
-                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
-                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
+                    if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC27', 'pDRAC28']):
+                        sal_conc = df.Sal.iloc[0]
+                        print(f'Calculating spike-in fitness for {spike_in}, with {sal_conc} Sal')
+                        df_ref = sample_plate_map
+                        df_ref = df_ref[df_ref.growth_plate==5]
+                        df_ref = df_ref[df_ref.antibiotic_conc==tet_conc]
+                        df_ref = df_ref[df_ref.Sal==sal_conc]
+                        df_ref = df_ref[df_ref.Van<5]
+                        
+                        ref_samples = np.unique(df_ref.sample_id)
+                        ref_initials = ['nrm02', 'nrm03']
+                        if initial.startswith('all.'):
+                            ref_initials = [f'all.{x}' for x in ref_initials]
+                            print(f'    ... using all.')
+                        
+                        spike_in_row = fit_frame[fit_frame.RS_name==spike_in].iloc[0]
+                        
+                        spike_in_mean_list = []
+                        spike_in_std_list = []
+                        for ref_samp in ref_samples:
+                            for ref_init in ref_initials:
+                                mu = spike_in_row[f'fitness_S{ref_samp}_{ref_init}']
+                                sig = spike_in_row[f'fitness_S{ref_samp}_err_{ref_init}']
+                                spike_in_mean_list.append(mu)
+                                spike_in_std_list.append(sig)
+                        weights = 1/np.array(spike_in_std_list)**2
+                        
+                        spike_in_fitness = np.average(spike_in_mean_list, weights=weights)
+                        # For the standard error of the mean, use sqrt(N/2) since the results for the two different ref_initials are not really independent:
+                        spike_in_fitness_err = np.std(spike_in_mean_list)/np.sqrt(len(spike_in_mean_list)/2)
+                        print(f'    Result: {spike_in_fitness:.4f} +- {spike_in_fitness_err:.4f}')
+                    else:
+                        # For this Align-Protease plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
+                        # For this Align-T7RNAP_1 plasmid system, there is not ligand, so :
+                        ligand = 'none'
+                        lig_conc = 0
+                        spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
+                        spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
             
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
