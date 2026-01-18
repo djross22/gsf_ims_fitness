@@ -410,7 +410,8 @@ class BarSeqFitnessFrame:
             
         os.chdir(self.data_directory)
         
-        name_list = [""]*len(barcode_frame)
+        # If there are any virtual normalization variants, the forward_BC gets set to the virtual RS_name:
+        name_list = [x if 'norm' in x.lower() else '' for x in barcode_frame.forward_BC]
         barcode_frame["RS_name"] = name_list
         
         if self.plasmid == 'Align-TF':
