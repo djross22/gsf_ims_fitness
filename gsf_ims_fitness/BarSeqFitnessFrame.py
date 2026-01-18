@@ -3216,7 +3216,7 @@ class BarSeqFitnessFrame:
             elif self.plasmid == 'Align-TF':
                 plot_initials=["ramr", "laci"]
             elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
-                plot_initials=["nrm02", "nrm03"]
+                plot_initials=["nrm00", "nrm03"]
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
