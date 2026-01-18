@@ -55,7 +55,9 @@ class BarSeqFitnessFrame:
                  get_layout_from_file=False,
                  growth_plate_layout_file=None,
                  single_barcode=False,
-                 merge_dist_cutoff=2):
+                 merge_dist_cutoff=2,
+                 virtual_norm_variants=None,
+                 ref_seq_file_path='../reference_sequences.csv'):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
@@ -93,6 +95,49 @@ class BarSeqFitnessFrame:
 
         barcode_frame["for_BC_Score"] = [ for_barcode_score_dict[x] for x in barcode_frame["forward_BC"] ]
         barcode_frame["rev_BC_Score"] = [ rev_barcode_score_dict[x] for x in barcode_frame["reverse_BC"] ]
+        
+        # For Align protease project, add a "virtual" normalization plasmid that is the sum of pDRAC23, 25, 27, and 28
+        if virtual_norm_variants is not None:
+            os.chdir(notebook_dir)
+            ref_seq_frame = pd.read_csv(ref_seq_file_path, skipinitialspace=True)
+                        
+            for norm_name, norm_list in virtual_norm_variants.items():
+                print(f'Making virtual norm variant by combining {norm_list} into {norm_name}')
+                index_list = []
+                for nrm in norm_list:
+                    df_ref = ref_seq_frame
+                    df_ref = df_ref[df_ref.RS_name==nrm]
+                    if len(df_ref)<0:
+                        raise ValueError(f'{nrm} not found in {ref_seq_file_path}')
+                    elif len(df_ref)>1:
+                        raise ValueError(f'Multiple {nrm} entries found in {ref_seq_file_path}')
+                    fwd_bc = df_ref.iloc[0]["forward_lin_tag"]
+                    rev_bc = df_ref.iloc[0]["reverse_lin_tag"]
+                    
+                    df = barcode_frame
+                    df = df[df.forward_BC==fwd_bc]
+                    df = df[df.reverse_BC==rev_bc]
+                    if len(df)<0:
+                        raise ValueError(f'Matching barcodes not found for {nrm}')
+                    elif len(df)>1:
+                        raise ValueError(f'Multiple matching barcodes found for {nrm}')
+                    index_list.append(df.index[0])
+                norm_df = barcode_frame.loc[index_list]
+                
+                sum_columns = list(fitness.wells()) + ['total_counts']
+                norm_row = norm_df[sum_columns].sum()
+                norm_row['forward_BC'] = f'{norm_name}'
+                norm_row['reverse_BC'] = f'{norm_name}'
+                norm_row['possibleChimera'] = False
+                norm_row['parent_geo_mean'] = 0
+                norm_row['for_BC_Score'] = 0
+                norm_row['rev_BC_Score'] = 0
+                norm_row['for_BC_ID'] = barcode_frame.for_BC_ID.max()+1000
+                norm_row['rev_BC_ID'] = barcode_frame.rev_BC_ID.max()+1000
+                
+                new_row_df = pd.DataFrame([norm_row])
+                barcode_frame = pd.concat([new_row_df, barcode_frame], ignore_index=True)
+                print()
         
         # if single_barcode, merge barcodes that result from obvious read errors (differences between forward and reverse reads)
         if single_barcode:
