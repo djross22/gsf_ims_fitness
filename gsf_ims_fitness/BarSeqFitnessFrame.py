@@ -1692,6 +1692,7 @@ class BarSeqFitnessFrame:
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
                     if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC-norm']):
+                        # For the Align-Protease plasmid system, calculate the fitness of the virtual normalization variant (pDRAC-norm), which is the best way to handle the fintess drop-off with Van induction:
                         sal_conc = df.Sal.iloc[0]
                         print(f'Calculating spike-in fitness for {spike_in}, with {sal_conc} Sal')
                         df_ref = sample_plate_map
@@ -1723,8 +1724,8 @@ class BarSeqFitnessFrame:
                         spike_in_fitness_err = np.std(spike_in_mean_list)/np.sqrt(len(spike_in_mean_list)/2)
                         print(f'    Result: {spike_in_fitness:.4f} +- {spike_in_fitness_err:.4f}')
                     else:
-                        # For this Align-Protease plasmid system, the fitness of spike-ins does not decrease with ligand concentration (at least for the ligands tested so far):
-                        # For this Align-T7RNAP_1 plasmid system, there is not ligand, so :
+                        # For the Align-protease system with a real normalization variant, the spike_in_fitness does not depend on the ligand/inducer concentrations:
+                        # And, for this Align-T7RNAP_1 plasmid system, there is no ligand/inducer, so:
                         ligand = 'none'
                         lig_conc = 0
                         spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
