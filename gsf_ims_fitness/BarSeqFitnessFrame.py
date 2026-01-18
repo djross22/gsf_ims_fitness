@@ -1344,8 +1344,8 @@ class BarSeqFitnessFrame:
             spike_in_list = ["pRamR-norm-02", "pNorm-mDHFR-03"]
             spike_in_initial_list = ['nrm02', 'nrm03']
             if self.plasmid == 'Align-Protease':
-                spike_in_list += ["pDRAC27", "pDRAC28", "pDRAC-norm"]
-                spike_in_initial_list += ['nrm27', 'nrm28', 'nrm00']
+                spike_in_list += ["pDRAC-norm"]
+                spike_in_initial_list += ['nrm00']
                 
         
         if early_slope:
@@ -1691,7 +1691,7 @@ class BarSeqFitnessFrame:
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
-                    if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC27', 'pDRAC28']):
+                    if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC-norm']):
                         sal_conc = df.Sal.iloc[0]
                         print(f'Calculating spike-in fitness for {spike_in}, with {sal_conc} Sal')
                         df_ref = sample_plate_map

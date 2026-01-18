@@ -1721,10 +1721,6 @@ def get_spike_in_name_from_inital(plasmid, initial):
         elif initial[-5:] == 'nrm02':
             spike_in = 'pRamR-norm-02'
         
-        elif initial[-5:] == 'nrm27':
-            spike_in = 'pDRAC27'
-        elif initial[-5:] == 'nrm28':
-            spike_in = 'pDRAC28'
         elif initial[-5:] == 'nrm00':
             spike_in = 'pDRAC-norm'
         else:
