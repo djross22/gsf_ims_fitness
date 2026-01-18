@@ -1344,8 +1344,8 @@ class BarSeqFitnessFrame:
             spike_in_list = ["pRamR-norm-02", "pNorm-mDHFR-03"]
             spike_in_initial_list = ['nrm02', 'nrm03']
             if self.plasmid == 'Align-Protease':
-                spike_in_list += ["pDRAC27", "pDRAC28"]
-                spike_in_initial_list += ['nrm27', 'nrm28']
+                spike_in_list += ["pDRAC27", "pDRAC28", "pDRAC-norm"]
+                spike_in_initial_list += ['nrm27', 'nrm28', 'nrm00']
                 
         
         if early_slope:
