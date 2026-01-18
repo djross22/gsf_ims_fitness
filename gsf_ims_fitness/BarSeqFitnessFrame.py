@@ -5386,7 +5386,7 @@ class BarSeqFitnessFrame:
         elif plasmid == 'Align-TF':
             initial = 'laci'
         elif plasmid == 'Align-Protease':
-            initial = 'nrm03'
+            initial = 'nrm00'
         elif plasmid == 'Align-T7RNAP_1':
             initial = 'nrm03'
         
