@@ -57,7 +57,8 @@ class BarSeqFitnessFrame:
                  single_barcode=False,
                  merge_dist_cutoff=2,
                  virtual_norm_variants=None,
-                 ref_seq_file_path='../reference_sequences.csv'):
+                 ref_seq_file_path='../reference_sequences.csv',
+                 cytometry_fits_file_path=None):
                  #inducer_2=None, inducer_conc_list_2=None,
         
         self.notebook_dir = notebook_dir
@@ -321,6 +322,81 @@ class BarSeqFitnessFrame:
         
         self.set_ref_samples(ref_samples)
         
+        if plasmid == 'Align-Protease':
+            # Add protease and DHFR expression info
+            df = self.sample_plate_map
+            df = df[df.growth_plate==5]
+            df = df[df.antibiotic_conc>0]
+            
+            test_sal_conc_list = np.unique(df.Sal)
+            test_van_conc_list = np.unique(df.Van)
+            non_zer_van = test_van_conc_list[test_van_conc_list>0]
+            
+            os.chdir(notebook_dir)
+            cytometry_fits = pd.read_csv(cytometry_fits_file_path, skipinitialspace=True)
+            
+            var = 'pVan-13RFP_Sal-8.5GFP'
+            df_cytom = cytometry_fits
+            df_cytom = df_cytom[df_cytom.variant==var]
+            # Van induces protease
+            df_cytom = df_cytom[df_cytom.ligand=='Van']
+            cytom_row = df_cytom.iloc[0]
+            
+            log_protease_levels = np.log10(fitness.asym_hill_funct_no_zero(non_zer_van, 
+                                                                           10**cytom_row.log_g0, 
+                                                                           10**cytom_row.log_ginf, 
+                                                                           10**cytom_row.log_ec50, 
+                                                                           cytom_row.n, 
+                                                                           cytom_row.asym))
+            self.log_protease_levels = np.array([cytom_row.log_g0] + list(log_protease_levels))
+            
+            # Sample from parameter uncertianties to get uncertainty estimate for log_protease_levels
+            rng = np.random.default_rng(1)
+            num_samples = 1000
+            log_g0 = rng.normal(loc=cytom_row.log_g0, scale=cytom_row.log_g0_err, size=num_samples)
+            log_ginf = rng.normal(loc=cytom_row.log_ginf, scale=cytom_row.log_ginf_err, size=num_samples)
+            log_ec50 = rng.normal(loc=cytom_row.log_ec50, scale=cytom_row.log_ec50_err, size=num_samples)
+            n = rng.normal(loc=cytom_row.n, scale=cytom_row.n_err, size=num_samples)
+            asym = rng.normal(loc=cytom_row.asym, scale=cytom_row.asym_err, size=num_samples)
+
+            # Also allow 5% error in non-zero Van concentrations
+            conc = np.exp(rng.normal(loc=0, scale=np.log(1.05), size=[num_samples, len(non_zer_van)]))*non_zer_van
+
+            log_protease_samples = np.log10(fitness.asym_hill_funct_no_zero(conc.transpose(), 10**log_g0, 10**log_ginf, 10**log_ec50, n, asym))
+            log_protease_samples = np.insert(log_protease_samples, 0, log_g0, axis=0)
+            
+            self.log_protease_err = log_protease_samples.std(axis=1)
+            
+            var = 'pVan-13RFP_Sal-8.5GFP'
+            df_cytom = cytometry_fits
+            df_cytom = df_cytom[df_cytom.variant==var]
+            # Sal induces DHFR
+            df_cytom = df_cytom[df_cytom.ligand=='Sal']
+            cytom_row = df_cytom.iloc[0]
+            
+            log_dhfr_levels = np.log10(fitness.asym_hill_funct_no_zero(test_sal_conc_list, 
+                                                                       10**cytom_row.log_g0, 
+                                                                       10**cytom_row.log_ginf, 
+                                                                       10**cytom_row.log_ec50, 
+                                                                       cytom_row.n, 
+                                                                       cytom_row.asym))
+            self.log_dhfr_levels = log_dhfr_levels
+            
+            # Sample from parameter uncertianties to get uncertainty estimate for log_dhfr_levels
+            rng = np.random.default_rng(2)
+            log_g0 = rng.normal(loc=cytom_row.log_g0, scale=cytom_row.log_g0_err, size=num_samples)
+            log_ginf = rng.normal(loc=cytom_row.log_ginf, scale=cytom_row.log_ginf_err, size=num_samples)
+            log_ec50 = rng.normal(loc=cytom_row.log_ec50, scale=cytom_row.log_ec50_err, size=num_samples)
+            n = rng.normal(loc=cytom_row.n, scale=cytom_row.n_err, size=num_samples)
+            asym = rng.normal(loc=cytom_row.asym, scale=cytom_row.asym_err, size=num_samples)
+
+            # Also allow 5% error in Sal concentrations
+            conc = np.exp(rng.normal(loc=0, scale=np.log(1.05), size=[num_samples, len(test_sal_conc_list)]))*test_sal_conc_list
+
+            log_dhfr_samples = np.log10(fitness.asym_hill_funct_no_zero(conc.transpose(), 10**log_g0, 10**log_ginf, 10**log_ec50, n, asym))
+            
+            self.log_dhfr_err = log_dhfr_samples.std(axis=1)
+            
             
     def find_growth_plate_layout_file(self):
         notebook_dir = self.notebook_dir

@@ -36,8 +36,8 @@ import cmocean
 def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, inducer_conc_lists=None, tet_conc_list=None,
                          plasmid=None):
     print(f'Running get_sample_plate_map() with inducer_conc_lists: {inducer_conc_lists}')
-    print(f'                               and  growth_plate_layout_file: {growth_plate_layout_file}')
-
+    print(f'    and  growth_plate_layout_file: {growth_plate_layout_file}')
+    print()
     """
     This method returns a dataframe that has the growth conditions for each well in the BarSeq output plate.
     The method uses information from the growth_plate_layout_file if that parameter is not None. Otherwise, it uses the other parameters.
@@ -1825,3 +1825,12 @@ def weighted_rms_residual(x, y, yerr=None, xerr=None):
     
     return rms
 
+
+def asym_hill_funct_no_zero(x, low, high, mid, n, asym):
+    # This will throw an error with any x=0.
+    # So, for x=0, just set y=low (outside of this function)
+    logXb = np.log10(mid) + 1/n*np.log10(2**(1/asym) - 1)
+    
+    y = low + (high - low)/(1 + 1/(x**n)*10**(n*logXb))**asym
+        
+    return y
