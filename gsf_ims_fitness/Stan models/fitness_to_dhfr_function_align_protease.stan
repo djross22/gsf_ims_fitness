@@ -52,7 +52,7 @@ transformed data {
 }
 
 parameters {
-  vector[N_sal] log_ec50_prot;      //log10 of the ec50 for the fraction_intact curve vs. protease expression
+  ordered[N_sal] log_ec50_prot;      //log10 of the ec50 for the fraction_intact curve vs. protease expression
   //vector<upper=0>[N_sal] log_fraction_inf;   //log10 of the saturated value for the fraction_intact curve vs. protease expression (at infinite protease)
   real<upper=0> log_fraction_inf;   //log10 of the saturated value for the fraction_intact curve vs. protease expression (at infinite protease)
   vector[N_sal] n_prot;                      //effective cooperativity for the fraction_intact curve vs. protease expression
