@@ -397,6 +397,12 @@ class BarSeqFitnessFrame:
             
             self.log_dhfr_err = log_dhfr_samples.std(axis=1)
             
+            # Hard-coding this here for the Align-Protease project, based on best info as of 2026-01-19
+            self.fit_fitness_difference_params = {'log_dhfr_min': 0.5,
+                                                  'low_fitness': -1.217,
+                                                  'mid_g': 232.43,
+                                                  'fitness_n': 2.08,
+                                                  'fitness_asym': 0.3}
             
     def find_growth_plate_layout_file(self):
         notebook_dir = self.notebook_dir
