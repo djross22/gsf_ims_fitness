@@ -101,7 +101,7 @@ model {
   log_initial_dhfr ~ normal(log_dhfr_max, log_dhfr_sigma);
   
   // Prior on n_prot; <weibull> ~ n_prot_sigma*GammaFunct(1+1/n_prot_alpha)
-  n_prot ~ weibull(n_prot_alpha, n_prot_sigma);
+  n_prot ~ normal(1.25, 0.3);
   
   // Soft lower and upper (zero) bound prior on log_fraction_inf
   target += log1m(erf((log_fraction_min - log_fraction_inf)/log_fraction_sigma));
