@@ -22,7 +22,7 @@ data {
   real log_fraction_min;         // lower bound on log_fraction_inf
   real log_fraction_sigma;       // uncertainty on log_fraction_inf bounds
   
-  real<lower=0> n_prot_alpha;   //prior shape for n_prot
+  real<lower=0> n_prot_mu;   //prior shape for n_prot
   real<lower=0> n_prot_sigma;   //prior scale for n_prot
   
   // fitness calibration parameters:
@@ -100,8 +100,8 @@ model {
   
   log_initial_dhfr ~ normal(log_dhfr_max, log_dhfr_sigma);
   
-  // Prior on n_prot; <weibull> ~ n_prot_sigma*GammaFunct(1+1/n_prot_alpha)
-  n_prot ~ normal(1.25, 0.3);
+  // Prior on n_prot, 
+  n_prot ~ normal(n_prot_mu, n_prot_sigma);
   
   // Soft lower and upper (zero) bound prior on log_fraction_inf
   target += log1m(erf((log_fraction_min - log_fraction_inf)/log_fraction_sigma));
