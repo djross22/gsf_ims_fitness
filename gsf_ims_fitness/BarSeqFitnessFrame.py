@@ -2503,98 +2503,39 @@ class BarSeqFitnessFrame:
         
         if refit_indexes is None:
             print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
-            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
+            fit_list = [ stan_fit_row(row) for (index, row) in barcode_frame.iterrows() ]
         else:
             if return_fit:
                 row_to_fit = barcode_frame.loc[refit_indexes[0]]
-                return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
+                return stan_fit_row(row_to_fit)
             
             print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
             print(f'    selected rows: {refit_indexes}')
             row_list = [barcode_frame.loc[index] for index in refit_indexes]
-            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
-            
-        popt_list = []
-        pcov_list = []
-        residuals_list = []
-        samples_out_list = []
-        quantiles_list = []
-        invert_prob_list = []
-        on_at_zero_prob_list = []
-        index_list = []
+            fit_list = [stan_fit_row(row) for row in row_list]
         
-        for item in fit_list: # iterate over barcodes
-            stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, ind = item
-            
-            popt_list.append(stan_popt)
-            pcov_list.append(stan_pcov)
-            residuals_list.append(stan_resid)
-            samples_out_list.append(stan_samples_out)
-            quantiles_list.append(stan_quantiles)
-            invert_prob_list.append(hill_invert_prob)
-            on_at_zero_prob_list.append(hill_on_at_zero_prob)
-            index_list.append(ind)
-            
-        perr_list = [np.sqrt(np.diagonal(x)) for x in pcov_list]
+        columns_to_add = [x for x in fit_list[0] if x!='stan_index']
         
+        index_list = [x['stan_index'] for x in fit_list]
         if refit_indexes is None:
             if index_list == list(barcode_frame.index):
                 print("index lists match")
             else:
-                print("Warning!! index lists do not match!")
+                raise ValueError("Error after Stan fitting: index lists do not match!")
             
-            for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
-                col_name = param
-                for i, lig in enumerate(ligand_list):
-                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
-                barcode_frame[col_name] = v
-                barcode_frame[f"{col_name}_err"] = err
-                
-            for param, q, samp in zip(quantile_params_list, 
-                                      np.array(quantiles_list).transpose([1, 0, 2]), 
-                                      np.array(samples_out_list).transpose([1, 0, 2])):
-                col_name = param
-                for i, lig in enumerate(ligand_list):
-                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
-                barcode_frame[f"{col_name}_quantiles"] = list(q)
-                barcode_frame[f"{col_name}_samples"] = list(samp)
-                
-            for i, lig in enumerate(ligand_list):
-                barcode_frame[f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
+            for c in columns_to_add:
+                barcode_frame[c] = [x[c] for x in fit_list]
             
-            barcode_frame["sensor_params_cov_all"] = pcov_list
-            barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
-            barcode_frame["sensor_rms_residuals"] = residuals_list
         else:
             if index_list == list(refit_indexes):
                 print("index lists match")
             else:
-                print("Warning!! index lists do not match!")
+                raise ValueError("Error after Stan fitting: index lists do not match!")
             
-            for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
-                col_name = param
-                for i, lig in enumerate(ligand_list):
-                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
-                barcode_frame.loc[index_list, col_name] = v
-                barcode_frame.loc[index_list, f"{col_name}_err"] = err
-                
-            for param, q, samp in zip(quantile_params_list, 
-                                      np.array(quantiles_list).transpose([1, 0, 2]), 
-                                      np.array(samples_out_list).transpose([1, 0, 2])):
-                col_name = param
-                for i, lig in enumerate(ligand_list):
-                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
-                
-                for ind, new_q, new_samp in zip(index_list, list(q), list(samp)):
-                    barcode_frame.at[ind, f"{col_name}_quantiles"] = new_q
-                    barcode_frame.at[ind, f"{col_name}_samples"] = new_samp
-                
-            for i, lig in enumerate(ligand_list):
-                barcode_frame.loc[index_list, f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
-            
-            barcode_frame.loc[index_list, "sensor_params_cov_all"] = pcov_list
-            barcode_frame.loc[index_list, "hill_on_at_zero_prob"] = on_at_zero_prob_list
-            barcode_frame.loc[index_list, "sensor_rms_residuals"] = residuals_list
+            for stan_return in fit_list:
+                ind = stan_return['stan_index']
+                for c in columns_to_add:
+                    barcode_frame.loc[ind, c] = stan_return[c]
         
         self.barcode_frame = barcode_frame
         
