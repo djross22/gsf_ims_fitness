@@ -2261,7 +2261,7 @@ class BarSeqFitnessFrame:
                                        overwrite=False,
                                        refit_indexes=None,
                                        return_fit=False,
-                                       initial=None,
+                                       nrm_initial=None,
                                        re_stan_on_rhat=True,
                                        rhat_cutoff=1.05):
         
@@ -2274,8 +2274,9 @@ class BarSeqFitnessFrame:
         
         fit_fitness_difference_params = self.fit_fitness_difference_params
         
-        if initial is None:
-            initial = self.get_default_initial()
+        # the short-hand identifier (i.e., initial) for the normalization variant to be used in the analysis
+        if nrm_initial is None:
+            nrm_initial = self.get_default_initial()
             
         print(f"Using Stan to convert fitness curves to function curves for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}:")
@@ -2315,8 +2316,44 @@ class BarSeqFitnessFrame:
             per_sample_parameters = ['log_fraction_intact', 'mean_y']
             
             # A 2D array of the samples associated with each of the per_sample_parameters, 
-            #     matched to the stan_model.stan_variable() output:
+            #     matched to the stan_fit.stan_variable() output:
             per_sample_arr = np.array([[n for n in range(3, 13)], [n for n in range(15, 25)]]).transpose()
+            
+            # The column names for the reference fitness used in fitness normalization
+            ref_sample_str_list = [f'fitness_S{n}_{nrm_initial}' for n in self.ref_samples]
+            ref_err_str_list = [f'fitness_S{n}_err_{nrm_initial}' for n in self.ref_samples]
+            
+            # Make a dictionary of the max log-DHFR levels (the level with zero TEV activity for each Sal concentration)
+            df = self.sample_plate_map
+            df = df[df.growth_plate==5]
+            df = df[df.antibiotic_conc>0]
+            sal_conc_list = np.unique(df.Sal)
+            max_log_dhfr_dict = {s:d for s, d in zip(sal_conc_list, self.log_dhfr_levels)}
+            # and for the uncertainty of the log-DHFR levels
+            log_dhfr_err_dict = {s:d for s, d in zip(sal_conc_list, self.log_dhfr_err)}
+            
+            # Make a dictionary here for the parts of the Stan data that are the same for every row
+            #     (e.g., prior parameters, upper and lower bounds, etc.)
+            stan_data_protease_0 = {}|self.fit_fitness_difference_params
+            stan_data_protease_0['log_x'] = self.log_protease_levels
+            
+            stan_data_protease_0['log_prot_min'] = 0
+            stan_data_protease_0['log_prot_max'] = 8
+            stan_data_protease_0['log_prot_sigma'] = 1
+
+            stan_data_protease_0['log_fraction_min'] = -4
+            stan_data_protease_0['log_fraction_sigma'] = 0.3
+
+            stan_data_protease_0['n_prot_mu'] = 1
+            stan_data_protease_0['n_prot_sigma'] = 0.3
+            
+            # Dictionary for the initialization of the parameters for the Stan fit:
+            log_ec50_prot_init = np.array([self.log_protease_levels.mean()-0.5, self.log_protease_levels.mean()+0.5])
+            stan_init = {'log_ec50_prot': log_ec50_prot_init, 
+                         'log_fraction_inf': -1.5,
+                         'n_prot': np.array([0.9, 1.1])
+                         'log_initial_dhfr': self.log_dhfr_levels, 
+                         'sigma': 1.0}
             
         
         print(f'    Using model from file: {sm_file}')
@@ -2337,12 +2374,59 @@ class BarSeqFitnessFrame:
             print(f"{now}, fitting row index: {stan_index}")
 
             try:
-                stan_data = self.bs_frame_stan_data(st_row, initial=initial)
+                #****************************************************
+                # Code to be moved to bs_frame_stan_data() method???
+                #     or is it bettewr to just keep it here?
+                rs_name = st_row.RS_name
+                if 'norm' in rs_name.lower():
+                    return None
                 
-                stan_init = {'log_ec50_prot': self.log_protease_levels.mean(), 
-                             'log_fraction_inf': -1, 
-                             'log_initial_dhfr': self.log_dhfr_levels, 
-                             'sigma': 1.0}
+                for sample_id_list in per_sample_arr.transpose():
+                    sample_str_list = [f'fitness_S{n}_{nrm_initial}' for n in sample_id_list]
+                    err_str_list = [f'fitness_S{n}_err_{nrm_initial}' for n in sample_id_list]
+                    
+                    df = self.sample_plate_map
+                    df = df[df.growth_plate==5]
+                    df = df[[x in sample_id_list for x in df.sample_id]]
+                    df = df.sort_values(by='sample_id')
+                    
+                    sal = df.Sal.iloc[0]
+                    
+                    # y_ref is the average fitness measured in the reference conditions:
+                    y_ref = [st_row[s] for s in ref_sample_str_list]
+                    weights = 1/np.array([st_row[s] for s in ref_err_str_list])**2
+                    y_ref = np.average(y_ref, weights=weights)
+                    yerr_ref = np.std(y_ref)/np.sqrt(len(ref_sample_str_list))
+                    
+                    # y_var is the fitness for the barcoded variant for st_row
+                    y_var = np.array([st_row[s] for s in sample_str_list])
+                    yerr_var = np.array([st_row[s] for s in err_str_list])
+                    
+                    # y is the fitness effect of TMP; this is the data that gets used in the Stan model
+                    y = (y_var - y_ref)/y_ref
+                    yerr = np.sqrt((yerr_var/y_ref)**2 + (y_var*yerr_ref/y_ref**2)**2)
+                    
+                    y_arr.append(y)
+                    yerr_arr.append(yerr)
+                    log_g_max_arr.append(max_log_dhfr_dict[sal])
+                    log_g_sigma_arr.append(log_dhfr_err_dict[sal])
+                    
+                y_arr = np.array(y_arr).transpose()
+                yerr_arr = np.array(yerr_arr).transpose()
+                log_g_max_arr = np.array(log_g_max_arr)
+                log_g_sigma_arr = np.array(log_g_sigma_arr)
+                
+                stan_data = {}|stan_data_protease_0
+                stan_data['y'] = y_arr
+                stan_data['yerr'] = yerr_arr
+                stan_data['log_initial_dhfr_mu'] = log_g_max_arr
+                stan_data['log_initial_dhfr_sigma'] = log_g_sigma_arr
+                
+                stan_data['N_van'] = y_arr.shape[0]
+                stan_data['N_sal'] = y_arr.shape[1]
+                
+                #****************************************************
+                
                 
                 stan_fit = stan_model.sample(data=stan_data, 
                                              iter_sampling=iter_sampling, 
@@ -2376,19 +2460,46 @@ class BarSeqFitnessFrame:
                     samp_shape = stan_samples.shape
                     if len(samp_shape)!=1:
                         raise ValueError(f'Parameters in mean_std_params must be simple real parameters, but {p} samples has shape {samp_shape}.')
-                    
+                    stan_return_dict[p] = stan_samples.mean()
+                    stan_return_dict[f'{p}_err'] = stan_samples.std()
+                
+                for p in per_sample_parameters:
+                    for samp_arr, stan_out_arr in zip(per_sample_arr, stan_fit.stan_variable(p).transpose([1,2,0])):
+                        for samp, stan_samples in zip(samp_arr, stan_out_arr):
+                            column_name = f'{p}_S{samp}'
+                            stan_return_dict[column_name] = stan_samples.mean()
+                            stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                            
+                '''
             
+            # 2D vector/array outputs from the Stan model that get saved as barcode_frame columns for each sample, 
+            #     with a mean and std for each sample:
+            per_sample_parameters = ['log_fraction_intact', 'mean_y']
+            
+            # A 2D array of the samples associated with each of the per_sample_parameters, 
+            #     matched to the stan_fit.stan_variable() output:
+            per_sample_arr = np.array([[n for n in range(3, 13)], [n for n in range(15, 25)]]).transpose()
+                '''
+                
+                
             except Exception as err:
                 for p in mean_std_params:
                     stan_return_dict[p] = np.nan
                     stan_return_dict[f'{p}_err'] = np.nan
+                
+                for p in per_sample_parameters:
+                    for samp_arr, stan_out_arr in zip(per_sample_arr, stan_fit.stan_variable(p).transpose([1,2,0])):
+                        for samp, stan_samples in zip(samp_arr, stan_out_arr):
+                            column_name = f'{p}_S{samp}'
+                            stan_return_dict[column_name] = np.nan
+                            stan_return_dict[f'{column_name}_err'] = np.nan
                 
                 print(f"Error during Stan fitting for index {stan_index}: {err}", sys.exc_info()[0])
                 tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
                 print(tb_str)
             
                 
-            return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, stan_index)
+            return stan_return_dict
         
         if refit_indexes is None:
             print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
@@ -5717,7 +5828,7 @@ class BarSeqFitnessFrame:
         elif plasmid == 'Align-TF':
             initial = 'laci'
         elif plasmid == 'Align-Protease':
-            initial = 'nrm00'
+            initial = 'all.nrm00'
         elif plasmid == 'Align-T7RNAP_1':
             initial = 'nrm03'
         
