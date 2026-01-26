@@ -11,9 +11,9 @@ data {
   array[N_van, N_sal] real y;         // normalized fitness difference with antibiotic (input data)
   array[N_van, N_sal] real yerr;      // estimated error of fitness difference
   
-  vector[N_sal] log_dhfr_max;    // upper bound on log_dhfr, equal to the estimated DHFR level with zero protease
-  real log_dhfr_min;             // lower bound on log_dhfr
-  vector[N_sal] log_dhfr_sigma;  // uncertainty on log_dhfr bounds
+  vector[N_sal] log_initial_dhfr_mu;    // upper bound on log_dhfr, equal to the estimated DHFR level with zero protease
+  real log_dhfr_min;                    // lower bound on log_dhfr
+  vector[N_sal] log_initial_dhfr_sigma;         // uncertainty on log_dhfr bounds
   
   real log_prot_min;             // lower bound on log_ec50_prot
   real log_prot_max;             // upper bound on log_ec50_prot
@@ -98,7 +98,7 @@ model {
   // noise scale, use a prior to keep it from getting too much <> 1
   sigma ~ inv_gamma(3, 6);
   
-  log_initial_dhfr ~ normal(log_dhfr_max, log_dhfr_sigma);
+  log_initial_dhfr ~ normal(log_initial_dhfr_mu, log_initial_dhfr_sigma);
   
   // Prior on n_prot, 
   n_prot ~ normal(n_prot_mu, n_prot_sigma);
