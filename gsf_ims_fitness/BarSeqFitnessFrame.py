@@ -402,7 +402,9 @@ class BarSeqFitnessFrame:
                                                   'low_fitness': -1.217,
                                                   'mid_g': 232.43,
                                                   'fitness_n': 2.08,
-                                                  'fitness_asym': 0.3}
+                                                  'fitness_asym': 0.3,
+                                                  'n_prot_mu': 1.25,
+                                                  'n_prot_sigma': 0.3}
             
     def find_growth_plate_layout_file(self):
         notebook_dir = self.notebook_dir
@@ -2247,6 +2249,248 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle(overwrite=overwrite)
         
+    
+    def stan_fitness_to_function_curves(self,
+                                       adapt_delta=0.9,
+                                       iter_warmup=500,
+                                       iter_sampling=500,
+                                       chains=4,
+                                       stan_output_dir=None,
+                                       show_progress=False,
+                                       auto_save=True,
+                                       overwrite=False,
+                                       refit_indexes=None,
+                                       return_fit=False,
+                                       initial=None,
+                                       re_stan_on_rhat=True,
+                                       rhat_cutoff=1.05):
+        
+        plasmid = self.plasmid
+        if plasmid not in ['Align-Protease']:
+            raise NotImplementedError(f"stan_fitness_to_function_curves() is not yet implemented for plasmid: {plasmid}")
+        
+        cmdstanpy_logger = logging.getLogger("cmdstanpy")
+        cmdstanpy_logger.disabled = True
+        
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
+        if initial is None:
+            initial = self.get_default_initial()
+            
+        print(f"Using Stan to convert fitness curves to function curves for {self.experiment}")
+        print(f"  Using fitness parameters for {plasmid}:")
+        print(f"      {fit_fitness_difference_params}")
+        print("      Method version from 2026-01-20")
+        #os.chdir(self.notebook_dir)
+        
+        barcode_frame = self.barcode_frame
+        
+        if plasmid == 'Align-Protease':
+            sm_file = 'fitness_to_dhfr_function_align_protease.stan'
+            
+            # list of parameters that are checked with rhat convergence test after Stan model fit.
+            # Generally, these are the parameters that will have results saved to the data table.
+            key_params = ['log_ec50_prot', 'log_fraction_inf', 'n_prot', 'log_initial_dhfr', 'sigma',
+                          'log_fraction_intact', 'mean_y']
+            '''
+            Stan parameters:
+              ordered[N_sal] log_ec50_prot;          //log10 of the ec50 for the fraction_intact curve vs. protease expression
+              real<upper=0> log_fraction_inf;        //log10 of the saturated value for the fraction_intact curve vs. protease expression (at infinite protease)
+              ordered[N_sal] n_prot;                 //effective cooperativity for the fraction_intact curve vs. protease expression
+              
+              ordered[N_sal] log_initial_dhfr;       //log10 of DHFR level with zero protease
+              
+              real<lower=0> sigma;                   //scale factor for standard deviation of noise in y
+              
+            Stan transformed parameters:
+              array[N_van] vector[N_sal] log_fraction_intact;   //log10 fraction of intact DHFR
+              array[N_van, N_sal] real mean_y;                  //best fit curve to input data (fitness effect of TMP)
+            '''
+            
+            # Real-valued outputs from the Stan model that get saved as barcode_frame columns for mean and std:
+            mean_std_params = ['log_fraction_inf', 'sigma']
+            
+            # 2D vector/array outputs from the Stan model that get saved as barcode_frame columns for each sample, 
+            #     with a mean and std for each sample:
+            per_sample_parameters = ['log_fraction_intact', 'mean_y']
+            
+            # A 2D array of the samples associated with each of the per_sample_parameters, 
+            #     matched to the stan_model.stan_variable() output:
+            per_sample_arr = np.array([[n for n in range(3, 13)], [n for n in range(15, 25)]]).transpose()
+            
+        
+        print(f'    Using model from file: {sm_file}')
+        stan_model = stan_utility.compile_model(sm_file)
+        
+        rng = np.random.default_rng()
+        def stan_fit_row(st_row, return_fit=False):
+            stan_index = st_row.name
+            
+            # results from this method to be returned as a dictionary, which is initialized here and added to at different parts of the method.
+            # The 'stan_index' entry is used to match the stan_fit results to the correct barcode_frame row.
+            # Other items in the dictionary should correspond to columns that will be added to the barcode_frame containing the fit results.
+            stan_return_dict = {'stan_index':stan_index}
+            
+            
+            print()
+            now = datetime.datetime.now()
+            print(f"{now}, fitting row index: {stan_index}")
+
+            try:
+                stan_data = self.bs_frame_stan_data(st_row, initial=initial)
+                
+                stan_init = {'log_ec50_prot': self.log_protease_levels.mean(), 
+                             'log_fraction_inf': -1, 
+                             'log_initial_dhfr': self.log_dhfr_levels, 
+                             'sigma': 1.0}
+                
+                stan_fit = stan_model.sample(data=stan_data, 
+                                             iter_sampling=iter_sampling, 
+                                             iter_warmup=iter_warmup,
+                                             inits=stan_init, 
+                                             chains=chains, 
+                                             adapt_delta=adapt_delta, 
+                                             show_progress=show_progress, 
+                                             output_dir=stan_output_dir)
+                                             
+                if re_stan_on_rhat:
+                    rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                    if len(rhat_params) > 0:
+                        print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                        stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling*10, iter_warmup=iter_warmup*10,
+                                                     inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
+                                                     output_dir=stan_output_dir)
+                        
+                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        if len(rhat_params) > 0:
+                            print(f'    The following parameters still had r_hat > {rhat_cutoff}: {rhat_params}')
+                        else:
+                            print(f'    All parameters now have r_hat < {rhat_cutoff}')
+                            
+                
+                if return_fit:
+                    return stan_fit
+                
+                for p in mean_std_params:
+                    stan_samples = stan_fit.stan_variable(p)
+                    samp_shape = stan_samples.shape
+                    if len(samp_shape)!=1:
+                        raise ValueError(f'Parameters in mean_std_params must be simple real parameters, but {p} samples has shape {samp_shape}.')
+                    
+            
+            except Exception as err:
+                for p in mean_std_params:
+                    stan_return_dict[p] = np.nan
+                    stan_return_dict[f'{p}_err'] = np.nan
+                
+                print(f"Error during Stan fitting for index {stan_index}: {err}", sys.exc_info()[0])
+                tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
+                print(tb_str)
+            
+                
+            return (stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, stan_index)
+        
+        if refit_indexes is None:
+            print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
+            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in barcode_frame.iterrows() ]
+        else:
+            if return_fit:
+                row_to_fit = barcode_frame.loc[refit_indexes[0]]
+                return stan_fit_row(row_to_fit, refit_indexes[0], ligand_list, return_fit=True)
+            
+            print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
+            print(f'    selected rows: {refit_indexes}')
+            row_list = [barcode_frame.loc[index] for index in refit_indexes]
+            fit_list = [ stan_fit_row(row, index, ligand_list) for (index, row) in zip(refit_indexes, row_list) ]
+            
+        popt_list = []
+        pcov_list = []
+        residuals_list = []
+        samples_out_list = []
+        quantiles_list = []
+        invert_prob_list = []
+        on_at_zero_prob_list = []
+        index_list = []
+        
+        for item in fit_list: # iterate over barcodes
+            stan_popt, stan_pcov, stan_resid, stan_samples_out, stan_quantiles, hill_invert_prob, hill_on_at_zero_prob, ind = item
+            
+            popt_list.append(stan_popt)
+            pcov_list.append(stan_pcov)
+            residuals_list.append(stan_resid)
+            samples_out_list.append(stan_samples_out)
+            quantiles_list.append(stan_quantiles)
+            invert_prob_list.append(hill_invert_prob)
+            on_at_zero_prob_list.append(hill_on_at_zero_prob)
+            index_list.append(ind)
+            
+        perr_list = [np.sqrt(np.diagonal(x)) for x in pcov_list]
+        
+        if refit_indexes is None:
+            if index_list == list(barcode_frame.index):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
+            
+            for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                barcode_frame[col_name] = v
+                barcode_frame[f"{col_name}_err"] = err
+                
+            for param, q, samp in zip(quantile_params_list, 
+                                      np.array(quantiles_list).transpose([1, 0, 2]), 
+                                      np.array(samples_out_list).transpose([1, 0, 2])):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                barcode_frame[f"{col_name}_quantiles"] = list(q)
+                barcode_frame[f"{col_name}_samples"] = list(samp)
+                
+            for i, lig in enumerate(ligand_list):
+                barcode_frame[f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
+            
+            barcode_frame["sensor_params_cov_all"] = pcov_list
+            barcode_frame["hill_on_at_zero_prob"] = on_at_zero_prob_list
+            barcode_frame["sensor_rms_residuals"] = residuals_list
+        else:
+            if index_list == list(refit_indexes):
+                print("index lists match")
+            else:
+                print("Warning!! index lists do not match!")
+            
+            for param, v, err in zip(params_list, np.transpose(popt_list), np.transpose(perr_list)):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                barcode_frame.loc[index_list, col_name] = v
+                barcode_frame.loc[index_list, f"{col_name}_err"] = err
+                
+            for param, q, samp in zip(quantile_params_list, 
+                                      np.array(quantiles_list).transpose([1, 0, 2]), 
+                                      np.array(samples_out_list).transpose([1, 0, 2])):
+                col_name = param
+                for i, lig in enumerate(ligand_list):
+                    col_name = col_name.replace(f"_{i+1}", f"_{lig}")
+                
+                for ind, new_q, new_samp in zip(index_list, list(q), list(samp)):
+                    barcode_frame.at[ind, f"{col_name}_quantiles"] = new_q
+                    barcode_frame.at[ind, f"{col_name}_samples"] = new_samp
+                
+            for i, lig in enumerate(ligand_list):
+                barcode_frame.loc[index_list, f"hill_invert_prob_{lig}"] = np.array(invert_prob_list).transpose()[i]
+            
+            barcode_frame.loc[index_list, "sensor_params_cov_all"] = pcov_list
+            barcode_frame.loc[index_list, "hill_on_at_zero_prob"] = on_at_zero_prob_list
+            barcode_frame.loc[index_list, "sensor_rms_residuals"] = residuals_list
+        
+        self.barcode_frame = barcode_frame
+        
+        if auto_save:
+            self.save_as_pickle(overwrite=overwrite)
+        
+    
     
     def stan_single_fitness_to_function(self,
                                         adapt_delta=0.9,
