@@ -1774,7 +1774,7 @@ class BarSeqFitnessFrame:
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
                 elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
                     if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC-norm']):
-                        # For the Align-Protease plasmid system, calculate the fitness of the virtual normalization variant (pDRAC-norm), which is the best way to handle the fintess drop-off with Van induction:
+                        # For the Align-Protease plasmid system, calculate the fitness of the virtual normalization variant (pDRAC-norm), which is the best way to handle the fitness drop-off with Van induction:
                         sal_conc = df.Sal.iloc[0]
                         df_ref = sample_plate_map
                         df_ref = df_ref[df_ref.growth_plate==5]
@@ -1799,7 +1799,13 @@ class BarSeqFitnessFrame:
                                 spike_in_std_list.append(sig)
                         weights = 1/np.array(spike_in_std_list)**2
                         
+                        # For this case, the spike_in_fitness value is the fitness of the virtual normalization variant, 
+                        #     calculated with TMP, with the matching Sal concentration, and with ~zero Van.
+                        # We actually use an average of values for Van < 5 umol/L and relative to both real normalization variants to get better signal to noise.
+                        # This takes into account the decrease in fitness when Sal concentration is low (i.e., low DHFR substrate), 
+                        #     but normalizes out the fitness decrease from Van induction (which is an artifact of the BCDs used in the plasmid).
                         spike_in_fitness = np.average(spike_in_mean_list, weights=weights)
+                        
                         # For the standard error of the mean, use sqrt(N/2) since the results for the two different ref_initials are not really independent:
                         spike_in_fitness_err = np.std(spike_in_mean_list)/np.sqrt(len(spike_in_mean_list)/2)
                         
