@@ -2281,7 +2281,7 @@ class BarSeqFitnessFrame:
         print(f"Using Stan to convert fitness curves to function curves for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}:")
         print(f"      {fit_fitness_difference_params}")
-        print("      Method version from 2026-01-20")
+        print("      Method version from 2026-01-26")
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
@@ -2310,7 +2310,7 @@ class BarSeqFitnessFrame:
             '''
             
             # Real-valued outputs from the Stan model that get saved as barcode_frame columns for mean and std:
-            mean_std_params = ['log_fraction_inf', 'sigma']
+            mean_std_params = ['log_fraction_inf', 'sigma', 'rms_resid']
             
             # 1D vector outputs from the Stan model that get saved as barcode_frame columns for each non-zero Sal concentration, 
             #     with a mean and std for each sample:
@@ -2496,8 +2496,6 @@ class BarSeqFitnessFrame:
                 for p in per_sal_parameters:
                     stan_out_arr = stan_fit.stan_variable(p)
                     for stan_samples, sal in zip(stan_out_arr.transpose(), sal_conc_list):
-                        if len(stan_samples) != iter_sampling*chains:
-                            print(f'    unexpected result for {p}, {rs_name}')
                         if int(sal) == sal:
                             sal = int(sal)
                         column_name = f'{p}_Sal{sal}'
