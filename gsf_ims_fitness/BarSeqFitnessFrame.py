@@ -24,6 +24,7 @@ from scipy.optimize import curve_fit
 #from scipy import misc
 from scipy import stats
 
+
 #import pystan
 import pickle
 
@@ -396,16 +397,8 @@ class BarSeqFitnessFrame:
             log_dhfr_samples = np.log10(fitness.asym_hill_funct_no_zero(conc.transpose(), 10**log_g0, 10**log_ginf, 10**log_ec50, n, asym))
             
             self.log_dhfr_err = log_dhfr_samples.std(axis=1)
-            
-            # Hard-coding this here for the Align-Protease project, based on best info as of 2026-01-19
-            self.fit_fitness_difference_params = {'log_dhfr_min': 0.5,
-                                                  'low_fitness': -1.217,
-                                                  'mid_g': 232.43,
-                                                  'fitness_n': 2.08,
-                                                  'fitness_asym': 0.3,
-                                                  'n_prot_mu': 1.25,
-                                                  'n_prot_sigma': 0.3}
-            
+        
+    
     def find_growth_plate_layout_file(self):
         notebook_dir = self.notebook_dir
         experiment = self.experiment
@@ -4269,6 +4262,180 @@ class BarSeqFitnessFrame:
             
         return fig_axs_list
     
+    
+    def calibrate_protease_fitness_to_dhfr(self,
+                                           calibration_data_table,
+                                           min_spx_err=0.03,
+                                           spike_in_initial='all.nrm00',
+                                           run_stan_fit=False,
+                                           iter_sampling=1000,
+                                           iter_warmup=1000,
+                                           save_fitness_difference_params=False,
+                                           turn_off_cmdstanpy_logger=True,
+                                           rhat_cutoff=1.05,
+                                           show_progress=False):
+        RS_list = ['pDRAC27', 'pDRAC28']
+        
+        stan_file = 'Asymmetric Hill equation.with_log_xerr.stan'
+        stan_model = stan_utility.compile_model(stan_file)
+        
+        stan_data_0 = {}
+        stan_data_0['g0_mu'] = -1.3
+        stan_data_0['g0_sigma'] = 0.5
+        stan_data_0['log_ec50_mu'] = np.log10(350)
+        stan_data_0['log_ec50_sigma'] = 0.5
+        stan_data_0['hill_n_mu'] = 4
+        stan_data_0['hill_n_sigma'] = 1
+        stan_data_0['asym_mu'] = 0.4
+        stan_data_0['asym_sigma'] = 0.2
+        
+        ref_sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in self.ref_samples]
+        ref_err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in self.ref_samples]
+        
+        # This calibration fit only uses the samples with zero Van, TMP>0, and the two different Sal concentrations
+        sample_id_list = [3, 15]
+        
+        plt.rcParams["figure.figsize"] = [6, 4]
+        fig, ax = plt.subplots()
+        sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in sample_id_list]
+        err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in sample_id_list]
+
+        df = self.sample_plate_map
+        df = df[df.growth_plate==5]
+        df = df[[x in sample_id_list for x in df.sample_id]]
+        df = df.sort_values(by='sample_id')
+
+        tmp = df.antibiotic_conc.iloc[0]
+        ax.set_title(f'Calibration with {spike_in_initial}, {tmp} ug/mL TMP')
+
+        log_x =  self.log_dhfr_levels
+        log_xerr = self.log_dhfr_err
+        
+        log_x_list = []
+        y_list = []
+        yerr_list = []
+        xerr_list = []
+        for rs in ['pDRAC27', 'pDRAC28']:
+            df_rs = self.barcode_frame
+            df_rs = df_rs[df_rs.RS_name==rs]
+            row = df_rs.iloc[0]
+
+            y_ref = [row[s] for s in ref_sample_str_list]
+            weights = 1/np.array([row[s] for s in ref_err_str_list])**2
+            y_ref = np.average(y_ref, weights=weights)
+            yerr_ref = np.std(y_ref)/np.sqrt(len(ref_sample_str_list))
+
+            y_rs = np.array([row[s] for s in sample_str_list])
+            yerr_rs = np.array([row[s] for s in err_str_list])
+
+            y = (y_rs - y_ref)/y_ref
+            yerr = np.sqrt((yerr_rs/y_ref)**2 + (y_rs*yerr_ref/y_ref**2)**2)
+
+            x = 10**log_x
+            xerr = fitness.log_plot_errorbars(log_x, log_xerr)
+            ax.errorbar(x, y, yerr, xerr, fmt='o', label=rs, alpha=0.7, ms=10);
+
+            log_x_list += list(log_x)
+            xerr_list += list(log_xerr)
+            y_list += list(y)
+            yerr_list += list(yerr)
+        
+        x_fit = np.logspace(1, 4.1, 30)
+        
+        x = calibration_data_table.dhfr_expression_ref
+        y = calibration_data_table.fitness_effect
+        yerr = np.sqrt(calibration_data_table.fitness_effect_err**2 + min_spx_err**2)
+        log_xerr = calibration_data_table.log_dhfr_err
+        xerr = fitness.log_plot_errorbars(np.log10(x), log_xerr)
+        
+        ax.errorbar(x, y, yerr, xerr, fmt='o', label='spx data')
+        
+        log_x_list += list(np.log10(x))
+        xerr_list += list(log_xerr)
+        y_list += list(y)
+        yerr_list += list(yerr)
+        
+        log_x_list = np.array(log_x_list)
+        y_list = np.array(y_list)
+        yerr_list = np.array(yerr_list)
+        
+        if run_stan_fit:
+            if turn_off_cmdstanpy_logger:
+                import logging
+                cmdstanpy_logger = logging.getLogger("cmdstanpy")
+                cmdstanpy_logger.disabled = True
+            
+            stan_data = {}|stan_data_0
+            stan_data['N'] = len(log_x_list)
+            stan_data['log_x'] = log_x_list
+            stan_data['log_xerr'] = xerr_list
+            stan_data['y'] = y_list
+            stan_data['yerr'] = yerr_list
+            
+            stan_data['N_out'] = len(x_fit)
+            stan_data['x_out'] = x_fit
+            
+            stan_init = {k.replace('_mu', ''):v for k, v in stan_data.items() if '_mu' in k}
+            
+            print(f'Running protease calibration fit using model from file: {stan_file}')
+            stan_fit = stan_model.sample(data=stan_data, iter_sampling=1000, iter_warmup=1000,
+                                         inits=stan_init, chains=4, adapt_delta=0.95, show_progress=show_progress)
+            
+            # list of parameters that are checked with rhat convergence test after Stan model fit.
+            key_params = ['g0', 'log_ec50', 'hill_n', 'asym', 'sigma']
+            
+            rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+            if len(rhat_params) > 0:
+                print(f'    The following parameters had r_hat > {rhat_cutoff}: {rhat_params}')
+            else:
+                print(f'    All parameters have r_hat < {rhat_cutoff}')
+            
+            y_fit = np.mean(stan_fit.stan_variable('y_out'), axis=0)
+            y_std = np.std(stan_fit.stan_variable('y_out'), axis=0)
+            
+            ax.plot(x_fit, y_fit, '--k', label=f'Stan fit', zorder=100)
+            
+            for z in [1]:
+                ax.fill_between(x_fit, y_fit-z*y_std, y_fit+z*y_std, color='gray', alpha=0.25)
+        
+        ax.legend(loc='upper left', bbox_to_anchor= (1.02, 0.99), ncol=1);
+        ax.set_ylabel('Fitness impact of TMP')
+        ax.set_xlabel('DHFR level');
+        ax.set_xscale('log')
+        
+        if run_stan_fit:
+            # Check priors and posteriors
+            check_params = ['g0', 'log_ec50', 'hill_n', 'asym']
+
+            plt.rcParams["figure.figsize"] = [5,2]
+
+            for p in check_params:
+                prior_mu = stan_data[f'{p}_mu']
+                prior_sig = stan_data[f'{p}_sigma']
+                fig, ax = plt.subplots()
+                fig.suptitle('Prior and posterior check')
+                
+                bins = np.linspace(prior_mu - 3*prior_sig, prior_mu + 3*prior_sig, 40)
+                ax.hist(stan_fit.stan_variable(p), density=True, bins=bins)
+                
+                x = np.linspace(prior_mu - 3*prior_sig, prior_mu + 3*prior_sig, 100)
+                y = stats.norm.pdf(x, prior_mu, scale=prior_sig)
+                ax.plot(x, y, '--k');
+                ax.set_xlabel(f'{p}')
+                ax.set_yscale('log')
+                ax.set_ylabel('density')
+            
+            fitness_difference_params = {}
+            fitness_difference_params['low_fitness'] = np.median(stan_fit.stan_variable('g0'))
+            fitness_difference_params['log_g_min'] = 1
+            fitness_difference_params['log_dhfr_min'] = 1
+            fitness_difference_params['mid_g'] = 10**np.median(stan_fit.stan_variable('log_ec50'))
+            fitness_difference_params['fitness_n'] = np.median(stan_fit.stan_variable('hill_n'))
+            fitness_difference_params['fitness_asym'] =  np.median(stan_fit.stan_variable('asym'))
+            
+            if save_fitness_difference_params:
+                self.fit_fitness_difference_params = fitness_difference_params
+                print(f'Saving fitness calibration parameters: {fitness_difference_params}')
     
     def calibrate_fitness_difference_params(self,
                                             calibration_data_table,
