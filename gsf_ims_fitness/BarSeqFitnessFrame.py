@@ -2367,7 +2367,7 @@ class BarSeqFitnessFrame:
             # The 'stan_index' entry is used to match the stan_fit results to the correct barcode_frame row.
             # Other items in the dictionary should correspond to columns that will be added to the barcode_frame containing the fit results.
             stan_return_dict = {'stan_index':stan_index}
-            
+            stan_return_dict['stan_passed_rhat'] = False
             
             print()
             now = datetime.datetime.now()
@@ -2473,7 +2473,9 @@ class BarSeqFitnessFrame:
                             print(f'    The following parameters still had r_hat > {rhat_cutoff}: {rhat_params}')
                         else:
                             print(f'    All parameters now have r_hat < {rhat_cutoff}')
-                            
+                            stan_return_dict['stan_passed_rhat'] = True
+                    else:
+                        stan_return_dict['stan_passed_rhat'] = True
                 
                 if return_fit:
                     return stan_fit
