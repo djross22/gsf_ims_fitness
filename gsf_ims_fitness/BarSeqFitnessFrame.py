@@ -4345,8 +4345,8 @@ class BarSeqFitnessFrame:
         x_fit = np.logspace(1, 4.1, 30)
         
         x = calibration_data_table.dhfr_expression_ref
-        y = calibration_data_table.fitness_effect
-        yerr = np.sqrt(calibration_data_table.fitness_effect_err**2 + min_spx_err**2)
+        y = calibration_data_table.corrected_fitness_effect
+        yerr = np.sqrt(calibration_data_table.corrected_fitness_effect_err**2 + min_spx_err**2)
         log_xerr = calibration_data_table.log_dhfr_err
         xerr = fitness.log_plot_errorbars(np.log10(x), log_xerr)
         
