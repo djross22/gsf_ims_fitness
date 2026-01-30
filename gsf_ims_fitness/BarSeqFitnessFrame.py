@@ -4267,6 +4267,9 @@ class BarSeqFitnessFrame:
     
     def calibrate_protease_fitness_to_dhfr(self,
                                            calibration_data_table,
+                                           num_add_low_fitness_rs=0, # The number of low-fitness extra data points to add
+                                           manually_add_low_fitness=None, # 2-tuple of mean and std for extra y-value to add manually
+                                           low_fitness_log_xerr=2,
                                            min_spx_err=0.03,
                                            spike_in_initial='all.nrm00',
                                            run_stan_fit=False,
@@ -4313,6 +4316,7 @@ class BarSeqFitnessFrame:
         log_x =  self.log_dhfr_levels
         log_xerr = self.log_dhfr_err
         
+        # For the calibration, start with the data for the two control pDRACs that have mutated (non-cutting) substrates:
         log_x_list = []
         y_list = []
         yerr_list = []
@@ -4342,8 +4346,7 @@ class BarSeqFitnessFrame:
             y_list += list(y)
             yerr_list += list(yerr)
         
-        x_fit = np.logspace(1, 4.1, 30)
-        
+        # Add additional data from calibration_data_table:
         x = calibration_data_table.dhfr_expression_ref
         y = calibration_data_table.corrected_fitness_effect
         yerr = np.sqrt(calibration_data_table.corrected_fitness_effect_err**2 + min_spx_err**2)
@@ -4357,9 +4360,77 @@ class BarSeqFitnessFrame:
         y_list += list(y)
         yerr_list += list(yerr)
         
+        # Append extra data from other samples and RS variants with the lowest fitness values, to make sure the fit doesn't set the baseline too low:
+        if num_add_low_fitness_rs > 0:
+            low_fitness_sample_id_list = [n for n in range(3, 13)]
+            low_fitness_sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in low_fitness_sample_id_list]
+            low_fitness_err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in low_fitness_sample_id_list]
+            df = self.barcode_frame
+            df = df[df.RS_name!='']
+            df = df[['norm' not in x.lower() for x in df.RS_name]]
+            print(f'Adding extra low fitness values from {list(df.RS_name)}')
+            
+            y_low_fit = []
+            yerr_low_fit = []
+            rs_low_fit = []
+            for rs in df.RS_name:
+                df_rs = self.barcode_frame
+                df_rs = df_rs[df_rs.RS_name==rs]
+                row = df_rs.iloc[0]
+
+                y_ref = [row[s] for s in ref_sample_str_list]
+                weights = 1/np.array([row[s] for s in ref_err_str_list])**2
+                y_ref = np.average(y_ref, weights=weights)
+                yerr_ref = np.std(y_ref)/np.sqrt(len(ref_sample_str_list))
+
+                y_rs = np.array([row[s] for s in low_fitness_sample_str_list])
+                yerr_rs = np.array([row[s] for s in low_fitness_err_str_list])
+
+                y = (y_rs - y_ref)/y_ref
+                yerr = np.sqrt((yerr_rs/y_ref)**2 + (y_rs*yerr_ref/y_ref**2)**2)
+                
+                y_low_fit += list(y)
+                yerr_low_fit += list(yerr)
+                rs_low_fit += [rs]*len(y)
+            
+            if manually_add_low_fitness is not None:
+                manually_add_low_fitness = np.array(manually_add_low_fitness).transpose()
+                y_low_fit += list(manually_add_low_fitness[0])
+                yerr_low_fit += list(manually_add_low_fitness[1])
+                rs_low_fit += ['manually-added']*len(manually_add_low_fitness[0])
+                num_add_low_fitness_rs += len(manually_add_low_fitness[0])
+            
+            df_low_fit = pd.DataFrame({'RS_name': rs_low_fit, 'y':y_low_fit, 'yerr':yerr_low_fit})
+            df_low_fit = df_low_fit.sort_values(by='y')
+            df_low_fit = df_low_fit.iloc[:num_add_low_fitness_rs].copy()
+            df_low_fit['log_x'] = min(log_x_list) - np.log10(2)
+            df_low_fit['log_xerr'] = low_fitness_log_xerr
+            print(f'    ... using low-fitness data from {list(np.unique(df_low_fit.RS_name))}')
+            print(f'    ... with minimum fitness: {min(df_low_fit.y):.4f}')
+            print()
+            
+            log_x = df_low_fit.log_x
+            log_xerr = df_low_fit.log_xerr
+            x = 10**log_x
+            xerr = fitness.log_plot_errorbars(log_x, log_xerr)
+            
+            y = df_low_fit.y
+            yerr = df_low_fit.yerr
+            
+            ax.errorbar(x, y, yerr, xerr, fmt='o', label='low-fitness data', alpha=0.7)
+            
+            log_x_list += list(log_x)
+            xerr_list += list(log_xerr)
+            y_list += list(y)
+            yerr_list += list(yerr)
+        
+        
         log_x_list = np.array(log_x_list)
+        xerr_list = np.array(xerr_list)
         y_list = np.array(y_list)
         yerr_list = np.array(yerr_list)
+        
+        x_fit = np.logspace(1, 4.1, 30)
         
         if run_stan_fit:
             if turn_off_cmdstanpy_logger:
@@ -4429,8 +4500,7 @@ class BarSeqFitnessFrame:
             
             fitness_difference_params = {}
             fitness_difference_params['low_fitness'] = np.median(stan_fit.stan_variable('g0'))
-            fitness_difference_params['log_g_min'] = 1
-            fitness_difference_params['log_dhfr_min'] = 1
+            fitness_difference_params['log_dhfr_min'] = 0.5
             fitness_difference_params['mid_g'] = 10**np.median(stan_fit.stan_variable('log_ec50'))
             fitness_difference_params['fitness_n'] = np.median(stan_fit.stan_variable('hill_n'))
             fitness_difference_params['fitness_asym'] =  np.median(stan_fit.stan_variable('asym'))
