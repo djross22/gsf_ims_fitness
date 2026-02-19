@@ -4986,7 +4986,6 @@ class BarSeqFitnessFrame:
             
             if return_fit_data:
                 df_ret = pd.DataFrame({'x':x_fit_list, 'y':y_fit_list, 'yerr':y_err_list})
-                fit_data_ret = []
             
             if color_by_ligand_conc is not None:
                 lig_color_conc_list = np.array(lig_color_conc_list)
