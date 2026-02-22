@@ -4744,6 +4744,7 @@ class BarSeqFitnessFrame:
             y_fit_list = []
             y_err_list = []
             identifier_list = []
+            rs_out_list = []
             
             resid_frame_lists = {}
             if len(self.ligand_list) == 0:
@@ -4944,6 +4945,7 @@ class BarSeqFitnessFrame:
                                         y_fit_list += list(y)
                                         y_err_list += list(y_err)
                                         identifier_list += [f'{RS_name} at x = {p:.2e}' for p in x]
+                                        rs_out_list += [RS_name]*len(x)
                                         if color_by_ligand_conc is not None:
                                             lig_color_conc_list += list(lig_color_conc)
                                         
@@ -4985,7 +4987,7 @@ class BarSeqFitnessFrame:
             identifier_list = np.array(identifier_list)
             
             if return_fit_data:
-                df_ret = pd.DataFrame({'x':x_fit_list, 'y':y_fit_list, 'yerr':y_err_list})
+                df_ret = pd.DataFrame({'x':x_fit_list, 'y':y_fit_list, 'yerr':y_err_list, 'calibration_variant':rs_out_list})
             
             if color_by_ligand_conc is not None:
                 lig_color_conc_list = np.array(lig_color_conc_list)
