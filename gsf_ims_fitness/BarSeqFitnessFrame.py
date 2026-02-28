@@ -5768,7 +5768,8 @@ class BarSeqFitnessFrame:
                            is_gp_model=False,
                            min_err=0.05,
                            anti_list=None,
-                           apply_ramr_correction=None):
+                           apply_ramr_correction=None,
+                           use_consolidated_dataset=False):
         
         if initial is None:
             initial = self.get_default_initial()
@@ -5889,33 +5890,54 @@ class BarSeqFitnessFrame:
             init_list = initial
             min_err_list = np.array(min_err)
             
-            # For Align-T7RNAP_1 project, there is no induction.
-            y_arr = []
-            y_err_arr = []
-            # Use the N_lig parameter in the Stan model to represent the 12 different replicate measurements (all at zero ligand)
-            for ref_sample in ref_samples:
-                samp_num = ref_sample + 12 # Pair the samples with and without antibiotic by column in the growth plate
+            if use_consolidated_dataset:
+                init = init_list[0]
+                # For Align-T7RNAP_1 project, there is no induction.
+                y_arr = []
+                y_err_arr = []
+                # The N_lig parameter is 1 here, since we have consolidated count and fitness data from the 12 replicate measurements
+                N_lig = 1
                 
-                samples = [samp_num]
+                y = np.array([st_row[f"fitness_TMP_{init}"]])
+                y_err = np.array([st_row[f"fitness_TMP_err_{init}"]])
                 
-                y = np.array([st_row[f"fitness_S{s}_{init}"] for s, init in zip(samples, init_list)])
-                y_err = np.array([st_row[f"fitness_S{s}_err_{init}"] for s, init in zip(samples, init_list)])
-                
-                y_ref = np.array([st_row[f"fitness_S{ref_sample}_{init}"] for init in init_list])
-                y_ref_err = np.array([st_row[f"fitness_S{ref_sample}_err_{init}"] for init in init_list])
+                y_ref = np.array([st_row[f"fitness_zero_TMP_{init}"]])
+                y_ref_err = np.array([st_row[f"fitness_zero_TMP_err_{init}"]])
                 
                 y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2 + min_err_list**2)
                 y = (y - y_ref)/y_ref
                 
                 y_arr.append(y)
                 y_err_arr.append(y_err)
+            else:
+                # For Align-T7RNAP_1 project, there is no induction.
+                y_arr = []
+                y_err_arr = []
+                # Use the N_lig parameter in the Stan model to represent the 12 different replicate measurements (all at zero ligand)
+                N_lig = 12
+                for ref_sample in ref_samples:
+                    samp_num = ref_sample + 12 # Pair the samples with and without antibiotic by column in the growth plate
+                    
+                    samples = [samp_num]
+                    
+                    y = np.array([st_row[f"fitness_S{s}_{init}"] for s, init in zip(samples, init_list)])
+                    y_err = np.array([st_row[f"fitness_S{s}_err_{init}"] for s, init in zip(samples, init_list)])
+                    
+                    y_ref = np.array([st_row[f"fitness_S{ref_sample}_{init}"] for init in init_list])
+                    y_ref_err = np.array([st_row[f"fitness_S{ref_sample}_err_{init}"] for init in init_list])
+                    
+                    y_err = np.sqrt((y_err/y_ref)**2 + (y*y_ref_err/y_ref**2)**2 + min_err_list**2)
+                    y = (y - y_ref)/y_ref
+                    
+                    y_arr.append(y)
+                    y_err_arr.append(y_err)
             
             y_arr = np.array(y_arr)
             y_err_arr = np.array(y_err_arr)
                 
             stan_data = {'y':y_arr, 
                          'y_err':y_err_arr,
-                         'N_lig':12,
+                         'N_lig':N_lig,
                          'N_antibiotic':1}
             
             fit_fitness_difference_params = self.fit_fitness_difference_params
