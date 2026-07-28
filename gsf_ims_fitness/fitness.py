@@ -299,6 +299,8 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
         print(f'Automatically importing layout info from {growth_plate_layout_file}')
         print()
         
+        if not os.path.isfile(growth_plate_layout_file):
+            print(f'Looked for growth_plate_layout_file in {os.getcwd()}')
         gp_frame = pd.read_csv(growth_plate_layout_file)
         df = gp_frame
         
