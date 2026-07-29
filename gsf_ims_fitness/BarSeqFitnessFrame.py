@@ -5620,55 +5620,6 @@ class BarSeqFitnessFrame:
         now = datetime.datetime.now()
         print(now)
         
-    def cleaned_frame(self, count_threshold=3000, log_ginf_error_cutoff=None, num_good_hill_points=12, exclude_mut_regions=None):
-        frame = self.barcode_frame
-        frame = frame[frame["total_counts"]>count_threshold]
-        
-        #if log_ginf_error_cutoff is None:
-        #    if self.experiment == '2019-10-16_IPTG_Select-DNA-5-plates':
-        #        log_ginf_error_cutoff = 0.7
-        
-        if log_ginf_error_cutoff is not None:
-            if 'log_ginf' in frame.columns.values:
-                frame = frame[frame["log_ginf error"]<log_ginf_error_cutoff]
-            else:
-                frame = frame[frame["log_high_level error"]<log_ginf_error_cutoff]
-        
-        if num_good_hill_points > 0:
-            frame = frame[frame["good_hill_fit_points"]>=num_good_hill_points]
-        
-        if exclude_mut_regions is None:
-            if "pacbio_KAN_mutations" in frame.columns:
-                exclude_mut_regions = ["KAN", "Ori", "tetA", "YFP", "insulator"]
-            elif "KAN_1_confident_seq" in frame.columns:
-                #exclude_mut_regions = ['empty_1', 'empty_4', 'insulator', 'KAN_1', 'KAN_2', 'Ori_1', 'Ori_2', 'tetA_1', 'tetA_2', 'YFP_1', 'YFP_2']
-                exclude_mut_regions = ['insulator', 'tetA_1', 'tetA_2']
-            elif "ramr_promoter_confident_seq" in frame.columns:
-                exclude_mut_regions = ['ramr_promoter']
-            else:
-                exclude_mut_regions = []
-            
-        
-        if len(exclude_mut_regions)>0:
-            print(f'excluding the following regions with mutations: {exclude_mut_regions}')
-        
-        if "pacbio_KAN_mutations" in frame.columns:
-            #This is for the original LacI experiment; we only rejected variants with known mutations in each reagion
-            #    i.e., we kept variants without a sequence assignment for a region ("pacbio_" + reg + "_mutations" == -1 indicates no sequence assignment)
-            for reg in exclude_mut_regions:
-                frame = frame[frame["pacbio_" + reg + "_mutations"]<=0]
-        elif "KAN_1_confident_seq" in frame.columns:
-            #This is for the newer LacI experiment; we want to only keep variants with non-confident sequence assignments OR zero mutations in each of the regions
-            #    If there is not a confident sequence assignment, the sequence is probably correct.
-            for reg in exclude_mut_regions:
-                frame = frame[(~frame[f"{reg}_confident_seq"])|(frame[f'{reg}_mutations']==0)]
-        elif "amp_barcode_confident_seq" in frame.columns:
-            #This is for the RamR experiments
-            for reg in exclude_mut_regions:
-                frame = frame[(~frame[f"{reg}_confident_seq"])|(frame[f'{reg}_mutations']==0)]
-    
-        return frame
-        
     
     def plot_hill_param_density_scatter(self, plot_frame=None, log_z=True, log_g=True, ligand='IPTG', box_size=4):
         if plot_frame is None:
