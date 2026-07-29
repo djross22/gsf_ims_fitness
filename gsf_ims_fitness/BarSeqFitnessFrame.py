@@ -649,8 +649,6 @@ class BarSeqFitnessFrame:
         if spike_in_name is None:
             if self.plasmid == 'pVER':
                 spike_in_name = "AO-B"
-            elif self.plasmid == 'pRamR':
-                spike_in_name = "ON-01"
         
         arg_dict = dict(spike_in_name=spike_in_name,
                         iter_warmup=iter_warmup,
@@ -946,8 +944,6 @@ class BarSeqFitnessFrame:
         if spike_in_name is None:
             if self.plasmid == 'pVER':
                 spike_in_name = "AO-B"
-            elif self.plasmid == 'pRamR':
-                spike_in_name = "ON-01"
         
         spike_in_row = barcode_frame[barcode_frame["RS_name"]==spike_in_name].iloc[0]
         
@@ -1408,8 +1404,6 @@ class BarSeqFitnessFrame:
         if self.plasmid == 'pVER':
             spike_in_list = ["AO-B", "AO-E"]
             spike_in_initial_list = ['b', 'e']
-        elif self.plasmid == 'pRamR':
-            spike_in_list = ["ON-01", "ON-02"]
             spike_in_initial_list = ['sp01', 'sp02']
         elif self.plasmid == 'pCymR':
             spike_in_list = ["AO-09", "RS-20"]
@@ -1749,10 +1743,6 @@ class BarSeqFitnessFrame:
                         lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
-                elif plasmid == 'pRamR':
-                    lig_conc = max(df[self.ligand_list].iloc[0].values)
-                    spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in][0](lig_conc)
-                    spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in][1](lig_conc)
                 elif plasmid == 'pCymR':
                     ligand = df.ligand.iloc[0]
                     if ligand != 'none':
@@ -2023,12 +2013,8 @@ class BarSeqFitnessFrame:
                            'log_ginf_2', 'log_ec50_2', 'sensor_n_2', 'log_ginf_g0_ratio_2', 'spec_2',
                            'log_ginf_3', 'log_ec50_3', 'sensor_n_3', 'log_ginf_g0_ratio_3', 'spec_3',
                            'mean_log_ec50']
-            if plasmid == 'pRamR':
-                params_list += ['high_fitness', 'mid_g', 'fitness_n']
-                sm_file = 'Double Hill equation fit.three-lig.inverted.stan'
-            else:
-                params_list += ['low_fitness', 'mid_g', 'fitness_n']
-                sm_file = 'Double Hill equation fit.three-lig.stan'
+            params_list += ['low_fitness', 'mid_g', 'fitness_n']
+            sm_file = 'Double Hill equation fit.three-lig.stan'
             log_g0_ind = params_list.index('log_g0')
             log_ginf_g0_ind_1 = params_list.index('log_ginf_g0_ratio_1')
             log_ginf_g0_ind_2 = params_list.index('log_ginf_g0_ratio_2')
@@ -2981,14 +2967,9 @@ class BarSeqFitnessFrame:
             x_dim = 6 # number of concentrations for each ligand, including zero
                 
         elif len(ligand_list) == 3:
-            if plasmid == 'pRamR':
-                stan_GP_model = 'gp-hill-nomean-constrained.three-ligand.inverted.stan'
-                params_list = ['high_fitness', 'mid_g', 'fitness_n', 
-                               'log_rho', 'log_alpha', 'log_sigma']
-            else:
-                stan_GP_model = 'gp-hill-nomean-constrained.three-ligand.stan'
-                params_list = ['low_fitness', 'mid_g', 'fitness_n', 
-                               'log_rho', 'log_alpha', 'log_sigma']
+            stan_GP_model = 'gp-hill-nomean-constrained.three-ligand.stan'
+            params_list = ['low_fitness', 'mid_g', 'fitness_n', 
+                           'log_rho', 'log_alpha', 'log_sigma']
             
             g_arr_list = [f'log_g_{i}' for i in [1, 2, 3]]
             g_ratio_arr_list = [f'log_g_ratio_{i}' for i in [1, 2, 3]]
@@ -3688,13 +3669,11 @@ class BarSeqFitnessFrame:
                             plot_initials=None,
                             plot_slope_not_fitness=False,
                             plot_stan_data=[False, False],
-                            plot_w_ramr_correction=[True, False]):
+                            ):
         
         if plot_initials is None:
             if self.plasmid == 'pVER':
                 plot_initials=["b", "e"]
-            elif self.plasmid == 'pRamR':
-                plot_initials=["sp01", "sp02"]
             elif self.plasmid == 'pCymR':
                 plot_initials=["sp09", "rs20"]
             elif self.plasmid == 'Align-TF':
@@ -3753,7 +3732,7 @@ class BarSeqFitnessFrame:
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
             if self.plasmid in ['Align-TF', 'Align-TF-2']:
                 tf = row.transcription_factor
-            for initial, fill_style, plot_st, plot_corr in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data, plot_w_ramr_correction):
+            for initial, fill_style, plot_st in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data):
                 if old_style_plots:
                     for tet, color in zip(antibiotic_conc_list, fit_plot_colors):
                         y = row[f"fitness_{tet}_estimate_{initial}"]*fit_scale
@@ -3775,7 +3754,7 @@ class BarSeqFitnessFrame:
                                 s = [row[f"fit_slope_S{i}_err_{initial}"]*fit_scale for i in df.sample_id]
                             else:
                                 if plot_st and (tet > 0):
-                                    stan_data = self.bs_frame_stan_data(row, initial=initial, apply_ramr_correction=plot_corr)
+                                    stan_data = self.bs_frame_stan_data(row, initial=initial)
                                     if len(antibiotic_conc_list) == 2:
                                         # Single non-zero antibiotic concentration
                                         if 'y_0' in stan_data:
@@ -3909,8 +3888,6 @@ class BarSeqFitnessFrame:
         
         if self.plasmid == 'pVER':
             plot_initials = ['b', 'e']
-        elif self.plasmid == 'pRamR':
-            plot_initials = ['sp01']
         elif self.plasmid == 'pCymR':
             plot_initials = ['sp09', 'rs20']
         
@@ -3921,10 +3898,6 @@ class BarSeqFitnessFrame:
             def fit_funct(x, log_g0, log_ginf, log_ec50, nx, low_fitness, mid_g, fitness_n):
                 return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
                                          low_fitness, 0, mid_g, fitness_n)
-        elif self.plasmid == 'pRamR':
-            def fit_funct(x, log_g0, log_ginf, log_ec50, nx, high_fitness, mid_g, fitness_n):
-                return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
-                                         0, high_fitness, mid_g, fitness_n)
         
 
         fill_alpha = 0.2
@@ -3984,8 +3957,6 @@ class BarSeqFitnessFrame:
         if plot_initials is None:
             if self.plasmid in ['pVER', 'pCymR']:
                 plot_initials = [self.get_default_initial()]
-            elif self.plasmid == 'pRamR':
-                plot_initials = [self.get_default_initial(), f'ea.{self.get_default_initial()}']
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -4052,10 +4023,6 @@ class BarSeqFitnessFrame:
                     def fit_funct(x, log_g0, log_ginf, log_ec50, nx, low_fitness, mid_g, fitness_n):
                         return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
                                                  low_fitness, 0, mid_g, fitness_n)
-                elif self.plasmid == 'pRamR':
-                    def fit_funct(x, log_g0, log_ginf, log_ec50, nx, high_fitness, mid_g, fitness_n):
-                        return double_hill_funct(x, 10**log_g0, 10**log_ginf, 10**log_ec50, nx,
-                                                 0, high_fitness, mid_g, fitness_n)
         
         show_mut_codes = ('mutation_codes' in barcode_frame.columns) and show_mut_codes
         show_variant = ('variant' in barcode_frame.columns) and show_variant
@@ -4200,13 +4167,9 @@ class BarSeqFitnessFrame:
                             x_fit = np.insert(x_fit, 0, 0)
                             
                             # LacI or CymR: fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, low_fitness, mid_g, fitness_n)
-                            # RamR: fit_funct(x, log_g0, log_ginf, log_ec50, log_nx, high_fitness, mid_g, fitness_n)
                             if self.plasmid == 'pVER':
                                 params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
                                                f'low_fitness_{tet}_tet', f'mid_g_{tet}_tet', f'fitness_n_{tet}_tet']
-                            elif self.plasmid == 'pRamR':
-                                params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
-                                               f'high_fitness', f'mid_g', f'fitness_n']
                             elif self.plasmid == 'pCymR':
                                 params_list = ['log_g0', f'log_ginf_{lig}', f'log_ec50_{lig}', f'sensor_n_{lig}', 
                                                f'low_fitness', f'mid_g', f'fitness_n']
@@ -4596,7 +4559,6 @@ class BarSeqFitnessFrame:
                                             wt_cutoff=0,
                                             min_err=0.05, # Either a single value (float), or a dictionary with keys equal to the antibiotic concentrations and values equal to the min_err for that concentration
                                             show_old_fit=True,
-                                            apply_ramr_correction=None,
                                             turn_off_cmdstanpy_logger=True,
                                             robust_error_model=False,
                                             robust_nu=4,
@@ -4632,21 +4594,6 @@ class BarSeqFitnessFrame:
                 n = 1.1 #np.random.normal(1, 0.2) * 3
                 sig = np.random.normal(1, 0.2) * 0.1
                 return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
-        elif plasmid == 'pRamR':
-            stan_model_file = "Hill equation fit-zero low.stan"
-            
-            ligand_plot_list = self.ligand_list
-            
-            if apply_ramr_correction is None:
-                apply_ramr_correction = True
-            
-            def init_fitness_fit(y_data):
-                low = -1.5 #np.mean(y_data[:2])
-                high = -0.5
-                mid = 1000 #np.random.normal(1, 0.2) * 10000
-                n = 1.1 #np.random.normal(1, 0.2) * 3
-                sig = np.random.normal(1, 0.2) * 0.1
-                return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig, high_level=high)
         elif plasmid == 'pCymR':
             stan_model_file = "Hill equation fit-zero high.stan"
             
@@ -4722,14 +4669,6 @@ class BarSeqFitnessFrame:
                 if '(' in rs_name:
                     var = rs_name.replace('WT', 'pVER-IPTG-WT')
                     
-            elif plasmid == 'pRamR':
-                if 'RS' in rs_name:
-                    var = 'RamR-' + rs_name
-                elif 'wt' in rs_name:
-                    var = 'pRamR-WT'
-                else:
-                    var = rs_name
-                    
             elif plasmid == 'pCymR':
                 if 'RS' in rs_name:
                     var = 'pCymR-' + rs_name
@@ -4755,15 +4694,12 @@ class BarSeqFitnessFrame:
         def hill_funct(x, low, high, mid, n):
             return low + (high-low)*( x**n )/( mid**n + x**n )
 
-        if plasmid in ['pVER', 'pCymR', 'Align-TF']:
+        if plasmid in ['pVER', 'pCymR', 'Align-TF', 'Align-TF-2']:
             def fit_funct(x, low, mid, n):
                 return hill_funct(x, low, 0, mid, n)
         elif plasmid in ['Align-T7RNAP_1']:
             def fit_funct(x, low, high, mid, n):
                 return hill_funct(x, low, high, mid, n)
-        elif plasmid == 'pRamR':
-            def fit_funct(x, high, mid, n):
-                return hill_funct(x, 0, high, mid, n)
         
         if include_zero_antibiotic:# and plot_raw_fitness:
             plot_antibiotic_list = self.antibiotic_conc_list
@@ -4781,7 +4717,7 @@ class BarSeqFitnessFrame:
         
         
         if show_old_fit:
-            if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
+            if plasmid in ['Align-TF', 'Align-TF-2', 'Align-T7RNAP_1']:
                 if (type(self.fit_fitness_difference_params) is dict) and (spike_in_initial in self.fit_fitness_difference_params):
                     params = self.fit_fitness_difference_params[spike_in_initial]
                     plot_fit_params = [params[tet]['popt'] + params[tet]['perr'] for tet in plot_antibiotic_list]
@@ -4797,7 +4733,7 @@ class BarSeqFitnessFrame:
         else:
             plot_fit_params = [None]*len(axs)
         
-        if plasmid in ['Align-TF', 'Align-T7RNAP_1']:
+        if plasmid in ['Align-TF', 'Align-TF-2', 'Align-T7RNAP_1']:
             stan_params_to_save = {}
         else:
             stan_params_to_save = []
@@ -4879,24 +4815,24 @@ class BarSeqFitnessFrame:
                                         lab = None
                                     var_labeled = True
                                     
-                                    if plasmid not in ['Align-TF', 'Align-T7RNAP_1']:
+                                    if plasmid not in ['Align-TF', 'Align-TF-2', 'Align-T7RNAP_1']:
                                         stan_data = self.bs_frame_stan_data(HiSeq_row, 
                                                                             initial=spike_in_initial,
-                                                                            min_err=min_err,
-                                                                            apply_ramr_correction=apply_ramr_correction)
+                                                                            min_err=min_err)
                                         xerr = None
                                     
-                                    if plasmid in ['Align-TF', 'Align-T7RNAP_1']: # Can't use else here.
+                                    if plasmid in ['Align-TF', 'Align-TF-2', 'Align-T7RNAP_1']: # Can't use else here.
                                         plot_df_align = plot_df
                                         plot_df_align = plot_df_align[plot_df_align.antibiotic_conc==tet]
                                         
-                                        if plasmid == 'Align-TF':
+                                        if plasmid in ['Align-TF', 'Align-TF-2']:
                                             # For Align-TF project, measurements at zero ligand and one non-zero ligand per TF
+                                            # For Align-TF-2 project, measurements at zero ligand and multiple non-zero ligand per TF
                                             tf = align_tf_from_ligand(lig)
                                             plot_df_align = plot_df_align[(plot_df_align.transcription_factor==tf)|(plot_df_align.ligand=='none')]
                                         
                                         samples = np.array(plot_df_align['sample_id'])
-                                        if plasmid == 'Align-TF':
+                                        if plasmid in ['Align-TF', 'Align-TF-2']:
                                             sample_ligand_list = np.array(plot_df_align['ligand'])
                                             sample_tf_list = np.array(plot_df_align['transcription_factor'])
                                             ligand_conc_list = np.array(plot_df_align[lig])
@@ -5113,8 +5049,6 @@ class BarSeqFitnessFrame:
                     key_params = ["low_level", "IC_50", "hill_n"]
                 elif plasmid in ['Align-T7RNAP_1']:
                     key_params = ["low_level", "high_level", "IC_50", "hill_n"]
-                elif plasmid == 'pRamR':
-                    key_params = ["high_level", "IC_50", "hill_n"]
                 
                 print(f'Fitting with stan model from: {stan_model_file}')
                 if turn_off_cmdstanpy_logger:
@@ -5228,8 +5162,6 @@ class BarSeqFitnessFrame:
         
         if color_by_ligand_conc is not None:
             ncol = 1
-        elif plasmid == 'pRamR':
-            ncol = int(len(RS_list)*len(lig_list)/40)
         elif plasmid in ['Align-TF', 'Align-T7RNAP_1']:
             ncol = int(np.round(len(RS_list)/12))
         else:
@@ -5840,7 +5772,6 @@ class BarSeqFitnessFrame:
                            is_gp_model=False,
                            min_err=0.05,
                            anti_list=None,
-                           apply_ramr_correction=None,
                            use_consolidated_dataset=False):
         
         if initial is None:
@@ -6045,10 +5976,6 @@ class BarSeqFitnessFrame:
             return stan_data
         
         
-        if self.plasmid == 'pRamR':
-            if apply_ramr_correction is None:
-                apply_ramr_correction = True
-        
         sample_plate_map = self.sample_plate_map
         lig_list = list(np.unique(sample_plate_map.ligand))
         if 'none' in lig_list:
@@ -6072,10 +5999,6 @@ class BarSeqFitnessFrame:
                                    is_gp_model=is_gp_model,
                                    min_err=min_err, 
                                    ref_samples=self.ref_samples,
-                                   apply_ramr_correction=apply_ramr_correction,
-                                   ramr_fitness_correction=ramr_fitness_correction,
-                                   ramr_fitness_correction_params=ramr_fitness_correction_params,
-                                   ramr_resid_frame=ramr_resid_frame,
                                    )
                         
                         
@@ -6132,8 +6055,6 @@ class BarSeqFitnessFrame:
         plasmid = self.plasmid
         if plasmid == 'pVER':
             initial = 'b'
-        elif plasmid == 'pRamR':
-            initial = 'sp01'
         elif plasmid == 'pCymR':
             initial = 'sp09'
         elif plasmid == 'Align-TF':
@@ -6235,7 +6156,7 @@ def init_stan_fit_two_lig_two_tet(stan_data, fit_fitness_difference_params):
                 fitness_n_high_tet=fit_fitness_difference_params[1][2],
                 )
                 
-def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid='pRamR'):
+def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid='pCymR'):
     min_ic = np.log10(min(stan_data['x_1']))
     max_ic = np.log10(max(stan_data['x_1']))
     log_ec50_1 = np.random.uniform(min_ic, max_ic)
@@ -6263,8 +6184,6 @@ def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid
                     mid_g=fit_fitness_difference_params[0][1],
                     fitness_n=fit_fitness_difference_params[0][2],
                     )
-    if plasmid == 'pRamR':
-        ret_dict['high_fitness'] = fit_fitness_difference_params[0][0]
     else:
         ret_dict['low_fitness'] = fit_fitness_difference_params[0][0]
     return ret_dict
@@ -6305,12 +6224,6 @@ def init_stan_GP_fit(fit_fitness_difference_params, single_tet, single_ligand, p
                         mid_g_high_tet=fit_fitness_difference_params[1][1],
                         fitness_n_high_tet=fit_fitness_difference_params[1][2],
                         )
-    elif plasmid == 'pRamR':
-        return dict(sigma=sig, rho=rho, alpha=alpha,
-                    high_fitness=fit_fitness_difference_params[0][0],
-                    mid_g=fit_fitness_difference_params[0][1],
-                    fitness_n=fit_fitness_difference_params[0][2],
-                    )
     elif plasmid == 'pCymR':
         return dict(sigma=sig, rho=rho, alpha=alpha,
                     low_fitness=fit_fitness_difference_params[0][0],
@@ -6328,14 +6241,6 @@ def log_level(fitness_difference, plasmid='pVER'):
         if log_g>4:
             log_g = 4
         return log_g
-    elif plasmid == 'pRamR':
-        log_g = -2.1*fitness_difference/1.5 + 2
-        log_g = log_g*np.random.uniform(0.9,1.1)
-        if log_g<2:
-            log_g = 2
-        if log_g>4.5:
-            log_g = 4.5
-        return log_g
     elif plasmid == 'pCymR':
         log_g = np.log10(200)*(1 + fitness_difference)
         log_g = log_g*np.random.uniform(0.9,1.1)
@@ -6351,10 +6256,6 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                   is_gp_model=False,
                   min_err=0.05,
                   ref_samples=None,
-                  apply_ramr_correction=True,
-                  ramr_fitness_correction=None,
-                  ramr_fitness_correction_params=None,
-                  ramr_resid_frame=None,
                   ):
     
     log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
@@ -6414,35 +6315,6 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                 if plasmid in ['pVER', 'pCymR']:
                     y = (y - y_ref*ref_correction)/(y_ref*ref_correction)
                     s = np.sqrt(s**2 + (s_ref*ref_correction)**2)/(y_ref*ref_correction)
-                if plasmid == 'pRamR':
-                    y = (y - y_ref)/(y_ref*ref_correction)
-                    s = np.sqrt(s**2 + s_ref**2)/(y_ref*ref_correction)
-                    early_fitness = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
-                    
-                    # Ligand effects on fitness make the measurements at the highest concentration less reliable
-                    s[x>=500] *= 2
-                    
-                    if apply_ramr_correction:
-                        # Calibration correction for RamR system
-                        ramr_model = ramr_fitness_correction
-                        if ramr_model is None:
-                            raise Exception('RamR calibration correction model (ramr_fitness_correction) is None')
-                            
-                        params = ramr_fitness_correction_params
-                        if ramr_model is None:
-                            raise Exception('RamR calibration correction parameters (ramr_fitness_correction_params) is None')
-                        
-                        df = df.copy()
-                        df['lig_conc'] = x
-                        df['fitness_effect'] = y
-                        df['ref_fitness'] = [y_ref]*len(x)
-                        df['early_fitness'] = np.array([st_row[f"fitness_S{i}_ea.{initial}"] for i in df.sample_id])
-
-                        X_test = df[params]
-                        X_test = X_test.dropna()
-                        
-                        y_corr = ramr_model.predict(X_test)
-                        y = y - y_corr
                 
                 s = np.sqrt(s**2 + min_err**2)
                 
@@ -6600,9 +6472,6 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              fitness_n_std=fit_fitness_difference_params[0][5],
                              y_ref=y_ref,
                              )
-            if plasmid == 'pRamR':
-                stan_data['high_fitness_mu'] = fit_fitness_difference_params[0][0]
-                stan_data['high_fitness_std'] = fit_fitness_difference_params[0][3]
             else:
                 stan_data['low_fitness_mu'] = fit_fitness_difference_params[0][0]
                 stan_data['low_fitness_std'] = fit_fitness_difference_params[0][3]

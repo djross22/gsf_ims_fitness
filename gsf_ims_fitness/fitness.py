@@ -1233,11 +1233,6 @@ def fitness_scale(plasmid="pVER"):
         # Nominal incubation time: 2h:35m
         #     actual time between plate starts = nominal + 10 minutes = 165 minutes
         scale = np.log(10)/165*60
-    elif plasmid == "pRamR":
-        # 10-fold dilution between plates;
-        # Nominal incubation time: 3h
-        #     actual time between plate starts = nominal + 10 minutes = 190 minutes
-        scale = np.log(10)/190*60
     return scale
             
 def gray_out(color, s_factor=0.5, v_factor=1):
@@ -1379,31 +1374,6 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         for t, d in zip(tet_list, dict_list):
             spike_in_fitness_dict[t] = d
             
-    elif plasmid == 'pRamR':
-        zeo_list = [0, 200]
-        # Fitness interpolating functions are from data with Hamilton programming error (mixed up some of the Tet vs. non-Tet wells). 
-        #     Based on sucessful results (quantitative comparison between BarSeq and cytometry dose-response curves), it doesn't matter. 
-        #     Probably because the always-on controls here express the Zeo resistance at a high level so they have the same growth rate for all Zeo concentrations used.
-        return_directory = os.getcwd()
-        if not is_on_aws:
-            fitness_exp_id = '2023-01-27_three_inducers_OD-test-5-plates'
-            os.chdir(barseq_directory)
-            direct = os.getcwd()
-            while direct[-4:] != 'RamR':
-                os.chdir('..')
-                direct = os.getcwd()
-            os.chdir(fitness_exp_id)
-        
-        fit_files = glob.glob('fitness_vs_ligand_pRamR*.pkl')
-        keys = [x[x.find('ON'):-4] for x in fit_files]
-        values = [pickle.load(open(f, 'rb')) for f in fit_files]
-        os.chdir(return_directory)
-        
-        fitness_dicts = [dict(zip(keys, values)), dict(zip(keys, values))]
-        
-        for t, d in zip(zeo_list, fitness_dicts):
-            spike_in_fitness_dict[t] = d
-    
     elif plasmid == 'Align-TF':
         '''
         tet_list = [0, 0.5, 1, 5]
@@ -1566,9 +1536,6 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
                 params = np.array([-0.7681, 311.1, 1.127, 0.03107, 25.54, 0.04042]) 
             elif tet_conc==20:
                 params = np.array([-0.72246,  13328,  3.2374]) #place-holder values, for testing
-    elif plasmid == 'pRamR':
-        # For RamR, params are: high_fitness, mid_g, fitness_n, high_fitness_err, mid_g_err, fitness_n_err, 
-        params = [-1.604, 1.017e+03, 1.495, 0.02018, 44.55, 0.06434]
     else:
         params = np.array([-7.41526290e-01,  7.75447318e+02,  2.78019804e+00])
         
@@ -1576,9 +1543,7 @@ def fit_fitness_difference_params(plasmid="pVER", tet_conc=20, use_geo_mean=Fals
 
 
 def ref_fit_correction(lig_conc, plasmid, ligand=None, spike_in=None):
-    if plasmid == "pRamR":
-        y = 1 - 0.25*lig_conc/500
-    elif ((plasmid == "pVER") and (ligand == 'ONPF')) or ((plasmid == "pCymR") and (ligand == 'Per-OH')):
+    if ((plasmid == "pVER") and (ligand == 'ONPF')) or ((plasmid == "pCymR") and (ligand == 'Per-OH')):
         fit_dict = fitness_calibration_dict(plasmid=plasmid)
         y_0 = fit_dict[0][spike_in](ligand, 0)[0]
         y_conc = fit_dict[0][spike_in](ligand, lig_conc)[0]
@@ -1606,11 +1571,6 @@ def log_g_limits(plasmid="pVER"):
         log_g_max = 4.7
         log_g_prior_scale = 0.15
         wild_type_ginf = 2.44697108e+04
-    elif plasmid == "pRamR":
-        log_g_min = np.log10(2)
-        log_g_max = 5
-        log_g_prior_scale = 0.15
-        wild_type_ginf = 10**4.67
     elif plasmid == "pCymR":
         log_g_min = np.log10(0.3)
         log_g_max = np.log10(500)
@@ -1717,13 +1677,6 @@ def get_spike_in_name_from_inital(plasmid, initial):
             spike_in = "AO-B"
         elif initial[-1] == 'e':
             spike_in = "AO-E"
-        else:
-            raise ValueError(f'spike-in initial not recognized: {initial}')
-    elif plasmid == 'pRamR':
-        if initial[-4:] == 'sp01':
-            spike_in = "ON-01"
-        elif initial[-4:] == 'sp02':
-            spike_in = "ON-02"
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
     elif plasmid == 'pCymR':
