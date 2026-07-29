@@ -3356,7 +3356,7 @@ class BarSeqFitnessFrame:
             geo_std = np.exp(np.std(np.log(split_count)))
             geo_max = np.exp(np.ptp(np.log(split_count)))
             print(f'Time point {i+1}, geometric stdev: {geo_std:.2f}-fold')
-            print(f'            maximum differnce: {geo_max:.2f}-fold')
+            print(f'            maximum difference: {geo_max:.2f}-fold')
     
         ax.scatter(index_list, r12, c=plot_colors96(), s=50);
         for i in range(13):
