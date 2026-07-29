@@ -358,7 +358,7 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
             ligand_list = []
             ligand_conc = []
         
-        if plasmid == 'Align-TF':
+        if plasmid in ['Align-TF', 'Align-TF-2']:
             tf_list = []
         for bs_w in bs_wells:
             gp_w = growth_plate_well_from_barseq_well(bs_w)
@@ -384,9 +384,12 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
                 ligand_list.append(gp_row.inducerId)
                 ligand_conc.append(gp_row.inducerConcentration)
             
-            if plasmid == 'Align-TF':
+            if plasmid in ['Align-TF', 'Align-TF-2']:
                 tf = gp_row.plasmid
-                tf = tf[:tf.find('-')]
+                if '-' in tf:
+                    tf = tf[:tf.find('-')]
+                elif '_' in tf:
+                    tf = tf[:tf.find('_')]
                 tf_list.append(tf)
             
         sample_plate_map = pd.DataFrame({"well": bs_wells}, dtype='string')
@@ -417,7 +420,7 @@ def get_sample_plate_map(growth_plate_layout_file=None, inducer_list=None, induc
                         conc_list.append(0)
                 sample_plate_map[lig_id] = conc_list
             
-        if plasmid == 'Align-TF':
+        if plasmid in ['Align-TF', 'Align-TF-2']:
             sample_plate_map['transcription_factor'] = tf_list
             
         gp_list = []
@@ -1472,6 +1475,26 @@ def fitness_calibration_dict(plasmid="pVER", barseq_directory=None, is_on_aws=Fa
         for t, d in zip(tmp_list, dict_list):
             spike_in_fitness_dict[t] = d
     
+    elif plasmid == 'Align-TF-2':
+        
+        tmp_list = [0.0, 0.075, 1.5]
+        # Fitness values are assumed to be the same as in Marionette strain (Align-protease), 
+        # TODO: move fitness values for spike-ins to somewhere else (not hard coded)
+        
+        # "pRamR-norm-02", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            return (0.9977, 0.0055)
+        dict_list = [{"pRamR-norm-02":fit_function}]*len(tmp_list)
+        
+        # "pNorm-mDHFR-03", does not depend on [TMP]:
+        def fit_function(lig, conc):
+            return (0.997878, 0.00456)
+        for d in dict_list:
+            d["pNorm-mDHFR-03"] = fit_function
+        
+        for t, d in zip(tmp_list, dict_list):
+            spike_in_fitness_dict[t] = d
+    
     elif plasmid == 'Align-Protease':
         
         tmp_list = [0, 3]
@@ -1717,7 +1740,7 @@ def get_spike_in_name_from_inital(plasmid, initial):
             spike_in = 'pRamR-norm-02'
         else:
             raise ValueError(f'spike-in initial not recognized: {initial}')
-    elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
+    elif plasmid in ['Align-Protease', 'Align-T7RNAP_1', 'Align-TF-2']:
         if initial[-5:] == 'nrm03':
             spike_in = 'pNorm-mDHFR-03'
         elif initial[-5:] == 'nrm02':

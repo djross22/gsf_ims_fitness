@@ -491,7 +491,7 @@ class BarSeqFitnessFrame:
         name_list = [x if 'norm' in x.lower() else '' for x in barcode_frame.forward_BC]
         barcode_frame["RS_name"] = name_list
         
-        if self.plasmid == 'Align-TF':
+        if self.plasmid in ['Align-TF', 'Align-TF-2']:
             tf_list = [""]*len(barcode_frame)
             barcode_frame["transcription_factor"] = tf_list
         
@@ -502,7 +502,7 @@ class BarSeqFitnessFrame:
         else:
             disp_cols = ["RS_name", "forward_BC", "for_BC_ID", "total_counts"]
         
-        if self.plasmid == 'Align-TF':
+        if self.plasmid in ['Align-TF', 'Align-TF-2']:
             disp_cols = ['transcription_factor'] + disp_cols
     
         if ref_seq_frame is not None:
@@ -519,7 +519,7 @@ class BarSeqFitnessFrame:
                     display_frame["RS_name"].iloc[0] = row["RS_name"]
                     barcode_frame.loc[display_frame.index[0], "RS_name"] = row["RS_name"]
                     
-                    if self.plasmid == 'Align-TF':
+                    if self.plasmid in ['Align-TF', 'Align-TF-2']:
                         display_frame["transcription_factor"].iloc[0] = row["transcription_factor"]
                         barcode_frame.loc[display_frame.index[0], "transcription_factor"] = row["transcription_factor"]
                         
@@ -767,7 +767,7 @@ class BarSeqFitnessFrame:
                     
                 st += f'{row2.antibiotic_conc} {antibiotic}'
                 
-                if self.plasmid == 'Align-TF':
+                if self.plasmid in ['Align-TF', 'Align-TF-2']:
                     st += f', TF = {row2.transcription_factor}'
                 
                 st_list.append(st)
@@ -1308,7 +1308,7 @@ class BarSeqFitnessFrame:
             axs = axs.flatten()
             
             plot_list = plot_list_0
-            if (self.plasmid == 'Align-TF') and ('norm' not in row.RS_name):
+            if (self.plasmid in ['Align-TF', 'Align-TF-2']) and ('norm' not in row.RS_name.str.lower()):
                 tf = align_tf_from_RS_name(row.RS_name)
                 df_tf = sample_plate_map
                 df_tf = df_tf[df_tf.transcription_factor==tf]
@@ -1417,7 +1417,7 @@ class BarSeqFitnessFrame:
         elif self.plasmid == 'Align-TF':
             spike_in_list = ["pRamR-norm-02", "pLacI-norm-02"]
             spike_in_initial_list = ['ramr', 'laci']
-        elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
+        elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1', 'Align-TF-2']:
             spike_in_list = ["pRamR-norm-02", "pNorm-mDHFR-03"]
             spike_in_initial_list = ['nrm02', 'nrm03']
             if self.plasmid == 'Align-Protease':
@@ -1767,7 +1767,7 @@ class BarSeqFitnessFrame:
                     lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
-                elif plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
+                elif plasmid in ['Align-Protease', 'Align-T7RNAP_1', 'Align-TF-2']:
                     if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC-norm']):
                         # For the Align-Protease plasmid system, calculate the fitness of the virtual normalization variant (pDRAC-norm), which is the best way to handle the fitness drop-off with Van induction:
                         sal_conc = df.Sal.iloc[0]
@@ -1807,6 +1807,7 @@ class BarSeqFitnessFrame:
                     else:
                         # For the Align-protease system with a real normalization variant, the spike_in_fitness does not depend on the ligand/inducer concentrations:
                         # And, for this Align-T7RNAP_1 plasmid system, there is no ligand/inducer, so:
+                        # Also, for the Align-TF-2 system (in DH10b, with two ligands), assume that the spike_in_fitness does not depend on the ligand/inducer concentrations.
                         ligand = 'none'
                         lig_conc = 0
                         spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
@@ -1838,7 +1839,7 @@ class BarSeqFitnessFrame:
         
         plt.rcParams["figure.figsize"] = [16, 3]
         sample_list = np.unique(sample_plate_map.sample_id)
-        if self.plasmid == 'Align-TF':
+        if self.plasmid in ['Align-TF', 'Align-TF-2']:
             tf_dict = {}
             for samp in sample_list:
                 df = sample_plate_map
@@ -1858,7 +1859,7 @@ class BarSeqFitnessFrame:
             tet_list.append(tet)
             
             df_bc = barcode_frame
-            if self.plasmid == 'Align-TF':
+            if self.plasmid in ['Align-TF', 'Align-TF-2']:
                 # Only plot residuals for rows/variants that are in each sample
                 sel_tf = [(align_tf_from_RS_name(x) == tf_dict[samp]) or ('norm' in x) for x in df_bc.RS_name]
                 df_bc = df_bc[sel_tf]
@@ -2656,7 +2657,7 @@ class BarSeqFitnessFrame:
             st_index = st_row.name
             rs_name = st_row.RS_name
             
-            if plasmid == 'Align-TF':
+            if plasmid in ['Align-TF', 'Align-TF-2']:
                 if rs_name == '':
                     tf = st_row.transcription_factor
                 else:
@@ -3631,6 +3632,8 @@ class BarSeqFitnessFrame:
                 plot_initials=["ramr", "laci"]
             elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1']:
                 plot_initials=["nrm00", "nrm03"]
+            elif self.plasmid in ['Align-TF-2']:
+                plot_initials=["nrm02", "nrm03"]
         
         if plot_range is None:
             barcode_frame = self.barcode_frame
@@ -3679,7 +3682,7 @@ class BarSeqFitnessFrame:
         antibiotic_conc_list = self.antibiotic_conc_list
         
         for (index, row), ax in zip(barcode_frame.iterrows(), axs): # iterate over barcodes
-            if self.plasmid == 'Align-TF':
+            if self.plasmid in ['Align-TF', 'Align-TF-2']:
                 tf = row.transcription_factor
             for initial, fill_style, plot_st, plot_corr in zip(plot_initials, ['full', 'none', 'right', 'left'], plot_stan_data, plot_w_ramr_correction):
                 if old_style_plots:
@@ -3695,7 +3698,7 @@ class BarSeqFitnessFrame:
                             df = plot_df
                             df = df[(df.ligand==lig)|(df.ligand=='none')]
                             df = df[df.antibiotic_conc==tet]
-                            if (self.plasmid == 'Align-TF') and (tf != 'all'):
+                            if (self.plasmid in ['Align-TF', 'Align-TF-2']) and (tf != 'all'):
                                 df = df[df.transcription_factor==tf]
                             x = df[lig]
                             if plot_slope_not_fitness:
@@ -3755,7 +3758,7 @@ class BarSeqFitnessFrame:
                     ax.text(x=1, y=1.1, s=barcode_str, horizontalalignment='right', verticalalignment='top',
                             transform=ax.transAxes, fontsize=fontsize, fontfamily=fontfamily)
                     ax.set_xscale('symlog', linthresh=linthresh)
-                    if (self.plasmid == 'Align-TF') and (tf != 'all'):
+                    if (self.plasmid in ['Align-TF', 'Align-TF-2']) and (tf != 'all'):
                         x_lab = align_ligand_from_tf(tf)
                     else:
                         x_lab = '], ['.join(ligand_list)
@@ -4586,7 +4589,7 @@ class BarSeqFitnessFrame:
                 n = 1.1 #np.random.normal(1, 0.2) * 3
                 sig = np.random.normal(1, 0.2) * 0.1
                 return dict(low_level=low, IC_50=mid, hill_n=n, sigma=sig)
-        elif plasmid == 'Align-TF':
+        elif plasmid in ['Align-TF', 'Align-TF-2']:
             stan_model_file = "Hill equation fit-zero high.stan"
             
             ligand_plot_list = self.ligand_list
@@ -4666,7 +4669,7 @@ class BarSeqFitnessFrame:
                 else:
                     var = rs_name
                     
-            elif plasmid == 'Align-TF':
+            elif plasmid in ['Align-TF', 'Align-TF-2']:
                 var = f'{rs_name}_mScar'
                 
                 if var == 'pRamR-WT-fin_mScar':
@@ -4972,7 +4975,7 @@ class BarSeqFitnessFrame:
                                         ax.errorbar(x, y, y_err, xerr, fmt=fmt, ms=ms, color=color, 
                                                     fillstyle=fill_style, label=lab, alpha=alpha)
                     elif len(df) == 0:
-                        if plasmid == 'Align-TF':
+                        if plasmid in ['Align-TF', 'Align-TF-2']:
                             tf = align_tf_from_ligand(lig)
                             if ('norm' not in RS_name) and (tf in var):
                                 print(f'No cytometry data for {RS_name}, {var} with {lig}')
@@ -6069,6 +6072,8 @@ class BarSeqFitnessFrame:
         elif plasmid == 'Align-Protease':
             initial = 'all.nrm00'
         elif plasmid == 'Align-T7RNAP_1':
+            initial = 'nrm03'
+        elif plasmid == 'Align-TF-2':
             initial = 'nrm03'
         
         return initial
