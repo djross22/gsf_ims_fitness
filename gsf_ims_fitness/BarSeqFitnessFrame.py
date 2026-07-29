@@ -1308,7 +1308,7 @@ class BarSeqFitnessFrame:
             axs = axs.flatten()
             
             plot_list = plot_list_0
-            if (self.plasmid in ['Align-TF', 'Align-TF-2']) and ('norm' not in row.RS_name.str.lower()):
+            if (self.plasmid in ['Align-TF', 'Align-TF-2']) and ('norm' not in row.RS_name.lower()):
                 tf = align_tf_from_RS_name(row.RS_name)
                 df_tf = sample_plate_map
                 df_tf = df_tf[df_tf.transcription_factor==tf]
