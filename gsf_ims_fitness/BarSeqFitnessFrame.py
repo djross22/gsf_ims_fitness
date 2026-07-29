@@ -3486,26 +3486,72 @@ class BarSeqFitnessFrame:
         f_data = self.barcode_frame[self.barcode_frame["total_counts"]>count_cutoff]
         if (not includeChimeras) and ("isChimera" in f_data.columns):
             f_data = f_data[f_data["isChimera"] == False]
+        
+        if 'transcription_factor' in self.barcode_frame.columns:
+            tf_list = np.unique(self.barcode_frame.transcription_factor)
+            tf_list = tf_list[tf_list!='']
+            tf_list = tf_list[tf_list!='all']
+        
+        per_well_log_std = {}
+        per_well_log_mu = {}
+        
+        if (self.plasmid in ['Align-TF', 'Align-TF-2']) and (len(tf_list)>0):
+            #These experiments have multiple libraries, each in a different part of the plate, 
+            #    so should only look at variation of read fraction across the relevant wells
             
-        f_x = f_data['fraction_total_p2']
-        f_x_min = f_data[f_data['fraction_total_p2']>0]['fraction_total_p2'].min()
-        wells_to_plot = fitness.wells_by_column()[:24]
-        if reverse_well_order:
-            wells_to_plot = wells_to_plot[::-1]
-        per_well_log_std = []
-        per_well_log_mu = []
-        for i, w in enumerate(wells_to_plot):
-            c = [(plot_colors()*8)[i]]*len(f_data)
-            f_y = f_data['fraction_' + w]
-            for ax in axs.flatten()[:2]:
-                ax.scatter(f_x, f_y, c=c)
-            
-            x = f_x[(~np.isnan(f_y))&(f_y>0)]
-            y = f_y[(~np.isnan(f_y))&(f_y>0)]
-            per_well_log_std.append(np.std(np.log(y/x)))
-            per_well_log_mu.append(np.mean(np.log(y/x)))
-            for ax in axs.flatten()[2:4]:
-                ax.scatter(f_x, (f_y - f_x)*100, c=c)
+            for tf, plot_df in self.barcode_frame.groupby('transcription_factor'):
+                plate_map = self.sample_plate_map
+                plate_map = plate_map[plate_map.growth_plate==2]
+                if tf not in ['all']:
+                    plate_map = plate_map[plate_map.transcription_factor==tf]
+                wells_to_plot = np.unique(plate_map.well)
+                if reverse_well_order:
+                    wells_to_plot = wells_to_plot[::-1]
+                
+                total = []
+                for index, row in plot_df[wells_to_plot].iterrows():
+                    counts = 0
+                    for w in wells_to_plot:
+                        counts += row[w]
+                    total.append(counts)
+                f_x = np.array(total)/sum(total)
+                if min(f_x)>0:
+                    f_x_min = f_x[f_x>0].min()
+                else:
+                    f_x_min = 1
+                
+                for i, w in enumerate(wells_to_plot):
+                    f_y = plot_df[w]/plot_df[w].sum()
+                    for ax in axs.flatten()[:2]:
+                        ax.plot(f_x, f_y, 'o')
+                    
+                    x = f_x[(~np.isnan(f_y))&(f_y>0)]
+                    y = f_y[(~np.isnan(f_y))&(f_y>0)]
+                    for ax in axs.flatten()[2:4]:
+                        ax.plot(f_x, (f_y - f_x)*100, 'o')
+                    
+                    if tf not in ['', 'all']:
+                        per_well_log_std[w] = np.std(np.log(y/x))
+                        per_well_log_mu[w] = np.mean(np.log(y/x))
+        else:
+            f_x = f_data['fraction_total_p2']
+            f_x_min = f_data[f_data['fraction_total_p2']>0]['fraction_total_p2'].min()
+            wells_to_plot = fitness.wells_by_column()[:24]
+            if reverse_well_order:
+                wells_to_plot = wells_to_plot[::-1]
+                
+            for i, w in enumerate(wells_to_plot):
+                c = [(plot_colors()*8)[i]]*len(f_data)
+                f_y = f_data['fraction_' + w]
+                for ax in axs.flatten()[:2]:
+                    ax.scatter(f_x, f_y, c=c)
+                
+                x = f_x[(~np.isnan(f_y))&(f_y>0)]
+                y = f_y[(~np.isnan(f_y))&(f_y>0)]
+                per_well_log_std[w] = np.std(np.log(y/x))
+                per_well_log_mu[w] = np.mean(np.log(y/x))
+                for ax in axs.flatten()[2:4]:
+                    ax.scatter(f_x, (f_y - f_x)*100, c=c)
                 
         for ax in axs.flatten()[:2]:
             x_lim_0 = ax.get_xlim()
@@ -3516,11 +3562,11 @@ class BarSeqFitnessFrame:
             
         axs.flatten()[1].set_xscale("log");
         axs.flatten()[1].set_yscale("log");
-        axs.flatten()[1].set_xlim(f_x_min/1.3, x_lim_0[1]*1.3);
-        axs.flatten()[1].set_ylim(f_x_min/1.3, x_lim_0[1]*1.3);
+        #axs.flatten()[1].set_xlim(f_x_min/1.3, x_lim_0[1]*1.3);
+        #axs.flatten()[1].set_ylim(f_x_min/1.3, x_lim_0[1]*1.3);
     
         axs.flatten()[3].set_xscale("log");
-        axs.flatten()[3].set_xlim(f_x_min/1.3, x_lim_0[1]*1.3);
+        #axs.flatten()[3].set_xlim(f_x_min/1.3, x_lim_0[1]*1.3);
         fig.suptitle('Fraction from Each Dual Barcode (Plate 2)', fontsize=24, position=(0.5, 0.905))
     
         for ax in axs.flatten()[:2]:
@@ -3537,7 +3583,8 @@ class BarSeqFitnessFrame:
         #Plot mean and std of log ratio for each well
         plt.rcParams["figure.figsize"] = [16,6]
         fig, axs = plt.subplots(2, 1)
-        for ax, y, lab in zip(axs, [per_well_log_mu, per_well_log_std], ['mean', 'std']):
+        for ax, y_dict, lab in zip(axs, [per_well_log_mu, per_well_log_std], ['mean', 'std']):
+            y = [y_dict[w] for w in wells_to_plot]
             df_plot = pd.DataFrame({'well':wells_to_plot, lab:y})
             sns.barplot(ax=ax, data=df_plot, x="well", y=lab)
         
@@ -3578,15 +3625,37 @@ class BarSeqFitnessFrame:
         axs[1].plot(x_test, y_test/x_test, "o", ms=10, label="Library Prep Test, 2019-10-02");
         axs[1].plot(x_test, poisson_err_test/x_test, c="gray");
         axs[1].plot(x_small, y_small/x_small, "o", ms=10, label="Small Library Selection, 2019-10-08");
-    
-        y = f_data["fraction_p2_std"]
-        x = f_data["fraction_total_p2"]
-        err_est = f_data["fraction_total_p2"] / np.sqrt(f_data["total_counts_plate_2"]/24)
         
-        axs[0].plot(x, y, "o", ms=5, label = experiment, alpha=0.1);
+        if (self.plasmid in ['Align-TF', 'Align-TF-2']) and (len(tf_list)>0):
+            for tf, plot_df in self.barcode_frame.groupby('transcription_factor'):
+                if tf not in ['all', '']:
+                    plate_map = self.sample_plate_map
+                    plate_map = plate_map[plate_map.growth_plate==2]
+                    plate_map = plate_map[plate_map.transcription_factor==tf]
+                    wells_to_plot = np.unique(plate_map.well)
+                    
+                    plot_df = plot_df[wells_to_plot]
+                    
+                    data_arr = plot_df[wells_to_plot].values
+                    fraction_arr = data_arr/data_arr.sum(axis=0)
+                    
+                    y = fraction_arr.std(axis=1)
+                    x = data_arr.sum(axis=1)/data_arr.sum()
+                    
+                    err_est = x/np.sqrt(data_arr.sum(axis=1)/len(wells_to_plot))
+                    
+                    axs[0].plot(x, y, "o", ms=5, label = f'{experiment}, {tf}', alpha=0.1);
+                    axs[1].plot(x, y/x, "o", ms=5, label = f'{experiment}, {tf}', alpha=0.1);
+        else:
+            y = f_data["fraction_p2_std"]
+            x = f_data["fraction_total_p2"]
+        
+            err_est = f_data["fraction_total_p2"] / np.sqrt(f_data["total_counts_plate_2"]/24)
+            
+            axs[0].plot(x, y, "o", ms=5, label = experiment, alpha=0.1);
+            axs[1].plot(x, y/x, "o", ms=5, label = experiment, alpha=0.1);
         axs[0].plot(x, err_est, c="darkgreen");
         axs[0].set_ylabel('Stdev(barcode fraction per sample)', size=20);
-        axs[1].plot(x, y/x, "o", ms=5, label = experiment, alpha=0.1);
         axs[1].plot(x, err_est/x, c="darkgreen");
         axs[1].set_ylabel('Relative Stdev(barcode fraction per sample)', size=20);
     
