@@ -12,6 +12,7 @@ import warnings
 import datetime
 import logging
 import traceback
+import inspect
 
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -2230,6 +2231,43 @@ class BarSeqFitnessFrame:
             self.save_as_pickle(overwrite=overwrite)
         
     
+    def get_fitness_effect_y_for_samples(self,
+                                        row, # a row in self.barcode_frame to get the fitness effect for
+                                        sample_id_list, # a list of sample numbers to get the fitness effect for
+                                        spike_in_initial,
+                                        ref_samples=None,
+                                        ):
+        # This method is used by the calibrate_ and stan_ methods to ensure that they use the same 'y' values
+        
+        # The fitness effect for a barcode/row in a sample is:
+        #     (fitness_with_antibiotic - fitness_without_antibiotic)/fitness_without_antibiotic
+        
+        # sample_id_list is a list of sample numbers for fitness_with_antibiotic
+        
+        # fitness_without_antibiotic is calculate as the mean fitness over the set of ref_samples
+        
+        if ref_samples is None:
+            ref_samples = self.ref_samples
+            
+        ref_sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in self.ref_samples]
+        ref_err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in self.ref_samples]
+        
+        sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in sample_id_list]
+        err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in sample_id_list]
+        
+        y_ref = [row[s] for s in ref_sample_str_list]
+        weights = 1/np.array([row[s] for s in ref_err_str_list])**2
+        y_ref = np.average(y_ref, weights=weights)
+        yerr_ref = np.std(y_ref)/np.sqrt(len(ref_sample_str_list))
+        
+        y_row = np.array([row[s] for s in sample_str_list])
+        yerr_row = np.array([row[s] for s in err_str_list])
+        
+        y = (y_row - y_ref)/y_ref
+        yerr = np.sqrt((yerr_row/y_ref)**2 + (y_row*yerr_ref/y_ref**2)**2)
+        
+        return {'y':y, 'yerr':yerr}
+    
     def stan_fitness_to_function_curves(self,
                                        adapt_delta=0.9,
                                        iter_warmup=500,
@@ -2363,7 +2401,7 @@ class BarSeqFitnessFrame:
             try:
                 #****************************************************
                 # Code to be moved to bs_frame_stan_data() method???
-                #     or is it bettewr to just keep it here?
+                #     or is it better to just keep it here?
                 if 'norm' in rs_name.lower():
                     for p in mean_std_params:
                         stan_return_dict[p] = np.nan
@@ -4544,6 +4582,387 @@ class BarSeqFitnessFrame:
                 self.fit_fitness_difference_params = fitness_difference_params
                 print(f'Saving fitness calibration parameters: {fitness_difference_params}')
     
+    def calibrate_fitness_to_function(self,
+                                      calibration_data_table,
+                                      rs_exclude_list=[],
+                                      show_exclude_data=True,
+                                      RS_list=None,
+                                      fixed_log_xerr=None, # If None, the method will re-sample from the posterior based on calibration_data_table
+                                      num_add_low_fitness_rs=0, # The number of low-fitness extra data points to add
+                                      manually_add_low_fitness=None, # 2-tuple of mean and std for extra y-values to add manually
+                                      low_fitness_log_xerr=2,
+                                      plot_raw_fitness=False,
+                                      include_zero_antibiotic=False,
+                                      plot_ligands=None, # Only include data for these ligands (all ligands if None)
+                                      min_spx_err=0.03,
+                                      spike_in_initial=None,
+                                      run_stan_fit=False,
+                                      show_old_fit=True,
+                                      iter_sampling=1000,
+                                      iter_warmup=1000,
+                                      save_fitness_difference_params=False,
+                                      turn_off_cmdstanpy_logger=True,
+                                      repeat_after_dropping_outliers=False,
+                                      re_stan_on_rhat=True,
+                                      rhat_cutoff=1.05,
+                                      outlier_cutoff=2.5,
+                                      show_progress=False,
+                                      calibration_priors={},
+                                      fig_size=[8, 4],
+                                      alpha=0.7,
+                                      ):
+        plasmid = self.plasmid
+        
+        if spike_in_initial is None:
+            spike_in_initial = self.get_default_initial()
+        spike_in = fitness.get_spike_in_name_from_inital(plasmid, spike_in_initial)
+        print(f'Calibrating with counts normalized to {spike_in}, initial: {spike_in_initial}')
+        
+        if plot_raw_fitness:
+            run_stan_fit = False
+            show_old_fit = False
+        
+        stan_data_0 = {} # This is used to set the priors for the Stan fit.
+        if plasmid in ['Align-TF', 'Align-TF-2']:
+            stan_file = 'Hill equation.zero_ginf.with_log_xerr.stan'
+        
+            stan_data_0['g0_mu'] = -1.0
+            stan_data_0['g0_sigma'] = 2
+            stan_data_0['log_ec50_mu'] = np.log10(100)
+            stan_data_0['log_ec50_sigma'] = 3
+            stan_data_0['hill_n_mu'] = 1
+            stan_data_0['hill_n_sigma'] = 2
+            
+            # list of parameters that are checked with rhat convergence test after Stan model fit:
+            key_params = ['g0', 'log_ec50', 'hill_n', 'sigma']
+            
+            ligand_plot_list = self.ligand_list
+            
+            # This is the function used to convert the parameters in calibration_data_table to function values (for the x-axis of the calibration fit)
+            def calibration_data_function(conc, log_g0, log_ginf, log_ec50, n, asym):
+                if conc==0:
+                    return 10**log_g0
+                else:
+                    low = 10**log_g0
+                    high = 10**log_ginf
+                    
+                    logXb = log_ec50 + 1/n*np.log10(2**(1/asym) - 1)
+                    y = low + (high - low)/(1 + 1/(conc**n)*10**(n*logXb))**asym
+                    return y
+            
+        else:
+            raise NotImplementedError(f"calibrate_fitness_to_function() is not yet implemented for plasmid: {plasmid}")
+        
+        # calibration_priors can be used to manually override the default priors:
+        stan_data_0 = stan_data_0|calibration_priors
+            
+        if run_stan_fit:
+            fitness_model = stan_utility.compile_model(stan_file)
+        
+        if plot_ligands is not None:
+            ligand_plot_list = [x for x in ligand_plot_list if x in plot_ligands]
+        
+        bs_frame = self.barcode_frame
+        bs_frame = bs_frame[bs_frame.RS_name!='']
+        bs_frame = bs_frame[['norm' not in x.lower() for x in bs_frame.RS_name]]
+        if RS_list is not None:
+            bs_frame = bs_frame[bs_frame.RS_name.isin(RS_list)]
+        
+        sample_plate_map = self.sample_plate_map
+        sample_df = sample_plate_map
+        lig_list = [x for x in np.unique(sample_plate_map.ligand) if x!='none']
+        sort_list = ['ligand'] + lig_list + ['sample_id']
+        sample_df = sample_df[sample_df.growth_plate==2].sort_values(by=sort_list)
+        
+        # Fitness calibration function is Hill function with either low or high value to zero:
+        def hill_funct(x, low, high, mid, n):
+            return low + (high-low)*( x**n )/( mid**n + x**n )
+
+        if plasmid in ['pVER', 'pCymR', 'Align-TF', 'Align-TF-2']:
+            # The arguments of fit_funct need to match the parameter names used in the Stan model:
+            def fit_funct(x, g0, log_ec50, hill_n):
+                mid = 10**log_ec50
+                return hill_funct(x, g0, 0, mid, hill_n)
+        
+        if plot_raw_fitness and include_zero_antibiotic:
+            plot_antibiotic_list = self.antibiotic_conc_list
+        else:
+            plot_antibiotic_list = [x for x in self.antibiotic_conc_list if x!=0]
+            
+        plt.rcParams["figure.figsize"] = fig_size
+        if len(plot_antibiotic_list)==1:
+            fig, axs = plt.subplots()
+            axs = [axs]
+        else:
+            plt.rcParams["figure.figsize"] = [fig_size[0], fig_size[1]*len(plot_antibiotic_list)]
+            fig, axs = plt.subplots(len(plot_antibiotic_list), 1)
+        
+        if show_old_fit and (self.fit_fitness_difference_params is not None) and (spike_in_initial in self.fit_fitness_difference_params):
+            params = self.fit_fitness_difference_params[spike_in_initial]
+            old_fit_params_list = [params[x]['mean'] for x in plot_antibiotic_list]
+        else:
+            old_fit_params_list = [None]*len(axs)
+        
+        stan_params_to_save = {}
+        fmt_list = ['o', '^', 'v', '<', '>', 'd', 'p', '*', 's', 'h', '+', 'x']
+        fit_plot_colors = sns.color_palette()
+        for ax, tet, old_fit_params in zip(axs, plot_antibiotic_list, old_fit_params_list):
+            print(f'Antibiotic concentration: {tet}')
+            ax.set_xscale("symlog")
+            ax.set_xlabel('Function (MEF)');
+            ax.set_title(f'{tet} {self.antibiotic}', size=14, loc="left")
+            if plot_raw_fitness:
+                ax.set_ylabel(f'Fitness')
+            else:
+                ax.set_ylabel(f'Fitness Impact of {self.antibiotic}')
+            
+            fmt = 'o'
+            ms = 8
+            color_ind = -1
+            fmt_ind = 0
+            
+            # acumulated calibration data into these lists:
+            cal_data_lists = {k:[] for k in ['x', 'log_x', 'log_xerr', 'y', 'yerr', 'point_id', 'rs_id']}
+                        
+            for bs_ind, bs_row in bs_frame.iterrows():
+                rs_name = bs_row.RS_name
+                var = self.cytom_variant_from_rs_name(rs_name)
+                
+                for lig in ligand_plot_list + ['none']: # the added 'none' handles the zero-ligand case separately (so it doesn't get double counted)
+                    color_ind += 1
+                    if color_ind >= len(fit_plot_colors):
+                        color_ind=0
+                        fmt_ind += 1
+                        if fmt_ind >= len(fmt_list):
+                            fmt_ind = 0
+                        fmt = fmt_list[fmt_ind]
+                    color=fit_plot_colors[color_ind]
+                    
+                    cal_df = calibration_data_table
+                    cal_df = cal_df[cal_df.variant==var]
+                    if lig != 'none': # for non-zero ligand
+                        cal_df = cal_df[cal_df.ligand==lig]
+                        lab = f'{rs_name}, {lig}'
+                    else: # for zero ligand
+                        cal_df = cal_df.iloc[:1]
+                        lab = f'{rs_name}, no ligand'
+
+                    if len(cal_df)==1:
+                        calibration_params = dict(cal_df.iloc[0])
+                        signature = inspect.signature(calibration_data_function)
+                        param_names = list(signature.parameters.keys())
+                        calibration_params = {k:v for k, v in calibration_params.items() if k in param_names}
+                        
+                        df_samp = sample_df
+                        df_samp = df_samp[df_samp.antibiotic_conc==tet]
+                        df_samp = df_samp[df_samp.ligand==lig]
+                        
+                        if lig != 'none': # for non-zero ligand
+                            lig_conc_arr = np.array(df_samp[lig])
+                        else: # for zero ligand
+                            lig_conc_arr = np.array([0]*len(df_samp))
+                        
+                        x = np.array([calibration_data_function(c, **calibration_params) for c in lig_conc_arr])
+                        
+                        if fixed_log_xerr is not None:
+                            log_xerr = np.array([fixed_log_xerr]*len(x))
+                        else:
+                            raise NotImplementedError(f"re-sampling to get log_xerr not yet implemented")
+                        
+                        sample_list = df_samp.sample_id
+                        y_dict = self.get_fitness_effect_y_for_samples(bs_row, sample_list, spike_in_initial)
+                        y = y_dict['y']
+                        yerr = y_dict['yerr']
+                        
+                        # Enforce the min_spx_err here, just before adding the values to the y_err_list and plotting
+                        if type(min_spx_err) == dict:
+                            yerr = np.sqrt(yerr**2 + min_spx_err[tet]**2)
+                        else:
+                            yerr = np.sqrt(yerr**2 + min_spx_err**2)
+                        
+                        sel = rs_name in rs_exclude_list
+                        if sel:
+                            fill_style = 'none'  
+                        else:
+                            fill_style = None
+                            
+                            cal_data_lists['x'] += list(x)
+                            cal_data_lists['log_x'] += list(np.log10(x))
+                            cal_data_lists['log_xerr'] += list(log_xerr)
+                            cal_data_lists['y'] += list(y)
+                            cal_data_lists['yerr'] += list(yerr)
+                            
+                            cal_data_lists['point_id'] += [f'{rs_name} at x = {p:.2e}' for p in x]
+                            cal_data_lists['rs_id'] += [rs_name]*len(x)
+                        
+                        include_data_in_plot = show_exclude_data or (not sel)
+                        if include_data_in_plot:
+                            xerr = fitness.log_plot_errorbars(np.log10(x), log_xerr)
+                            ax.errorbar(x, y, yerr, xerr, fmt=fmt, ms=ms, color=color, 
+                                        fillstyle=fill_style, label=lab, alpha=alpha)
+                        
+                    elif len(cal_df) == 0:
+                        if plasmid in ['Align-TF', 'Align-TF-2']:
+                            tf = align_tf_from_ligand(lig)
+                        if ('norm' not in rs_name) and ((lig == 'none') or (tf in var)):
+                            print(f'No cytometry data for {rs_name}, {var} with {lig}')
+                    else:
+                        raise ValueError('length of cal_df > 1')
+                
+            cal_data_lists = {k:np.array(v) for k, v in cal_data_lists.items()}
+            
+            x_plot_fit = np.logspace(min(cal_data_lists['log_x']) - np.log10(2), max(cal_data_lists['log_x']) + np.log10(2), 50)
+            if show_old_fit and (old_fit_params is not None):
+                
+                y_plot_fit = fit_funct(x_plot_fit, **old_fit_params)
+                
+                if run_stan_fit:
+                    lab = 'old fit'
+                else:
+                    lab = 'fit'
+                ax.plot(x_plot_fit, y_plot_fit, '--r', zorder=100, label=lab);
+            
+            print()
+            if type(min_spx_err) == dict:
+                print(f'Calibration with minimum fitness error: {min_spx_err[tet]} for [{self.antibiotic}] = {tet}')
+            else:
+                print(f'Calibration with minimum fitness error: {min_spx_err}')
+            
+            if run_stan_fit:
+                print(f'Fitting with stan model from: {stan_file}')
+                
+                if turn_off_cmdstanpy_logger:
+                    import logging
+                    cmdstanpy_logger = logging.getLogger("cmdstanpy")
+                    cmdstanpy_logger.disabled = True
+                
+                stan_data = stan_data_0|cal_data_lists
+                stan_data['N'] = len(stan_data['log_x'])
+                stan_data['x_out'] = x_plot_fit
+                stan_data['N_out'] = len(stan_data['x_out'])
+                
+                stan_init = {k.replace('_mu', ''):v for k, v in stan_data_0.items()}
+                num_stan_re_runs = 3 if repeat_after_dropping_outliers else 1
+                fit_data = stan_data
+                #num_points = len(fit_data['log_x'])
+                drop_list = []
+                drop_data_lists = {'point_id':[]}
+                for run_num in range(num_stan_re_runs):
+                    if (run_num == 0) or (len(drop_data_lists['point_id']) != len(old_drop_lists['point_id'])) or (not np.all(old_drop_lists['point_id'] == drop_data_lists['point_id'])):
+                        old_drop_lists = drop_data_lists
+                        num_points = len(fit_data['log_x'])
+                        print()
+                        print(f'Fit iteration: {run_num+1}, with {num_points} data points')
+                        if len(drop_list)>0:
+                            print('    Dropped outliers:')
+                            for d in drop_list:
+                                print(f'        {d}')
+                        
+                        # Remove non-numeric entries from fit_data, since they will throw an error in fitness_model.sample():
+                        fit_data = {k:v for k,v in fit_data.items() if isinstance(v, (int, float)) or ((type(v) is np.ndarray) and np.issubdtype(v.dtype, np.floating))}
+                        
+                        stan_fit = fitness_model.sample(data=fit_data, iter_warmup=iter_warmup, iter_sampling=iter_sampling, inits=stan_init, chains=4, show_progress=show_progress)
+                        
+                        if re_stan_on_rhat:
+                            print(f'    Checking r_hat...')
+                            rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                            if len(rhat_params) > 0:
+                                print(f'    Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                                stan_fit = fitness_model.sample(data=fit_data, iter_warmup=iter_warmup*10, iter_sampling=iter_sampling*10, inits=stan_init, chains=4, show_progress=show_progress)
+                            else:
+                                print(f'        ... r_hat below {rhat_cutoff} for all key parameters')
+                        
+                        signature = inspect.signature(fit_funct)
+                        arg_names = list(signature.parameters.keys())
+                        stan_popt = {p:np.mean(stan_fit.stan_variable(p))  for p in key_params if p in arg_names}
+                        stan_perr = {p:np.std(stan_fit.stan_variable(p))  for p in key_params if p in arg_names}
+                    
+                        resid_list = cal_data_lists['y'] - fit_funct(cal_data_lists['x'], **stan_popt)
+                        dev_list = np.abs(resid_list)/cal_data_lists['yerr']
+                        
+                        cal_data_lists_2 = {k:v[dev_list<outlier_cutoff] for k, v in cal_data_lists.items()}
+                        
+                        drop_data_lists = {k:v[dev_list>=outlier_cutoff] for k, v in cal_data_lists.items()}
+                        
+                        fit_data = stan_data|cal_data_lists_2
+                        fit_data['N'] = len(fit_data['log_x'])
+                
+                num_str = [ f"{k}:{v:.4}" for k,v in stan_popt.items()]
+                print(f"Fitness params with {tet} [{self.antibiotic}]: {num_str}")
+                num_str = [ f"{k}:{v:.4}" for k,v in stan_perr.items() ]
+                print(f"                 Error estimate: {num_str}")
+                
+                stan_params_to_save[tet] = {'mean':stan_popt, 'std':stan_perr}
+                
+                resid_list = cal_data_lists['y'] - fit_funct(cal_data_lists['x'], **stan_popt)
+                for w_str, w in zip(['Unweighted', 'Weighted'], [None, 1/cal_data_lists['yerr']**2]):
+                    rms_dev = np.sqrt(np.average(resid_list**2, weights=w))
+                    print(f"           {w_str} RMS deviation: {rms_dev:.4}")
+                
+                resid_list_2 = cal_data_lists_2['y'] - fit_funct(cal_data_lists_2['x'], **stan_popt)
+                rms_dev = np.sqrt(np.mean((resid_list_2/cal_data_lists_2['yerr'])**2))
+                print(f"           Rescaled RMS deviation: {rms_dev:.4} (after dropping outliers; should be 1 for properly calibrated uncertanties)")
+                    
+                spear_r = stats.spearmanr(cal_data_lists['x'], cal_data_lists['y']).statistic
+                print(f"           Spearman R with outliers: {spear_r:.4}")
+                    
+                spear_r = stats.spearmanr(cal_data_lists_2['x'], cal_data_lists_2['y']).statistic
+                print(f"           Spearman R without outliers: {spear_r:.4}")
+                
+                y_plot_fit = fit_funct(x_plot_fit, **stan_popt)
+                ax.plot(x_plot_fit, y_plot_fit, '--k', zorder=200, label='calibration fit');
+                
+                if len(drop_data_lists['point_id'])>0:
+                    ax.plot(drop_data_lists['x'], drop_data_lists['y'], 'o', color='k', fillstyle='none', ms=ms+3, label='dropped data')
+                
+                if turn_off_cmdstanpy_logger:
+                    cmdstanpy_logger.disabled = False    
+                
+            ncol = int(np.round(len(bs_frame)/6))
+            ax.legend(loc='upper left', bbox_to_anchor= (1.03, 1.03), ncol=ncol, borderaxespad=0, frameon=True);
+            
+        if run_stan_fit and save_fitness_difference_params:
+            if self.fit_fitness_difference_params is not None:
+                self.fit_fitness_difference_params[spike_in_initial] = stan_params_to_save
+            else:
+                self.fit_fitness_difference_params = {spike_in_initial: stan_params_to_save}
+            
+    
+    
+    def cytom_variant_from_rs_name(self, rs_name):
+        plasmid = self.plasmid
+        if plasmid == 'pVER':
+            if 'RS' in rs_name:
+                var = 'pVER-RS-' + rs_name[2:]
+            elif 'wt' in rs_name:
+                var = 'pVER-IPTG-WT'
+            else:
+                var = rs_name.replace('DT_IPTG_', 'pVER-IPTG-')
+            if '(' in rs_name:
+                var = rs_name.replace('WT', 'pVER-IPTG-WT')
+                
+        elif plasmid == 'pCymR':
+            if 'RS' in rs_name:
+                var = 'pCymR-' + rs_name
+            elif 'wt' in rs_name:
+                var = 'pCymR-WT'
+            else:
+                var = rs_name
+                
+        elif plasmid in ['Align-TF', 'Align-TF-2']:
+            var = f'{rs_name}_mScar'
+            
+            if var == 'pRamR-WT-fin_mScar':
+                var = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
+                
+        elif plasmid == 'Align-T7RNAP_1':
+            # RS names:       'T7_D240E', 'T7_D240G', 'T7_E207K', 'T7_F21Y', 'T7_N748D', 'T7_P266L', 'T7_WT'
+            # cytom variants: 'pT7-78-D240E', 'pT7-78-D240G', 'pT7-78-E207K', 'pT7-78-F21Y', 'pT7-78-N748D', 'pT7-78-P266L', 'pT7-78-WT'
+            var = rs_name.replace('T7_', 'pT7-78-')
+            
+        return var
+        
+    
     def calibrate_fitness_difference_params(self,
                                             calibration_data_table,
                                             spike_in_initial=None,
@@ -4658,38 +5077,6 @@ class BarSeqFitnessFrame:
         
         fit_plot_colors = sns.color_palette()
         
-        def cytom_variant_from_rs_name(rs_name):
-            if plasmid == 'pVER':
-                if 'RS' in rs_name:
-                    var = 'pVER-RS-' + rs_name[2:]
-                elif 'wt' in rs_name:
-                    var = 'pVER-IPTG-WT'
-                else:
-                    var = rs_name.replace('DT_IPTG_', 'pVER-IPTG-')
-                if '(' in rs_name:
-                    var = rs_name.replace('WT', 'pVER-IPTG-WT')
-                    
-            elif plasmid == 'pCymR':
-                if 'RS' in rs_name:
-                    var = 'pCymR-' + rs_name
-                elif 'wt' in rs_name:
-                    var = 'pCymR-WT'
-                else:
-                    var = rs_name
-                    
-            elif plasmid in ['Align-TF', 'Align-TF-2']:
-                var = f'{rs_name}_mScar'
-                
-                if var == 'pRamR-WT-fin_mScar':
-                    var = 'pRamR-WT_P150_2.3k_mScar' # short-term fix
-                    
-            elif plasmid == 'Align-T7RNAP_1':
-                # RS names:       'T7_D240E', 'T7_D240G', 'T7_E207K', 'T7_F21Y', 'T7_N748D', 'T7_P266L', 'T7_WT'
-                # cytom variants: 'pT7-78-D240E', 'pT7-78-D240G', 'pT7-78-E207K', 'pT7-78-F21Y', 'pT7-78-N748D', 'pT7-78-P266L', 'pT7-78-WT'
-                var = rs_name.replace('T7_', 'pT7-78-')
-                
-            return var
-            
         # Fitness calibration function is Hill function with either low or high value to zero:
         def hill_funct(x, low, high, mid, n):
             return low + (high-low)*( x**n )/( mid**n + x**n )
@@ -5924,8 +6311,7 @@ def init_stan_fit_three_ligand(stan_data, fit_fitness_difference_params, plasmid
                     mid_g=fit_fitness_difference_params[0][1],
                     fitness_n=fit_fitness_difference_params[0][2],
                     )
-    else:
-        ret_dict['low_fitness'] = fit_fitness_difference_params[0][0]
+    ret_dict['low_fitness'] = fit_fitness_difference_params[0][0]
     return ret_dict
 
 def init_stan_fit_single_point(stan_data):
@@ -6212,9 +6598,9 @@ def get_stan_data(st_row, plot_df, antibiotic_conc_list,
                              fitness_n_std=fit_fitness_difference_params[0][5],
                              y_ref=y_ref,
                              )
-            else:
-                stan_data['low_fitness_mu'] = fit_fitness_difference_params[0][0]
-                stan_data['low_fitness_std'] = fit_fitness_difference_params[0][3]
+            
+            stan_data['low_fitness_mu'] = fit_fitness_difference_params[0][0]
+            stan_data['low_fitness_std'] = fit_fitness_difference_params[0][3]
                              
     return stan_data
 
