@@ -4844,8 +4844,7 @@ class BarSeqFitnessFrame:
                 stan_init = {k.replace('_mu', ''):v for k, v in stan_data_0.items()}
                 num_stan_re_runs = 3 if repeat_after_dropping_outliers else 1
                 fit_data = stan_data
-                #num_points = len(fit_data['log_x'])
-                drop_list = []
+                
                 drop_data_lists = {'point_id':[]}
                 for run_num in range(num_stan_re_runs):
                     if (run_num == 0) or (len(drop_data_lists['point_id']) != len(old_drop_lists['point_id'])) or (not np.all(old_drop_lists['point_id'] == drop_data_lists['point_id'])):
@@ -4853,9 +4852,9 @@ class BarSeqFitnessFrame:
                         num_points = len(fit_data['log_x'])
                         print()
                         print(f'Fit iteration: {run_num+1}, with {num_points} data points')
-                        if len(drop_list)>0:
+                        if len(drop_data_lists['point_id'])>0:
                             print('    Dropped outliers:')
-                            for d in drop_list:
+                            for d in drop_data_lists['point_id']:
                                 print(f'        {d}')
                         
                         # Remove non-numeric entries from fit_data, since they will throw an error in fitness_model.sample():
