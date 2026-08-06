@@ -2378,6 +2378,161 @@ class BarSeqFitnessFrame:
                          'n_prot': np.array([0.9, 1.1]),
                          'log_initial_dhfr': self.log_dhfr_levels, 
                          'sigma': 1.0}
+    
+    def stan_fitness_to_hill_dose_response_curves(self,
+                                                  adapt_delta=0.95,
+                                                  iter_warmup=500,
+                                                  iter_sampling=500,
+                                                  chains=4,
+                                                  stan_output_dir=None,
+                                                  show_progress=False,
+                                                  auto_save=True,
+                                                  overwrite=False,
+                                                  refit_indexes=None,
+                                                  return_fit=False,
+                                                  nrm_initial_dict=None, # dictionary of normalization variant to be used for each non-zero antibiotic concentration, {antibiotic_conc:initial,...}
+                                                  min_err_dict=None, # dictionary of min_err to be used for each non-zero antibiotic concentration, {antibiotic_conc:min_err,...}
+                                                  re_stan_on_rhat=True,
+                                                  rhat_cutoff=1.05):
+        
+        plasmid = self.plasmid
+        if plasmid not in ['Align-TF-2']:
+            raise NotImplementedError(f"stan_fitness_to_function_curves() is not yet implemented for plasmid: {plasmid}")
+        
+        cmdstanpy_logger = logging.getLogger("cmdstanpy")
+        cmdstanpy_logger.disabled = True
+        
+        fit_fitness_difference_params = self.fit_fitness_difference_params
+        
+        barcode_frame = self.barcode_frame
+        
+        if plasmid == 'Align-TF-2':
+            # The Stan model file:
+            sm_file = 'Fitness to function.single ligand.Hill dose-response.stan'
+            
+            nrm_initial_list = np.unique([v for k, v in nrm_initial_dict.items()])
+            
+            print(f"Using Stan to convert fitness curves to function curves for {self.experiment}")
+            print(f"  Using fitness parameters for {plasmid} system:")
+            print_dict = {k:v for k, v in fit_fitness_difference_params.items() if k in nrm_initial_list}
+            print(f"      {print_dict}")
+            print("      Method version from 2026-08-05")
+        
+            log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
+            print(f'log_g_limits: {log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf}')
+            
+            # DataFrame with sample info for consistent ordering:
+            df_samples = self.sample_plate_map
+            df_samples = df_samples[df_samples.growth_plate==5]
+            df_samples = df_samples[df_samples.antibiotic_conc>0]
+            lig_list = self.ligand_list
+            df_samples = df_samples.sort_values(by=lig_list+['ligand'])
+            
+            # list of parameters that are checked with rhat convergence test after Stan model fit.
+            # Generally, these are the parameters that will have results saved to the data table.
+            key_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
+                          'low_fitness', 'mid_g', 'fitness_n',
+                          'sigma', 'mean_y']
+            '''
+            Stan parameters:
+              real<lower=log_g_min, upper=log_g_max> log_g0;          // log10 of function at zero ligand
+              real<lower=log_g_min, upper=log_g_max> log_ginf_1;      // log10 of gene expression level at infinite induction
+              real<lower=log_x_1_min, upper=log_x_1_max> log_ec50_1;  // input level (x) that gives output 1/2 way between g0 and ginf
+              real<lower=0> sensor_n_1;                               // cooperativity exponent of sensor gene expression vs. x curve
+              
+              real<lower=0> sigma;            // scale factor for standard deviation of noise in y
+              
+              vector[N_antibiotic] low_fitness;       // fitness difference at zero function
+              vector[N_antibiotic] mid_g;             // gene expression level at 1/2 max fitness difference
+              vector[N_antibiotic] fitness_n;         // cooperativity coefficient of fitness calibration curve
+              
+            Stan transformed parameters:
+              vector[N] real mean_y;
+            '''
+            
+            # Real-valued outputs from the Stan model that get saved as barcode_frame columns for mean and std:
+            mean_std_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
+                               'log_ginf_g0_ratio_1', 'log_gxmax_1', 'log_gxmax_g0_ratio_1',
+                               'sigma', 'rms_resid']
+            
+            # 1D vector outputs from the Stan model that get saved as barcode_frame column namess for each non-zero antibiotic concentration, 
+            #     with a mean and std for each non-zero antibiotic concentration:
+            per_tmp_parameters = ['low_fitness', 'mid_g', 'fitness_n']
+            # Also need a list of non-zero antibiotic concentrations
+            tmp_conc_list = np.unique(df_samples.antibiotic_conc)
+            # and a dictionary with the appropriate barcode_frame column names
+            per_tmp_column_names = {}
+            for p in per_tmp_parameters:
+                per_tmp_column_names[p] = {}
+                for tmp in tmp_conc_list:
+                    if int(tmp) == tmp:
+                        tmp = int(tmp)
+                    column_name = f'{p}_TMP{tmp}'
+                    per_tmp_column_names[p][tmp] = column_name
+            
+            # 1D vector/array outputs from the Stan model that get saved as barcode_frame columns for each sample, 
+            #     with a mean and std for each sample:
+            per_sample_parameters = ['mean_y']
+            
+            # A 1D array of the samples associated with each of the per_sample_parameters, 
+            #     matched to the stan_fit.stan_variable() output:
+            per_sample_arr = df_samples.sample_id.values
+            
+            # The column names for the reference fitness used in fitness normalization
+            ref_sample_str_dict = {init:[f'fitness_S{n}_{init}' for n in self.ref_samples] for init in nrm_initial_list}
+            ref_err_str_dict = {init:[f'fitness_S{n}_err_{init}' for n in self.ref_samples] for init in nrm_initial_list}
+            
+            # Make a dictionary here for the parts of the Stan data that are the same for every row
+            #     (e.g., prior parameters, upper and lower bounds, etc.)
+            stan_prior_data_list = ['low_fitness', 'log_mid_g', 'fitness_n']
+            local_params_list = ['g0', 'log_ec50', 'hill_n']
+            stan_data_dose_response_0 = {}
+            stan_data_dose_response_0['log_g_min'] = np.array(log_g_min)
+            stan_data_dose_response_0['log_g_max'] = np.array(log_g_max)
+            for k1, k2 in zip(stan_prior_data_list, local_params_list):
+                mu_list = []
+                sig_list = []
+                for tmp in tmp_conc_list:
+                    init = nrm_initial_dict[tmp]
+                    mu_list.append(fit_fitness_difference_params[init][tmp]['mean'][k2])
+                    sig_list.append(fit_fitness_difference_params[init][tmp]['std'][k2])
+                stan_data_dose_response_0[f'{k1}_mu'] = np.array(mu_list)
+                stan_data_dose_response_0[f'{k1}_std'] = np.array(sig_list)
+            ''' #From Stan model data:
+              real log_g_min;                    // lower bound on log_g
+              real log_g_max;                    // upper bound on log_g
+              
+              // prior means (mu) and standard deviations for fitness calibration parameters:
+              vector[N_antibiotic] low_fitness_mu;       // fitness difference at zero function
+              vector[N_antibiotic] mid_g_mu;             // function level at 1/2 max fitness difference
+              vector[N_antibiotic] fitness_n_mu;         // cooperativity coefficient of fitness calibration curve
+              
+              vector[N_antibiotic] low_fitness_std;      // fitness difference at zero function
+              vector[N_antibiotic] mid_g_std;            // function level at 1/2 max fitness difference
+              vector[N_antibiotic] fitness_n_std;        // cooperativity coefficient of fitness calibration curve
+            '''
+            
+            # Dictionary for the initialization of the parameters for the Stan fit:
+            stan_init = {'log_g0': 2.2, 
+                         'log_ginf_1': 4,
+                         'log_ec50_1': 100.5,
+                         'sensor_n_1': 1.5, 
+                         'sigma': 1.0}
+            for k, v in stan_data_dose_response_0.items():
+                if '_mu' in k:
+                    stan_init[k.replace('_mu','')] = v
+            '''
+              real<lower=log_g_min, upper=log_g_max> log_g0;          // log10 of function at zero ligand
+              real<lower=log_g_min, upper=log_g_max> log_ginf_1;      // log10 of gene expression level at infinite induction
+              real<lower=log_x_1_min, upper=log_x_1_max> log_ec50_1;  // input level (x) that gives output 1/2 way between g0 and ginf
+              real<lower=0> sensor_n_1;                               // cooperativity exponent of sensor gene expression vs. x curve
+              
+              real<lower=0> sigma;            // scale factor for standard deviation of noise in y
+              
+              vector[N_antibiotic] low_fitness;       // fitness difference at zero function
+              vector[N_antibiotic] log_mid_g;         // log10 of gene expression level at 1/2 max fitness difference
+              vector[N_antibiotic] fitness_n;         // cooperativity coefficient of fitness calibration curve
+            '''
             
         
         print(f'    Using model from file: {sm_file}')
@@ -2387,6 +2542,11 @@ class BarSeqFitnessFrame:
         def stan_fit_row(st_row, return_fit=False):
             stan_index = st_row.name
             rs_name = st_row.RS_name
+            if rs_name == '':
+                tf = st_row.transcription_factor
+            else:
+                tf = align_tf_from_RS_name(rs_name)
+            ligand = align_ligand_from_tf(tf)
             
             # results from this method to be returned as a dictionary, which is initialized here and added to at different parts of the method.
             # The 'stan_index' entry is used to match the stan_fit results to the correct barcode_frame row.
@@ -2399,81 +2559,50 @@ class BarSeqFitnessFrame:
             print(f"{now}, fitting row index: {stan_index} {rs_name}")
 
             try:
-                #****************************************************
-                # Code to be moved to bs_frame_stan_data() method???
-                #     or is it better to just keep it here?
-                if 'norm' in rs_name.lower():
-                    for p in mean_std_params:
-                        stan_return_dict[p] = np.nan
-                        stan_return_dict[f'{p}_err'] = np.nan
-                
-                    for p in per_sal_parameters:
-                        for sal in sal_conc_list:
-                            if int(sal) == sal:
-                                sal = int(sal)
-                            column_name = f'{p}_Sal{sal}'
-                            stan_return_dict[column_name] = np.nan
-                            stan_return_dict[f'{column_name}_err'] = np.nan
+                if ('norm' in rs_name.lower()) or (tf == ''): # tf=='' if the row does not have an identifiable transcription factor
+                    output_nans_to_return_dict(stan_return_dict)
                     
-                    for p in per_sample_parameters:
-                        for samp_arr in per_sample_arr:
-                            for samp in samp_arr:
-                                column_name = f'{p}_S{samp}'
-                                stan_return_dict[column_name] = np.nan
-                                stan_return_dict[f'{column_name}_err'] = np.nan
-                    
-                    print(f"Skipping Stan fitting for {rs_name}, index {stan_index}")
+                    if tf == '':
+                        print(f"Skipping Stan fitting for row without identified transcription factor, index {stan_index}")
+                    else:
+                        print(f"Skipping Stan fitting for {rs_name}, index {stan_index}")
                     return stan_return_dict
                 
+                x_arr = []
                 y_arr = []
                 yerr_arr = []
-                log_g_max_arr = []
-                log_g_sigma_arr = []
-                for sample_id_list in per_sample_arr.transpose():
-                    sample_str_list = [f'fitness_S{n}_{nrm_initial}' for n in sample_id_list]
-                    err_str_list = [f'fitness_S{n}_err_{nrm_initial}' for n in sample_id_list]
+                s_arr = []
+                for tmp in tmp_conc_list:
+                    init = nrm_initial_dict[tmp]
+                    df_samp = df_samples
+                    df_samp = df_samp[df_samp.antibiotic_conc==tmp]
+                    df_samp = df_samp[df_samp.transcription_factor==tf]
+                    sample_list = df_samp.sample_id
+                    x_arr += list(df_samp[ligand])
+                    y_dict = self.get_fitness_effect_y_for_samples(st_row, sample_list, init)
+                    yerr = y_dict['yerr']
+                    yerr = np.sqrt(yerr**2 + min_err_dict[tmp]**2)
+                    y_arr += list(y_dict['y'])
+                    yerr_arr += list(yerr)
+                    s_arr.append(len(df_samp))
                     
-                    df = self.sample_plate_map
-                    df = df[df.growth_plate==5]
-                    df = df[[x in sample_id_list for x in df.sample_id]]
-                    df = df.sort_values(by='sample_id')
-                    
-                    sal = df.Sal.iloc[0]
-                    
-                    # y_ref is the average fitness measured in the reference conditions:
-                    y_ref = [st_row[s] for s in ref_sample_str_list]
-                    weights = 1/np.array([st_row[s] for s in ref_err_str_list])**2
-                    y_ref = np.average(y_ref, weights=weights)
-                    yerr_ref = np.std(y_ref)/np.sqrt(len(ref_sample_str_list))
-                    
-                    # y_var is the fitness for the barcoded variant for st_row
-                    y_var = np.array([st_row[s] for s in sample_str_list])
-                    yerr_var = np.array([st_row[s] for s in err_str_list])
-                    
-                    # y is the fitness effect of TMP; this is the data that gets used in the Stan model
-                    y = (y_var - y_ref)/y_ref
-                    yerr = np.sqrt((yerr_var/y_ref)**2 + (y_var*yerr_ref/y_ref**2)**2)
-                    
-                    y_arr.append(y)
-                    yerr_arr.append(yerr)
-                    log_g_max_arr.append(max_log_dhfr_dict[sal])
-                    log_g_sigma_arr.append(log_dhfr_err_dict[sal])
-                    
-                y_arr = np.array(y_arr).transpose()
-                yerr_arr = np.array(yerr_arr).transpose()
-                log_g_max_arr = np.array(log_g_max_arr)
-                log_g_sigma_arr = np.array(log_g_sigma_arr)
-                
-                stan_data = {}|stan_data_protease_0
-                stan_data['y'] = y_arr
-                stan_data['yerr'] = yerr_arr
-                stan_data['log_initial_dhfr_mu'] = log_g_max_arr
-                stan_data['log_initial_dhfr_sigma'] = log_g_sigma_arr
-                
-                stan_data['N_van'] = y_arr.shape[0]
-                stan_data['N_sal'] = y_arr.shape[1]
-                
-                #****************************************************
+                stan_data = {}|stan_data_dose_response_0 # includes prior info for ['low_fitness', 'log_mid_g', 'fitness_n'] and also ['log_g_min', 'log_g_max']
+                stan_data['N_antibiotic'] = len(tmp_conc_list)
+                stan_data['N'] = len(x_arr)
+                stan_data['s'] = np.array(s_arr)
+                stan_data['x'] = np.array(x_arr)
+                stan_data['y'] = np.array(y_arr)
+                stan_data['y_err'] = np.array(yerr_arr)
+                stan_data['log_x_max'] = np.array([max(stan_data['x'])]) + 2
+                '''
+                  int<lower=1> N_antibiotic;  // number of non-zero antibiotic concentrations
+                  int<lower=1> N;             // total number of data points across all non-zero antibiotic concentrations
+                  int s[N_antibiotic];        // array of the number of data points for each non-zero antibiotic concentration
+                  
+                  vector[N] x;           // ligand concentrations across all non-zero antibiotic concentrations
+                  vector[N] y;           // normalized fitness difference datapoints across all non-zero antibiotic concentrations
+                  vector[N] y_err;       // estimated error of y
+                '''
                 
                 
                 stan_fit = stan_model.sample(data=stan_data, 
@@ -2513,42 +2642,23 @@ class BarSeqFitnessFrame:
                     stan_return_dict[p] = stan_samples.mean()
                     stan_return_dict[f'{p}_err'] = stan_samples.std()
                 
-                for p in per_sal_parameters:
+                for p in per_tmp_parameters:
                     stan_out_arr = stan_fit.stan_variable(p)
-                    for stan_samples, sal in zip(stan_out_arr.transpose(), sal_conc_list):
-                        if int(sal) == sal:
-                            sal = int(sal)
-                        column_name = f'{p}_Sal{sal}'
+                    for stan_samples, tmp in zip(stan_out_arr.transpose(), tmp_conc_list):
+                        column_name = per_tmp_column_names[p][tmp]
                         stan_return_dict[column_name] = stan_samples.mean()
                         stan_return_dict[f'{column_name}_err'] = stan_samples.std()
                 
                 for p in per_sample_parameters:
-                    for samp_arr, stan_out_arr in zip(per_sample_arr, stan_fit.stan_variable(p).transpose([1,2,0])):
-                        for samp, stan_samples in zip(samp_arr, stan_out_arr):
-                            column_name = f'{p}_S{samp}'
-                            stan_return_dict[column_name] = stan_samples.mean()
-                            stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                    stan_out_arr = stan_fit.stan_variable(p)
+                    for samp, stan_samples in zip(per_sample_arr, stan_out_arr):
+                        column_name = f'{p}_S{samp}'
+                        stan_return_dict[column_name] = stan_samples.mean()
+                        stan_return_dict[f'{column_name}_err'] = stan_samples.std()
                             
                 
             except Exception as err:
-                for p in mean_std_params:
-                    stan_return_dict[p] = np.nan
-                    stan_return_dict[f'{p}_err'] = np.nan
-                
-                for p in per_sal_parameters:
-                    for sal in sal_conc_list:
-                        if int(sal) == sal:
-                            sal = int(sal)
-                        column_name = f'{p}_Sal{sal}'
-                        stan_return_dict[column_name] = np.nan
-                        stan_return_dict[f'{column_name}_err'] = np.nan
-                    
-                for p in per_sample_parameters:
-                    for samp_arr in per_sample_arr:
-                        for samp in samp_arr:
-                            column_name = f'{p}_S{samp}'
-                            stan_return_dict[column_name] = np.nan
-                            stan_return_dict[f'{column_name}_err'] = np.nan
+                output_nans_to_return_dict(stan_return_dict)
                 
                 print(f"Error during Stan fitting for index {stan_index}: {err}", sys.exc_info()[0])
                 tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
@@ -2556,6 +2666,23 @@ class BarSeqFitnessFrame:
             
                 
             return stan_return_dict
+        
+        def output_nans_to_return_dict(loc_return_dict):
+            for p in mean_std_params:
+                loc_return_dict[p] = np.nan
+                loc_return_dict[f'{p}_err'] = np.nan
+        
+            for p in per_tmp_parameters:
+                for tmp in tmp_conc_list:
+                    column_name = per_tmp_column_names[p][tmp]
+                    loc_return_dict[column_name] = np.nan
+                    loc_return_dict[f'{column_name}_err'] = np.nan
+            
+            for p in per_sample_parameters:
+                for samp in per_sample_arr:
+                    column_name = f'{p}_S{samp}'
+                    loc_return_dict[column_name] = np.nan
+                    loc_return_dict[f'{column_name}_err'] = np.nan
         
         if refit_indexes is None:
             print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
