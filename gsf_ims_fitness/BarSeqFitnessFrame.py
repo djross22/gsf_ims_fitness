@@ -2381,8 +2381,8 @@ class BarSeqFitnessFrame:
     
     def stan_fitness_to_hill_dose_response_curves(self,
                                                   adapt_delta=0.95,
-                                                  iter_warmup=500,
-                                                  iter_sampling=500,
+                                                  iter_warmup=1000,
+                                                  iter_sampling=1000,
                                                   chains=4,
                                                   stan_output_dir=None,
                                                   show_progress=False,
@@ -2515,7 +2515,7 @@ class BarSeqFitnessFrame:
             # Dictionary for the initialization of the parameters for the Stan fit:
             stan_init = {'log_g0': 2.2, 
                          'log_ginf_1': 4,
-                         'log_ec50_1': 100.5,
+                         'log_ec50_1': 2.01,
                          'sensor_n_1': 1.5, 
                          'sigma': 1.0}
             for k, v in stan_data_dose_response_0.items():
@@ -2593,7 +2593,8 @@ class BarSeqFitnessFrame:
                 stan_data['x'] = np.array(x_arr)
                 stan_data['y'] = np.array(y_arr)
                 stan_data['y_err'] = np.array(yerr_arr)
-                stan_data['log_x_max'] = np.array([max(stan_data['x'])]) + 2
+                # log_x_max sets the upper bound on the log_ec50 parameter:
+                stan_data['log_x_max'] = np.log10(np.array([max(stan_data['x'])])) + 4
                 '''
                   int<lower=1> N_antibiotic;  // number of non-zero antibiotic concentrations
                   int<lower=1> N;             // total number of data points across all non-zero antibiotic concentrations
