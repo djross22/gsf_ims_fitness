@@ -2551,6 +2551,7 @@ class BarSeqFitnessFrame:
             # results from this method to be returned as a dictionary, which is initialized here and added to at different parts of the method.
             # The 'stan_index' entry is used to match the stan_fit results to the correct barcode_frame row.
             # Other items in the dictionary should correspond to columns that will be added to the barcode_frame containing the fit results.
+            #     The column names that get added will be the same as the dictionary keys.
             stan_return_dict = {'stan_index':stan_index}
             stan_return_dict['stan_passed_rhat'] = False
             
@@ -2640,8 +2641,18 @@ class BarSeqFitnessFrame:
                     samp_shape = stan_samples.shape
                     if len(samp_shape)!=1:
                         raise ValueError(f'Parameters in mean_std_params must be simple real parameters, but {p} samples has shape {samp_shape}.')
-                    stan_return_dict[p] = stan_samples.mean()
-                    stan_return_dict[f'{p}_err'] = stan_samples.std()
+                    if p[-2:] == '_1':
+                        c_name = p.replace('_1', f'_{ligand}')
+                        stan_return_dict[c_name] = stan_samples.mean()
+                        stan_return_dict[f'{c_name}_err'] = stan_samples.std()
+                        
+                        other_ligand = [x for x in self.ligand_list if x!=ligan][0]
+                        c_name = p.replace('_1', f'_{other_ligand}')
+                        stan_return_dict[c_name] = np.nan
+                        stan_return_dict[f'{c_name}_err'] = np.nan
+                    else:
+                        stan_return_dict[p] = stan_samples.mean()
+                        stan_return_dict[f'{p}_err'] = stan_samples.std()
                 
                 for p in per_tmp_parameters:
                     stan_out_arr = stan_fit.stan_variable(p)
