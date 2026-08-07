@@ -2427,6 +2427,7 @@ class BarSeqFitnessFrame:
             df_samples = df_samples[df_samples.antibiotic_conc>0]
             lig_list = self.ligand_list
             df_samples = df_samples.sort_values(by=lig_list+['ligand'])
+            df_samples_by_tf = {k:df for k, df in df_samples.groupby('transcription_factor')}
             
             # list of parameters that are checked with rhat convergence test after Stan model fit.
             # Generally, these are the parameters that will have results saved to the data table.
@@ -2477,6 +2478,7 @@ class BarSeqFitnessFrame:
             # A 1D array of the samples associated with each of the per_sample_parameters, 
             #     matched to the stan_fit.stan_variable() output:
             per_sample_arr = df_samples.sample_id.values
+            per_sample_arr_by_tf = {k:df.sample_id.values for k, df in df_samples_by_tf.items()}
             
             # The column names for the reference fitness used in fitness normalization
             ref_sample_str_dict = {init:[f'fitness_S{n}_{init}' for n in self.ref_samples] for init in nrm_initial_list}
@@ -2665,8 +2667,13 @@ class BarSeqFitnessFrame:
                     stan_out_arr = stan_fit.stan_variable(p)
                     for samp, stan_samples in zip(per_sample_arr, stan_out_arr):
                         column_name = f'{p}_S{samp}'
-                        stan_return_dict[column_name] = stan_samples.mean()
-                        stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                        # Only record the per_sample_parameters for samples that are appropriate for each transcription factor:
+                        if samp in per_sample_arr_by_tf[tf]:
+                            stan_return_dict[column_name] = stan_samples.mean()
+                            stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                        else:
+                            stan_return_dict[column_name] = np.nan
+                            stan_return_dict[f'{column_name}_err'] = np.nan
                             
                 
             except Exception as err:
