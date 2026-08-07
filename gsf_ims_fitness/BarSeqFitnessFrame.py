@@ -2648,7 +2648,7 @@ class BarSeqFitnessFrame:
                         stan_return_dict[c_name] = stan_samples.mean()
                         stan_return_dict[f'{c_name}_err'] = stan_samples.std()
                         
-                        other_ligand = [x for x in self.ligand_list if x!=ligan][0]
+                        other_ligand = [x for x in self.ligand_list if x!=ligand][0]
                         c_name = p.replace('_1', f'_{other_ligand}')
                         stan_return_dict[c_name] = np.nan
                         stan_return_dict[f'{c_name}_err'] = np.nan
