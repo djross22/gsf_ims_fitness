@@ -2688,8 +2688,14 @@ class BarSeqFitnessFrame:
         
         def output_nans_to_return_dict(loc_return_dict):
             for p in mean_std_params:
-                loc_return_dict[p] = np.nan
-                loc_return_dict[f'{p}_err'] = np.nan
+                if p[-2:] == '_1':
+                    for lig in self.ligand_list:
+                        c_name = p.replace('_1', f'_{lig}')
+                        loc_return_dict[c_name] = np.nan
+                        loc_return_dict[f'{c_name}_err'] = np.nan
+                else:
+                    loc_return_dict[p] = np.nan
+                    loc_return_dict[f'{p}_err'] = np.nan
         
             for p in per_tmp_parameters:
                 for tmp in tmp_conc_list:
