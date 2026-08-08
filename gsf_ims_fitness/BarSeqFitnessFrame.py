@@ -2396,7 +2396,7 @@ class BarSeqFitnessFrame:
                                              re_stan_on_rhat=True,
                                              rhat_cutoff=1.05):
         
-        if curve_type not in ['Hill']:
+        if curve_type not in ['Hill', 'GP']:
             raise NotImplementedError(f"stan_fitness_to_dose_response_curves() is not yet implemented for curve_type: {curve_type}")
         
         plasmid = self.plasmid
@@ -2412,7 +2412,7 @@ class BarSeqFitnessFrame:
         
         if plasmid == 'Align-TF-2':
             # The Stan model file:
-            sm_file = 'Fitness to function.single ligand.Hill dose-response.stan'
+            sm_file = f'Fitness to function.single ligand.{curve_type} dose-response.stan'
             
             nrm_initial_list = np.unique([v for k, v in nrm_initial_dict.items()])
             
@@ -2423,7 +2423,7 @@ class BarSeqFitnessFrame:
             print("      Method version from 2026-08-05")
         
             log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
-            print(f'log_g_limits: {log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf}')
+            print(f'log_g_limits: {log_g_min, log_g_max}')
             
             # DataFrame with sample info for consistent ordering:
             df_samples = self.sample_plate_map
@@ -2435,30 +2435,22 @@ class BarSeqFitnessFrame:
             
             # list of parameters that are checked with rhat convergence test after Stan model fit.
             # Generally, these are the parameters that will have results saved to the data table.
-            key_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
-                          'low_fitness', 'mid_g', 'fitness_n',
-                          'sigma', 'mean_y']
-            '''
-            Stan parameters:
-              real<lower=log_g_min, upper=log_g_max> log_g0;          // log10 of function at zero ligand
-              real<lower=log_g_min, upper=log_g_max> log_ginf_1;      // log10 of gene expression level at infinite induction
-              real<lower=log_x_1_min, upper=log_x_1_max> log_ec50_1;  // input level (x) that gives output 1/2 way between g0 and ginf
-              real<lower=0> sensor_n_1;                               // cooperativity exponent of sensor gene expression vs. x curve
-              
-              real<lower=0> sigma;            // scale factor for standard deviation of noise in y
-              
-              vector[N_antibiotic] low_fitness;       // fitness difference at zero function
-              vector[N_antibiotic] mid_g;             // gene expression level at 1/2 max fitness difference
-              vector[N_antibiotic] fitness_n;         // cooperativity coefficient of fitness calibration curve
-              
-            Stan transformed parameters:
-              vector[N] real mean_y;
-            '''
+            if curve_type == 'Hill':
+                key_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
+                              'low_fitness', 'mid_g', 'fitness_n',
+                              'sigma', 'mean_y']
+            elif curve_type == 'GP':
+                key_params = ['constr_log_g', 'log_g_ratio', 'dlog_g',
+                              'log_rho', 'log_alpha', 'log_sigma',
+                              'sigma', 'mean_y']
             
             # Real-valued outputs from the Stan model that get saved as barcode_frame columns for mean and std:
-            mean_std_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
-                               'log_ginf_g0_ratio_1', 'log_gxmax_1', 'log_gxmax_g0_ratio_1',
-                               'sigma', 'rms_resid']
+            if curve_type == 'Hill':
+                mean_std_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
+                                   'log_ginf_g0_ratio_1', 'log_gxmax_1', 'log_gxmax_g0_ratio_1',
+                                   'sigma', 'rms_resid']
+            elif curve_type == 'GP':
+                mean_std_params = ['sigma', 'rms_resid']
             
             # 1D vector outputs from the Stan model that get saved as barcode_frame column namess for each non-zero antibiotic concentration, 
             #     with a mean and std for each non-zero antibiotic concentration:
@@ -2477,7 +2469,10 @@ class BarSeqFitnessFrame:
             
             # 1D vector/array outputs from the Stan model that get saved as barcode_frame columns for each sample, 
             #     with a mean and std for each sample:
-            per_sample_parameters = ['mean_y']
+            if curve_type == 'Hill':
+                per_sample_parameters = ['mean_y']
+            elif curve_type == 'GP':
+                per_sample_parameters = ['constr_log_g', 'log_g_ratio', 'dlog_g', 'mean_y']
             
             # A 1D array of the samples associated with each of the per_sample_parameters, 
             #     matched to the stan_fit.stan_variable() output:
@@ -2519,11 +2514,16 @@ class BarSeqFitnessFrame:
             '''
             
             # Dictionary for the initialization of the parameters for the Stan fit:
-            stan_init = {'log_g0': 2.2, 
-                         'log_ginf_1': 4,
-                         'log_ec50_1': 2.01,
-                         'sensor_n_1': 1.5, 
-                         'sigma': 1.0}
+            if curve_type == 'Hill':
+                stan_init = {'log_g0': 2.2, 
+                             'log_ginf_1': 4,
+                             'log_ec50_1': 2.01,
+                             'sensor_n_1': 1.5, 
+                             'sigma': 1.0}
+            elif curve_type == 'GP':
+                stan_init = {'rho': 1.0, 
+                             'alpha': 0.01,
+                             'sigma': 1.0}
             for k, v in stan_data_dose_response_0.items():
                 if '_mu' in k:
                     stan_init[k.replace('_mu','')] = v
@@ -2600,8 +2600,6 @@ class BarSeqFitnessFrame:
                 stan_data['x'] = np.array(x_arr)
                 stan_data['y'] = np.array(y_arr)
                 stan_data['y_err'] = np.array(yerr_arr)
-                # log_x_max sets the upper bound on the log_ec50 parameter:
-                stan_data['log_x_max'] = np.log10(np.array([max(stan_data['x'])])) + 4
                 '''
                   int<lower=1> N_antibiotic;  // number of non-zero antibiotic concentrations
                   int<lower=1> N;             // total number of data points across all non-zero antibiotic concentrations
@@ -2611,6 +2609,16 @@ class BarSeqFitnessFrame:
                   vector[N] y;           // normalized fitness difference datapoints across all non-zero antibiotic concentrations
                   vector[N] y_err;       // estimated error of y
                 '''
+                
+                if curve_type == 'Hill':
+                    # log_x_max sets the upper bound on the log_ec50 parameter:
+                    stan_data['log_x_max'] = np.log10(np.array([max(stan_data['x'])])) + 4
+                elif curve_type == 'GP':
+                    # log_x_zero is log10 of the x value to use in place of x=0 for the GP model:
+                    x = stan_data['x']
+                    log_x = np.log10(np.unique(x[x>0]))
+                    log_x_spacing = log_x[1] - log_x[0]
+                    stan_data['log_x_zero'] = np.array([log_x[0] - 1.5*log_x_spacing])
                 
                 
                 stan_fit = stan_model.sample(data=stan_data, 
@@ -2671,6 +2679,12 @@ class BarSeqFitnessFrame:
                     stan_out_arr = stan_fit.stan_variable(p)
                     for samp, stan_samples in zip(per_sample_arr, stan_out_arr):
                         column_name = f'{p}_S{samp}'
+                        if curve_type == 'GP':
+                            if p == 'constr_log_g':
+                                column_name = f'GP_log_g_S{samp}'
+                            elif p in ['log_g_ratio', 'dlog_g']:
+                                column_name = f'GP_{column_name}'
+                            
                         # Only record the per_sample_parameters for samples that are appropriate for each transcription factor:
                         if samp in per_sample_arr_by_tf[tf]:
                             stan_return_dict[column_name] = stan_samples.mean()
@@ -2710,6 +2724,11 @@ class BarSeqFitnessFrame:
             for p in per_sample_parameters:
                 for samp in per_sample_arr:
                     column_name = f'{p}_S{samp}'
+                    if curve_type == 'GP':
+                        if p == 'constr_log_g':
+                            column_name = f'GP_log_g_S{samp}'
+                        elif p in ['log_g_ratio', 'dlog_g']:
+                            column_name = f'GP_{column_name}'
                     loc_return_dict[column_name] = np.nan
                     loc_return_dict[f'{column_name}_err'] = np.nan
         
