@@ -2379,25 +2379,29 @@ class BarSeqFitnessFrame:
                          'log_initial_dhfr': self.log_dhfr_levels, 
                          'sigma': 1.0}
     
-    def stan_fitness_to_hill_dose_response_curves(self,
-                                                  adapt_delta=0.95,
-                                                  iter_warmup=1000,
-                                                  iter_sampling=1000,
-                                                  chains=4,
-                                                  stan_output_dir=None,
-                                                  show_progress=False,
-                                                  auto_save=True,
-                                                  overwrite=False,
-                                                  refit_indexes=None,
-                                                  return_fit=False,
-                                                  nrm_initial_dict=None, # dictionary of normalization variant to be used for each non-zero antibiotic concentration, {antibiotic_conc:initial,...}
-                                                  min_err_dict=None, # dictionary of min_err to be used for each non-zero antibiotic concentration, {antibiotic_conc:min_err,...}
-                                                  re_stan_on_rhat=True,
-                                                  rhat_cutoff=1.05):
+    def stan_fitness_to_dose_response_curves(self,
+                                             curve_type='Hill',
+                                             adapt_delta=0.95,
+                                             iter_warmup=1000,
+                                             iter_sampling=1000,
+                                             chains=4,
+                                             stan_output_dir=None,
+                                             show_progress=False,
+                                             auto_save=True,
+                                             overwrite=False,
+                                             refit_indexes=None,
+                                             return_fit=False,
+                                             nrm_initial_dict=None, # dictionary of normalization variant to be used for each non-zero antibiotic concentration, {antibiotic_conc:initial,...}
+                                             min_err_dict=None, # dictionary of min_err to be used for each non-zero antibiotic concentration, {antibiotic_conc:min_err,...}
+                                             re_stan_on_rhat=True,
+                                             rhat_cutoff=1.05):
+        
+        if curve_type not in ['Hill']:
+            raise NotImplementedError(f"stan_fitness_to_dose_response_curves() is not yet implemented for curve_type: {curve_type}")
         
         plasmid = self.plasmid
         if plasmid not in ['Align-TF-2']:
-            raise NotImplementedError(f"stan_fitness_to_function_curves() is not yet implemented for plasmid: {plasmid}")
+            raise NotImplementedError(f"stan_fitness_to_dose_response_curves() is not yet implemented for plasmid: {plasmid}")
         
         cmdstanpy_logger = logging.getLogger("cmdstanpy")
         cmdstanpy_logger.disabled = True
