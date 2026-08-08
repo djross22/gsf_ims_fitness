@@ -4850,9 +4850,6 @@ class BarSeqFitnessFrame:
         sample_df = sample_df[sample_df.growth_plate==2].sort_values(by=sort_list)
         
         # Fitness calibration function is Hill function with either low or high value to zero:
-        def hill_funct(x, low, high, mid, n):
-            return low + (high-low)*( x**n )/( mid**n + x**n )
-
         if plasmid in ['pVER', 'pCymR', 'Align-TF', 'Align-TF-2']:
             # The arguments of fit_funct need to match the parameter names used in the Stan model:
             def fit_funct(x, g0, log_ec50, hill_n):
@@ -5252,9 +5249,6 @@ class BarSeqFitnessFrame:
         fit_plot_colors = sns.color_palette()
         
         # Fitness calibration function is Hill function with either low or high value to zero:
-        def hill_funct(x, low, high, mid, n):
-            return low + (high-low)*( x**n )/( mid**n + x**n )
-
         if plasmid in ['pVER', 'pCymR', 'Align-TF', 'Align-TF-2']:
             def fit_funct(x, low, mid, n):
                 return hill_funct(x, low, 0, mid, n)
