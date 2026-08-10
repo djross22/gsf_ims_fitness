@@ -2440,7 +2440,7 @@ class BarSeqFitnessFrame:
             print(f'log_g_limits: {log_g_min, log_g_max}')
             
             # DataFrames with sample info for consistent ordering:
-            df_samples, df_samples_by_tf, _, _ = self.get_df_samples()
+            df_samples, df_samples_by_tf, df_samples_all_tmp, df_samples_all_tmp_by_tf = self.get_df_samples()
             
             # list of parameters that are checked with rhat convergence test after Stan model fit.
             # Generally, these are the parameters that will have results saved to the data table.
@@ -2587,6 +2587,8 @@ class BarSeqFitnessFrame:
                         print(f"Skipping Stan fitting for {rs_name}, index {stan_index}")
                     return stan_return_dict
                 
+                ref_samples_loc = [x for x in self.ref_samples if x in list(df_samples_all_tmp_by_tf[tf].sample_id)]
+                print(f"    with ref_samples: {ref_samples_loc}")
                 x_arr = []
                 y_arr = []
                 yerr_arr = []
@@ -2598,7 +2600,7 @@ class BarSeqFitnessFrame:
                     df_samp = df_samp[df_samp.antibiotic_conc==tmp]
                     sample_list = list(df_samp.sample_id)
                     x_arr += list(df_samp[ligand])
-                    y_dict = self.get_fitness_effect_y_for_samples(st_row, sample_list, init)
+                    y_dict = self.get_fitness_effect_y_for_samples(st_row, sample_list, init, ref_samples=ref_samples_loc)
                     yerr = y_dict['yerr']
                     yerr = np.sqrt(yerr**2 + min_err_dict[tmp]**2)
                     y_arr += list(y_dict['y'])
@@ -2633,7 +2635,6 @@ class BarSeqFitnessFrame:
                     log_x = np.log10(np.unique(x[x>0]))
                     log_x_spacing = log_x[1] - log_x[0]
                     stan_data['log_x_zero'] = np.array([log_x[0] - 1.5*log_x_spacing])
-                
                 
                 stan_fit = stan_model.sample(data=stan_data, 
                                              iter_sampling=iter_sampling, 
@@ -2874,6 +2875,7 @@ class BarSeqFitnessFrame:
                     tf = align_tf_from_RS_name(rs_name)
                 ligand = align_ligand_from_tf(tf)
                 color = ligand_color_dict[ligand]
+                ref_samples_loc = [x for x in self.ref_samples if x in list(df_samples_all_tmp_by_tf[tf].sample_id)]
                 
                 #TODO ??: change plot to all ligands so that it covers the RS variants for raw fitness
                 
@@ -2899,7 +2901,7 @@ class BarSeqFitnessFrame:
                     x = df[ligand]
                     
                     # plot of fitness effect (the values used as 'y' in the Stan models)
-                    y_dict = self.get_fitness_effect_y_for_samples(row, df.sample_id, initial)
+                    y_dict = self.get_fitness_effect_y_for_samples(row, df.sample_id, initial, ref_samples=ref_samples_loc)
                     yerr = y_dict['yerr']
                     yerr = np.sqrt(yerr**2 + min_err_dict[tmp]**2)
                     y = y_dict['y']
