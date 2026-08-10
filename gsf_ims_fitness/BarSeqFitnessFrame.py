@@ -2437,7 +2437,7 @@ class BarSeqFitnessFrame:
             # Generally, these are the parameters that will have results saved to the data table.
             if curve_type == 'Hill':
                 key_params = ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1', 
-                              'low_fitness', 'mid_g', 'fitness_n',
+                              'low_fitness', 'log_mid_g', 'fitness_n',
                               'sigma', 'mean_y']
             elif curve_type == 'GP':
                 key_params = ['constr_log_g', 'log_g_ratio', 'dlog_g',
@@ -2454,7 +2454,7 @@ class BarSeqFitnessFrame:
             
             # 1D vector outputs from the Stan model that get saved as barcode_frame column namess for each non-zero antibiotic concentration, 
             #     with a mean and std for each non-zero antibiotic concentration:
-            per_tmp_parameters = ['low_fitness', 'mid_g', 'fitness_n']
+            per_tmp_parameters = ['low_fitness', 'log_mid_g', 'fitness_n']
             # Also need a list of non-zero antibiotic concentrations
             tmp_conc_list = np.unique(df_samples.antibiotic_conc)
             # and a dictionary with the appropriate barcode_frame column names
