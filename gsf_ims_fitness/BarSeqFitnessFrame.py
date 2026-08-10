@@ -2808,7 +2808,137 @@ class BarSeqFitnessFrame:
         if auto_save:
             self.save_as_pickle(overwrite=overwrite)
         
-    
+    def plot_stan_dose_response_results(self,
+                                        plot_range=None,
+                                        #log_g_scale=False,
+                                        box_size=6,
+                                        nrm_initial_dict=None, # dictionary of normalization variant to be used for each non-zero antibiotic concentration, {antibiotic_conc:initial,...}
+                                        min_err_dict=None, # dictionary of min_err to be used for each non-zero antibiotic concentration, {antibiotic_conc:min_err,...}
+                                        show_mut_codes=True,
+                                        ):
+        plasmid = self.plasmid
+        if plasmid not in ['Align-TF-2']:
+            raise NotImplementedError(f"stan_fitness_to_dose_response_curves() is not yet implemented for plasmid: {plasmid}")
+        
+        if plot_range is None:
+            barcode_frame = self.barcode_frame
+        else:
+            barcode_frame = self.barcode_frame.loc[plot_range[0]:plot_range[1]]
+        
+        # The arguments of hill_funct_loc need to match the parameter names saved as columns in barcode_frame:
+        #     ['log_g0', 'log_ginf_1', 'log_ec50_1', 'sensor_n_1']
+        def hill_funct_loc(x, log_g0, log_ginf, log_ec50, sensor_n):
+            g0 = 10**log_g0
+            ginf = 10**log_ginf
+            mid = 10**log_ec50
+            return hill_funct(x, g0, ginf, mid, sensor_n)
+            
+        # DataFrames with sample info for consistent ordering:
+        df_samples, df_samples_by_tf, df_samples_all_tmp, df_samples_all_tmp_by_tf = self.get_df_samples()
+        
+        plt.rcParams["figure.figsize"] = [2*box_size, 3*box_size/3]
+        ligand_color_dict = {lig:c for lig, c in zip(self.ligand_list, sns.color_palette())}
+        linthresh_dict = {}
+        for lig, conc_list in zip(self.ligand_list, self.inducer_conc_lists):
+            linthresh_dict[lig] = min(conc_list)/1
+        
+        show_mut_codes = ('mutation_codes' in barcode_frame.columns) and show_mut_codes
+        show_variant = ('variant' in barcode_frame.columns) and show_variant
+        fig_axs_list = []
+        alpha = 0.2
+        for index, row in barcode_frame.iterrows(): # iterate over barcodes
+            rs_name = row.RS_name
+            if 'norm' in rs_name.lower():
+                print(f'Skipping plot for {rs_name}')
+            else:
+                fig, axs_grid = plt.subplots(2, 2)
+                plt.subplots_adjust(hspace = .35)
+                axl = axs_grid.flatten()[0] # plot of raw fitness values, including fitness with zero antibiotic
+                axr = axs_grid.flatten()[2] # plot of fitness effect (the values used as 'y' in the Stan models)
+                axg = axs_grid.flatten()[1] # plot of the dose-response, g(c)
+                axdg = axs_grid.flatten()[3] # plot of the derivative of the dose-response (from the GP fit)
+                
+                suptitle = f'{index}: '
+                suptitle += f'total_counts: {row.total_counts}; '
+                suptitle += f'\n{row.RS_name}'
+                if show_variant:
+                    suptitle += f", {row.variant}"
+                if show_mut_codes:
+                    suptitle += f", {row.mutation_codes}"
+                fig.suptitle(suptitle, y=0.9, verticalalignment='bottom')
+                
+                if rs_name == '':
+                    tf = row.transcription_factor
+                else:
+                    tf = align_tf_from_RS_name(rs_name)
+                ligand = align_ligand_from_tf(tf)
+                color = ligand_color_dict[ligand]
+                
+                #TODO ??: change plot to all ligands so that it covers the RS variants for raw fitness
+                
+                for ax in axs_grid.flatten():
+                    ax.set_xscale('symlog', linthresh=linthresh_dict[ligand])
+                    #x_lab = '], ['.join(self.ligand_list)
+                    ax.set_xlabel(f'[{ligand}] (umol/L)', size=14)
+                axl.set_ylabel(f'Raw Fitness')
+                axr.set_ylabel(f'Fitness effect of {self.antibiotic}')
+                axg.set_ylabel('log10(g)')
+                
+                # plot of raw fitness values, including fitness with zero antibiotic:
+                for (tmp, df), marker in zip(df_samples_all_tmp_by_tf[tf].groupby('antibiotic_conc'), ['o', '<', '>']):
+                    initial = nrm_initial_dict[tmp]
+                    x = df[ligand]
+                    y = np.array([row[f"fitness_S{i}_{initial}"] for i in df.sample_id])
+                    yerr = np.array([row[f"fitness_S{i}_err_{initial}"] for i in df.sample_id])
+                    axl.errorbar(x, y, yerr, marker=marker, ms=8, color=color)
+                
+                
+                for (tmp, df), marker in zip(df_samples_by_tf[tf].groupby('antibiotic_conc'), ['<', '>']):
+                    initial = nrm_initial_dict[tmp]
+                    x = df[ligand]
+                    
+                    # plot of fitness effect (the values used as 'y' in the Stan models)
+                    y_dict = self.get_fitness_effect_y_for_samples(row, df.sample_id, initial)
+                    yerr = y_dict['yerr']
+                    yerr = np.sqrt(yerr**2 + min_err_dict[tmp]**2)
+                    y = y_dict['y']
+                    axr.errorbar(x, y, yerr, marker=marker, ms=8, color=color)
+                    
+                    # Add mean_y from Stan models, plus shaded regions around posterior mean for GP model
+                    y = np.array([row[f'GP_mean_y_S{samp}'] for samp in df.sample_id])
+                    yerr = np.array([row[f'GP_mean_y_S{samp}_err'] for samp in df.sample_id])
+                    axr.plot(x, y, '--', color=color)
+                    for sig in [1, 2]:
+                        axr.fill_between(x, y-yerr*sig, y+yerr*sig, color=color, alpha=alpha)
+                    # Just the mean_y (no shaded region) for the Hill model: 
+                    y = np.array([row[f'mean_y_S{samp}'] for samp in df.sample_id])
+                    yerr = np.array([row[f'mean_y_S{samp}_err'] for samp in df.sample_id])
+                    axr.plot(x, y, '--', color='k')
+                    
+                    # plot of the dose-response, g(c), from Hill and GP models
+                    if len(x) > 2:
+                        y = np.array([row[f'GP_log_g_S{samp}'] for samp in df.sample_id])
+                        yerr = np.array([row[f'GP_log_g_S{samp}_err'] for samp in df.sample_id])
+                        axg.plot(x, y, '--', color=color)
+                        for sig in [1, 2]:
+                            axg.fill_between(x, y-yerr*sig, y+yerr*sig, color=color, alpha=alpha)
+                        
+                        y = np.log10(hill_funct_loc(x, row.log_g0, row[f'log_ginf_{ligand}'], row[f'log_ec50_{ligand}'], row[f'sensor_n_{ligand}']))
+                        axg.plot(x, y, '--', color='k')
+                    
+                    # plot of the derivative of the dose-response (from the GP fit)
+                    if len(x) > 2:
+                        y = np.array([row[f'GP_dlog_g_S{samp}'] for samp in df.sample_id])
+                        yerr = np.array([row[f'GP_dlog_g_S{samp}_err'] for samp in df.sample_id])
+                        axdg.plot(x, y, '--', color=color)
+                        for sig in [1, 2]:
+                            axdg.fill_between(x, y-yerr*sig, y+yerr*sig, color=color, alpha=alpha)
+                            
+                
+                xlim = axdg.get_xlim()
+                axdg.set_xlim(xlim)
+                axdg.plot(xlim, [0]*2, '--k');
+                axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
     
     def stan_single_fitness_to_function(self,
                                         adapt_delta=0.9,
