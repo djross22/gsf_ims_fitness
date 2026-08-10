@@ -2379,6 +2379,20 @@ class BarSeqFitnessFrame:
                          'log_initial_dhfr': self.log_dhfr_levels, 
                          'sigma': 1.0}
     
+    
+    def get_df_samples(self):
+        # DataFrame with sample info for consistent ordering of data points:
+        df_samples = self.sample_plate_map
+        df_samples = df_samples[df_samples.growth_plate==5]
+        lig_list = self.ligand_list
+        df_samples = df_samples.sort_values(by=lig_list+['ligand'])
+        df_samples_all_tmp = df_samples.copy()
+        df_samples = df_samples[df_samples.antibiotic_conc>0]
+        df_samples_by_tf = {k:df for k, df in df_samples.groupby('transcription_factor')}
+        df_samples_all_tmp_by_tf = {k:df for k, df in df_samples_all_tmp.groupby('transcription_factor')}
+        
+        return df_samples, df_samples_by_tf, df_samples_all_tmp, df_samples_all_tmp_by_tf
+    
     def stan_fitness_to_dose_response_curves(self,
                                              curve_type='Hill',
                                              adapt_delta=0.95,
@@ -2425,13 +2439,8 @@ class BarSeqFitnessFrame:
             log_g_min, log_g_max, log_g_prior_scale, wild_type_ginf = fitness.log_g_limits(plasmid=plasmid)
             print(f'log_g_limits: {log_g_min, log_g_max}')
             
-            # DataFrame with sample info for consistent ordering:
-            df_samples = self.sample_plate_map
-            df_samples = df_samples[df_samples.growth_plate==5]
-            df_samples = df_samples[df_samples.antibiotic_conc>0]
-            lig_list = self.ligand_list
-            df_samples = df_samples.sort_values(by=lig_list+['ligand'])
-            df_samples_by_tf = {k:df for k, df in df_samples.groupby('transcription_factor')}
+            # DataFrames with sample info for consistent ordering:
+            df_samples, df_samples_by_tf, _, _ = self.get_df_samples()
             
             # list of parameters that are checked with rhat convergence test after Stan model fit.
             # Generally, these are the parameters that will have results saved to the data table.
