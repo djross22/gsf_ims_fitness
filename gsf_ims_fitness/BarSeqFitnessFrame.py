@@ -2249,8 +2249,8 @@ class BarSeqFitnessFrame:
         if ref_samples is None:
             ref_samples = self.ref_samples
             
-        ref_sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in self.ref_samples]
-        ref_err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in self.ref_samples]
+        ref_sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in ref_samples]
+        ref_err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in ref_samples]
         
         sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in sample_id_list]
         err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in sample_id_list]
