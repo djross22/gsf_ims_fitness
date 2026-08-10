@@ -2852,6 +2852,7 @@ class BarSeqFitnessFrame:
                 print(f'Skipping plot for {rs_name}')
             else:
                 fig, axs_grid = plt.subplots(2, 2)
+                fig_axs_list.append((fig, axs_grid))
                 plt.subplots_adjust(hspace = .35)
                 axl = axs_grid.flatten()[0] # plot of raw fitness values, including fitness with zero antibiotic
                 axr = axs_grid.flatten()[2] # plot of fitness effect (the values used as 'y' in the Stan models)
@@ -2939,6 +2940,8 @@ class BarSeqFitnessFrame:
                 axdg.set_xlim(xlim)
                 axdg.plot(xlim, [0]*2, '--k');
                 axdg.set_ylabel('GP d(log(g))/d(log(x))', size=14)
+        
+        return fig_axs_list
     
     def stan_single_fitness_to_function(self,
                                         adapt_delta=0.9,
