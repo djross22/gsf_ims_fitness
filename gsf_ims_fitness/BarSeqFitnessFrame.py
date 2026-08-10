@@ -2473,7 +2473,10 @@ class BarSeqFitnessFrame:
                 for tmp in tmp_conc_list:
                     if int(tmp) == tmp:
                         tmp = int(tmp)
-                    column_name = f'{p}_TMP{tmp}'
+                    if curve_type =='Hill':
+                        column_name = f'{p}_TMP{tmp}'
+                    else:
+                        column_name = f'{curve_type}_{p}_TMP{tmp}'
                     per_tmp_column_names[p][tmp] = column_name
             
             # 1D vector/array outputs from the Stan model that get saved as barcode_frame columns for each sample, 
@@ -2588,12 +2591,12 @@ class BarSeqFitnessFrame:
                 y_arr = []
                 yerr_arr = []
                 s_arr = []
+                sample_arr = []
                 for tmp in tmp_conc_list:
                     init = nrm_initial_dict[tmp]
-                    df_samp = df_samples
+                    df_samp = df_samples_by_tf[tf]
                     df_samp = df_samp[df_samp.antibiotic_conc==tmp]
-                    df_samp = df_samp[df_samp.transcription_factor==tf]
-                    sample_list = df_samp.sample_id
+                    sample_list = list(df_samp.sample_id)
                     x_arr += list(df_samp[ligand])
                     y_dict = self.get_fitness_effect_y_for_samples(st_row, sample_list, init)
                     yerr = y_dict['yerr']
@@ -2601,6 +2604,7 @@ class BarSeqFitnessFrame:
                     y_arr += list(y_dict['y'])
                     yerr_arr += list(yerr)
                     s_arr.append(len(df_samp))
+                    sample_arr += sample_list
                     
                 stan_data = {}|stan_data_dose_response_0 # includes prior info for ['low_fitness', 'log_mid_g', 'fitness_n'] and also ['log_g_min', 'log_g_max']
                 stan_data['N_antibiotic'] = len(tmp_conc_list)
@@ -2609,6 +2613,7 @@ class BarSeqFitnessFrame:
                 stan_data['x'] = np.array(x_arr)
                 stan_data['y'] = np.array(y_arr)
                 stan_data['y_err'] = np.array(yerr_arr)
+                stan_data['sample_arr'] = np.array(sample_arr)
                 '''
                   int<lower=1> N_antibiotic;  // number of non-zero antibiotic concentrations
                   int<lower=1> N;             // total number of data points across all non-zero antibiotic concentrations
@@ -2666,16 +2671,23 @@ class BarSeqFitnessFrame:
                         raise ValueError(f'Parameters in mean_std_params must be simple real parameters, but {p} samples has shape {samp_shape}.')
                     if p[-2:] == '_1':
                         c_name = p.replace('_1', f'_{ligand}')
+                        if curve_type != 'Hill':
+                            c_name = f'{curve_type}_{c_name}'
                         stan_return_dict[c_name] = stan_samples.mean()
                         stan_return_dict[f'{c_name}_err'] = stan_samples.std()
                         
                         other_ligand = [x for x in self.ligand_list if x!=ligand][0]
                         c_name = p.replace('_1', f'_{other_ligand}')
-                        stan_return_dict[c_name] = np.nan
+                        if curve_type != 'Hill':
+                            c_name = f'{curve_type}_{c_name}'
+                        stan_return_dict[f'{c_name}'] = np.nan
                         stan_return_dict[f'{c_name}_err'] = np.nan
                     else:
-                        stan_return_dict[p] = stan_samples.mean()
-                        stan_return_dict[f'{p}_err'] = stan_samples.std()
+                        c_name = p
+                        if curve_type != 'Hill':
+                            c_name = f'{curve_type}_{c_name}'
+                        stan_return_dict[f'{c_name}'] = stan_samples.mean()
+                        stan_return_dict[f'{c_name}_err'] = stan_samples.std()
                 
                 for p in per_tmp_parameters:
                     stan_out_arr = stan_fit.stan_variable(p)
@@ -2686,19 +2698,28 @@ class BarSeqFitnessFrame:
                 
                 for p in per_sample_parameters:
                     stan_out_arr = stan_fit.stan_variable(p)
-                    for samp, stan_samples in zip(per_sample_arr, stan_out_arr):
+                    
+                    # Only record the per_sample_parameters for samples that are appropriate for each transcription factor:
+                    for samp, stan_samples in zip(stan_data['sample_arr'], stan_out_arr.transpose()):
                         column_name = f'{p}_S{samp}'
                         if curve_type == 'GP':
                             if p == 'constr_log_g':
                                 column_name = f'GP_log_g_S{samp}'
-                            elif p in ['log_g_ratio', 'dlog_g']:
+                            else:
                                 column_name = f'GP_{column_name}'
                             
-                        # Only record the per_sample_parameters for samples that are appropriate for each transcription factor:
-                        if samp in per_sample_arr_by_tf[tf]:
-                            stan_return_dict[column_name] = stan_samples.mean()
-                            stan_return_dict[f'{column_name}_err'] = stan_samples.std()
-                        else:
+                        stan_return_dict[column_name] = stan_samples.mean()
+                        stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                        
+                    # Add NaN for samples that are NOT appropriate for each transcription factor:
+                    for samp in per_sample_arr:
+                        if samp not in stan_data['sample_arr']:
+                            column_name = f'{p}_S{samp}'
+                            if curve_type == 'GP':
+                                if p == 'constr_log_g':
+                                    column_name = f'GP_log_g_S{samp}'
+                                else:
+                                    column_name = f'GP_{column_name}'
                             stan_return_dict[column_name] = np.nan
                             stan_return_dict[f'{column_name}_err'] = np.nan
                             
@@ -2718,11 +2739,16 @@ class BarSeqFitnessFrame:
                 if p[-2:] == '_1':
                     for lig in self.ligand_list:
                         c_name = p.replace('_1', f'_{lig}')
+                        if curve_type != 'Hill':
+                            c_name = f'{curve_type}_{c_name}'
                         loc_return_dict[c_name] = np.nan
                         loc_return_dict[f'{c_name}_err'] = np.nan
                 else:
-                    loc_return_dict[p] = np.nan
-                    loc_return_dict[f'{p}_err'] = np.nan
+                    c_name = p
+                    if curve_type != 'Hill':
+                        c_name = f'{curve_type}_{c_name}'
+                    loc_return_dict[c_name] = np.nan
+                    loc_return_dict[f'{c_name}_err'] = np.nan
         
             for p in per_tmp_parameters:
                 for tmp in tmp_conc_list:
@@ -2736,7 +2762,7 @@ class BarSeqFitnessFrame:
                     if curve_type == 'GP':
                         if p == 'constr_log_g':
                             column_name = f'GP_log_g_S{samp}'
-                        elif p in ['log_g_ratio', 'dlog_g']:
+                        else:
                             column_name = f'GP_{column_name}'
                     loc_return_dict[column_name] = np.nan
                     loc_return_dict[f'{column_name}_err'] = np.nan
@@ -2747,7 +2773,7 @@ class BarSeqFitnessFrame:
         else:
             if return_fit:
                 row_to_fit = barcode_frame.loc[refit_indexes[0]]
-                return stan_fit_row(row_to_fit)
+                return stan_fit_row(row_to_fit, return_fit=return_fit)
             
             print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
             print(f'    selected rows: {refit_indexes}')
