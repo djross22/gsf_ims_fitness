@@ -4,7 +4,7 @@
 data {
   int<lower=1> N_antibiotic;  // number of non-zero antibiotic concentrations
   int<lower=1> N;             // total number of data points across all non-zero antibiotic concentrations
-  int s[N_antibiotic];        // array of the number of data points for each non-zero antibiotic concentration
+  array[N_antibiotic] int s;        // array of the number of data points for each non-zero antibiotic concentration
   
   vector[N] x;           // ligand concentrations across all non-zero antibiotic concentrations
   vector[N] y;           // normalized fitness difference datapoints across all non-zero antibiotic concentrations
@@ -27,7 +27,7 @@ data {
 }
 
 transformed data {
-  real x_gp[N];
+  array[N] real x_gp;
   
   for (i in 1:N) {
     if (x[i]==0) {
