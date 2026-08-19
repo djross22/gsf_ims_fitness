@@ -2849,8 +2849,12 @@ class BarSeqFitnessFrame:
         alpha = 0.2
         for index, row in barcode_frame.iterrows(): # iterate over barcodes
             rs_name = row.RS_name
-            if 'norm' in rs_name.lower():
-                print(f'Skipping plot for {rs_name}')
+            if rs_name == '':
+                tf = row.transcription_factor
+            else:
+                tf = align_tf_from_RS_name(rs_name)
+            if ('norm' in rs_name.lower()) or (tf == ''):
+                print(f'Skipping plot for {rs_name}, {index}')
             else:
                 fig, axs_grid = plt.subplots(2, 2)
                 fig_axs_list.append((fig, axs_grid))
@@ -2869,10 +2873,6 @@ class BarSeqFitnessFrame:
                     suptitle += f", {row.mutation_codes}"
                 fig.suptitle(suptitle, y=0.9, verticalalignment='bottom')
                 
-                if rs_name == '':
-                    tf = row.transcription_factor
-                else:
-                    tf = align_tf_from_RS_name(rs_name)
                 ligand = align_ligand_from_tf(tf)
                 color = ligand_color_dict[ligand]
                 ref_samples_loc = [x for x in self.ref_samples if x in list(df_samples_all_tmp_by_tf[tf].sample_id)]
