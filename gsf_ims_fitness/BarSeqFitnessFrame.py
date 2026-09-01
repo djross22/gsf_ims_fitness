@@ -2816,6 +2816,7 @@ class BarSeqFitnessFrame:
                                         nrm_initial_dict=None, # dictionary of normalization variant to be used for each non-zero antibiotic concentration, {antibiotic_conc:initial,...}
                                         min_err_dict=None, # dictionary of min_err to be used for each non-zero antibiotic concentration, {antibiotic_conc:min_err,...}
                                         show_mut_codes=True,
+                                        show_variant=True,
                                         ):
         plasmid = self.plasmid
         if plasmid not in ['Align-TF-2']:
