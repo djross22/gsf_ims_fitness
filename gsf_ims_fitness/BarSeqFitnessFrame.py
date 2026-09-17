@@ -2236,6 +2236,7 @@ class BarSeqFitnessFrame:
                                         sample_id_list, # a list of sample numbers to get the fitness effect for
                                         spike_in_initial,
                                         ref_samples=None,
+                                        raw_fitness=False, # If True, this method returns raw fitness values instead of normalized
                                         ):
         # This method is used by the calibrate_ and stan_ methods to ensure that they use the same 'y' values
         
@@ -2266,7 +2267,10 @@ class BarSeqFitnessFrame:
         y = (y_row - y_ref)/y_ref
         yerr = np.sqrt((yerr_row/y_ref)**2 + (y_row*yerr_ref/y_ref**2)**2)
         
-        return {'y':y, 'yerr':yerr}
+        if raw_fitness:
+            return {'y':y_row, 'yerr':yerr_row}
+        else:
+            return {'y':y, 'yerr':yerr}
     
     def stan_fitness_to_function_curves(self,
                                        adapt_delta=0.9,
@@ -5113,7 +5117,7 @@ class BarSeqFitnessFrame:
                             raise NotImplementedError(f"re-sampling to get log_xerr not yet implemented")
                         
                         sample_list = df_samp.sample_id
-                        y_dict = self.get_fitness_effect_y_for_samples(bs_row, sample_list, spike_in_initial)
+                        y_dict = self.get_fitness_effect_y_for_samples(bs_row, sample_list, spike_in_initial, raw_fitness=plot_raw_fitness)
                         y = y_dict['y']
                         yerr = y_dict['yerr']
                         
@@ -5499,7 +5503,7 @@ class BarSeqFitnessFrame:
                 for lig in ligand_plot_list:
                     if lig is not None:
                         i = np.where(np.array(self.ligand_list)==lig)[0][0]
-                    var = cytom_variant_from_rs_name(RS_name)
+                    var = self.cytom_variant_from_rs_name(RS_name)
 
                     df = calibration_data_table
                     df = df[df.variant==var]
@@ -5912,6 +5916,8 @@ class BarSeqFitnessFrame:
         
         if return_fig and return_resid_table:
             return fig, axs, resid_frame
+        elif return_fig and return_fit_data:
+            return fig, axs, fit_data_ret
         elif return_fig:
             return fig, axs
         elif return_resid_table:
