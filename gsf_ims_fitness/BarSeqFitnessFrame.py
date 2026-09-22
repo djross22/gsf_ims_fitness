@@ -324,7 +324,7 @@ class BarSeqFitnessFrame:
         
         self.set_ref_samples(ref_samples)
         
-        if plasmid == 'Align-Protease':
+        if plasmid in ['Align-Protease', 'Align-Protease-2']: # Two different plate layouts used for Protease
             # Add protease and DHFR expression info
             df = self.sample_plate_map
             df = df[df.growth_plate==5]
