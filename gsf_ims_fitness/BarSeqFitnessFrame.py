@@ -291,7 +291,7 @@ class BarSeqFitnessFrame:
             
             self.antibiotic_conc_list = list(np.unique(self.sample_plate_map.antibiotic_conc))
             
-            if plasmid == 'Align-Protease':
+            if plasmid in ['Align-Protease', 'Align-Protease-2']:
                 lig_id_list = list(np.unique(self.sample_plate_map['inducer1'])) + list(np.unique(self.sample_plate_map['inducer2']))
             elif plasmid == 'Align-T7RNAP_1':
                 lig_id_list = []
@@ -743,7 +743,7 @@ class BarSeqFitnessFrame:
             st_list = []
             for ind, row2 in df.iterrows():
                 st = f'S{row2.sample_id}, '
-                if self.plasmid == 'Align-Protease':
+                if self.plasmid in ['Align-Protease', 'Align-Protease-2']:
                     for ind_col in ['inducer1', 'inducer2']:
                         ind_id = row2[ind_col]
                         ind_conc = row2[ind_id]
@@ -1404,10 +1404,10 @@ class BarSeqFitnessFrame:
         elif self.plasmid == 'Align-TF':
             spike_in_list = ["pRamR-norm-02", "pLacI-norm-02"]
             spike_in_initial_list = ['ramr', 'laci']
-        elif self.plasmid in ['Align-Protease', 'Align-T7RNAP_1', 'Align-TF-2']:
+        elif self.plasmid in ['Align-Protease', 'Align-Protease-2', 'Align-T7RNAP_1', 'Align-TF-2']:
             spike_in_list = ["pRamR-norm-02", "pNorm-mDHFR-03"]
             spike_in_initial_list = ['nrm02', 'nrm03']
-            if self.plasmid == 'Align-Protease':
+            if self.plasmid in ['Align-Protease', 'Align-Protease-2']:
                 spike_in_list += ["pDRAC-norm"]
                 spike_in_initial_list += ['nrm00']
                 
@@ -1750,8 +1750,8 @@ class BarSeqFitnessFrame:
                     lig_conc = 0
                     spike_in_fitness = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[0]
                     spike_in_fitness_err = spike_in_fitness_dict[tet_conc][spike_in](ligand, lig_conc)[1]
-                elif plasmid in ['Align-Protease', 'Align-T7RNAP_1', 'Align-TF-2']:
-                    if (plasmid == 'Align-Protease') and (spike_in in ['pDRAC-norm']):
+                elif plasmid in ['Align-Protease', 'Align-Protease-2', 'Align-T7RNAP_1', 'Align-TF-2']:
+                    if (plasmid in ['Align-Protease', 'Align-Protease-2']) and (spike_in in ['pDRAC-norm']):
                         # For the Align-Protease plasmid system, calculate the fitness of the virtual normalization variant (pDRAC-norm), which is the best way to handle the fitness drop-off with Van induction:
                         sal_conc = df.Sal.iloc[0]
                         df_ref = sample_plate_map
@@ -2280,7 +2280,7 @@ class BarSeqFitnessFrame:
                                        rhat_cutoff=1.05):
         
         plasmid = self.plasmid
-        if plasmid not in ['Align-Protease']:
+        if plasmid not in ['Align-Protease', 'Align-Protease-2']:
             raise NotImplementedError(f"stan_fitness_to_function_curves() is not yet implemented for plasmid: {plasmid}")
         
         cmdstanpy_logger = logging.getLogger("cmdstanpy")
@@ -2295,13 +2295,16 @@ class BarSeqFitnessFrame:
         print(f"Using Stan to convert fitness curves to function curves for {self.experiment}")
         print(f"  Using fitness parameters for {plasmid}:")
         print(f"      {fit_fitness_difference_params}")
-        print("      Method version from 2026-01-26")
+        print("      Method version from 2026-09-22")
         #os.chdir(self.notebook_dir)
         
         barcode_frame = self.barcode_frame
         
-        if plasmid == 'Align-Protease':
-            sm_file = 'fitness_to_dhfr_function_align_protease.stan'
+        if plasmid in ['Align-Protease', 'Align-Protease-2']:
+            if plasmid == 'Align-Protease':
+                sm_file = 'fitness_to_dhfr_function_align_protease.stan'
+            elif plasmid == 'Align-Protease-2':
+                sm_file = 'fitness_to_dhfr_function_align_protease_2.stan'
             
             # list of parameters that are checked with rhat convergence test after Stan model fit.
             # Generally, these are the parameters that will have results saved to the data table.
@@ -4681,7 +4684,8 @@ class BarSeqFitnessFrame:
     
     
     def calibrate_protease_fitness_to_dhfr(self,
-                                           calibration_data_table,
+                                           calibration_data_table=None,
+                                           non_catalytic_controls=['pDRAC27', 'pDRAC28'],
                                            num_add_low_fitness_rs=0, # The number of low-fitness extra data points to add
                                            manually_add_low_fitness=None, # 2-tuple of mean and std for extra y-value to add manually
                                            low_fitness_log_xerr=2,
@@ -4694,7 +4698,6 @@ class BarSeqFitnessFrame:
                                            turn_off_cmdstanpy_logger=True,
                                            rhat_cutoff=1.05,
                                            show_progress=False):
-        RS_list = ['pDRAC27', 'pDRAC28']
         
         stan_file = 'Asymmetric Hill equation.with_log_xerr.stan'
         stan_model = stan_utility.compile_model(stan_file)
@@ -4712,31 +4715,43 @@ class BarSeqFitnessFrame:
         ref_sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in self.ref_samples]
         ref_err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in self.ref_samples]
         
-        # This calibration fit only uses the samples with zero Van, TMP>0, and the two different Sal concentrations
-        sample_id_list = [3, 15]
+        if self.plasmid == 'Align-Protease':
+            # The original Protease experiment calibration fit only uses the samples with zero Van, TMP>0, and the two different Sal concentrations
+            sample_id_list = [3, 15]
+            df = self.sample_plate_map
+            df = df[df.growth_plate==5]
+            df = df[[x in sample_id_list for x in df.sample_id]]
+            df = df.sort_values(by='sample_id')
+        elif self.plasmid == 'Align-Protease-2':
+            # The second plate layout has extra samples with zero Van, for better built-in calibration:
+            df = self.sample_plate_map
+            df = df[df.growth_plate==5]
+            df = df[df.antibiotic_conc>0]
+            df = df[df.Van==0]
+            df = df.sort_values(by='Sal')
+            sample_id_list = list(df.sample_id)
         
         plt.rcParams["figure.figsize"] = [6, 4]
         fig, ax = plt.subplots()
         sample_str_list = [f'fitness_S{n}_{spike_in_initial}' for n in sample_id_list]
         err_str_list = [f'fitness_S{n}_err_{spike_in_initial}' for n in sample_id_list]
 
-        df = self.sample_plate_map
-        df = df[df.growth_plate==5]
-        df = df[[x in sample_id_list for x in df.sample_id]]
-        df = df.sort_values(by='sample_id')
-
         tmp = df.antibiotic_conc.iloc[0]
         ax.set_title(f'Calibration with {spike_in_initial}, {tmp} ug/mL TMP')
-
-        log_x =  self.log_dhfr_levels
-        log_xerr = self.log_dhfr_err
         
-        # For the calibration, start with the data for the two control pDRACs that have mutated (non-cutting) substrates:
+        log_x = np.array([self.log_dhfr_levels[s] for s in sample_id_list])
+        log_xerr = np.array([self.log_dhfr_err[s] for s in sample_id_list])
+        
+        # For the calibration, start with the data for the control pDRACs that have mutated (non-cutting) substrates:
         log_x_list = []
         y_list = []
         yerr_list = []
         xerr_list = []
-        for rs in ['pDRAC27', 'pDRAC28']:
+        if len(non_catalytic_controls)<=3:
+            ms = 10
+        else:
+            ms = 6
+        for rs in non_catalytic_controls:
             df_rs = self.barcode_frame
             df_rs = df_rs[df_rs.RS_name==rs]
             row = df_rs.iloc[0]
@@ -4754,26 +4769,27 @@ class BarSeqFitnessFrame:
 
             x = 10**log_x
             xerr = fitness.log_plot_errorbars(log_x, log_xerr)
-            ax.errorbar(x, y, yerr, xerr, fmt='o', label=rs, alpha=0.7, ms=10);
+            ax.errorbar(x, y, yerr, xerr, fmt='o', label=rs, alpha=0.7, ms=ms);
 
             log_x_list += list(log_x)
             xerr_list += list(log_xerr)
             y_list += list(y)
             yerr_list += list(yerr)
         
-        # Add additional data from calibration_data_table:
-        x = calibration_data_table.dhfr_expression_ref
-        y = calibration_data_table.corrected_fitness_effect
-        yerr = np.sqrt(calibration_data_table.corrected_fitness_effect_err**2 + min_spx_err**2)
-        log_xerr = calibration_data_table.log_dhfr_err
-        xerr = fitness.log_plot_errorbars(np.log10(x), log_xerr)
-        
-        ax.errorbar(x, y, yerr, xerr, fmt='o', label='spx data')
-        
-        log_x_list += list(np.log10(x))
-        xerr_list += list(log_xerr)
-        y_list += list(y)
-        yerr_list += list(yerr)
+        if calibration_data_table is not None:
+            # Add additional data from calibration_data_table:
+            x = calibration_data_table.dhfr_expression_ref
+            y = calibration_data_table.corrected_fitness_effect
+            yerr = np.sqrt(calibration_data_table.corrected_fitness_effect_err**2 + min_spx_err**2)
+            log_xerr = calibration_data_table.log_dhfr_err
+            xerr = fitness.log_plot_errorbars(np.log10(x), log_xerr)
+            
+            ax.errorbar(x, y, yerr, xerr, fmt='o', label='spx data')
+            
+            log_x_list += list(np.log10(x))
+            xerr_list += list(log_xerr)
+            y_list += list(y)
+            yerr_list += list(yerr)
         
         # Append extra data from other samples and RS variants with the lowest fitness values, to make sure the fit doesn't set the baseline too low:
         if num_add_low_fitness_rs > 0:
@@ -6523,7 +6539,7 @@ class BarSeqFitnessFrame:
             initial = 'sp09'
         elif plasmid == 'Align-TF':
             initial = 'laci'
-        elif plasmid == 'Align-Protease':
+        elif plasmid in ['Align-Protease', 'Align-Protease-2']:
             initial = 'all.nrm00'
         elif plasmid == 'Align-T7RNAP_1':
             initial = 'nrm03'
