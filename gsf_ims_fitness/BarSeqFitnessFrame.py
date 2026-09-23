@@ -2377,6 +2377,224 @@ class BarSeqFitnessFrame:
                          'n_prot': np.array([0.9, 1.1]),
                          'log_initial_dhfr': self.log_dhfr_levels, 
                          'sigma': 1.0}
+            
+        print(f'    Using model from file: {sm_file}')
+        stan_model = stan_utility.compile_model(sm_file)
+        
+        rng = np.random.default_rng()
+        def stan_fit_row(st_row, return_fit=False):
+            stan_index = st_row.name
+            rs_name = st_row.RS_name
+            
+            # results from this method to be returned as a dictionary, which is initialized here and added to at different parts of the method.
+            # The 'stan_index' entry is used to match the stan_fit results to the correct barcode_frame row.
+            # Other items in the dictionary should correspond to columns that will be added to the barcode_frame containing the fit results.
+            stan_return_dict = {'stan_index':stan_index}
+            stan_return_dict['stan_passed_rhat'] = False
+            
+            print()
+            now = datetime.datetime.now()
+            print(f"{now}, fitting row index: {stan_index} {rs_name}")
+
+            try:
+                #****************************************************
+                # Code to be moved to bs_frame_stan_data() method???
+                #     or is it better to just keep it here?
+                if 'norm' in rs_name.lower():
+                    for p in mean_std_params:
+                        stan_return_dict[p] = np.nan
+                        stan_return_dict[f'{p}_err'] = np.nan
+                
+                    for p in per_sal_parameters:
+                        for sal in sal_conc_list:
+                            if int(sal) == sal:
+                                sal = int(sal)
+                            column_name = f'{p}_Sal{sal}'
+                            stan_return_dict[column_name] = np.nan
+                            stan_return_dict[f'{column_name}_err'] = np.nan
+                    
+                    for p in per_sample_parameters:
+                        for samp_arr in per_sample_arr:
+                            for samp in samp_arr:
+                                column_name = f'{p}_S{samp}'
+                                stan_return_dict[column_name] = np.nan
+                                stan_return_dict[f'{column_name}_err'] = np.nan
+                    
+                    print(f"Skipping Stan fitting for {rs_name}, index {stan_index}")
+                    return stan_return_dict
+                
+                y_arr = []
+                yerr_arr = []
+                log_g_max_arr = []
+                log_g_sigma_arr = []
+                for sample_id_list in per_sample_arr.transpose():
+                    sample_str_list = [f'fitness_S{n}_{nrm_initial}' for n in sample_id_list]
+                    err_str_list = [f'fitness_S{n}_err_{nrm_initial}' for n in sample_id_list]
+                    
+                    df = self.sample_plate_map
+                    df = df[df.growth_plate==5]
+                    df = df[[x in sample_id_list for x in df.sample_id]]
+                    df = df.sort_values(by='sample_id')
+                    
+                    sal = df.Sal.iloc[0]
+                    
+                    # y_ref is the average fitness measured in the reference conditions:
+                    y_ref = [st_row[s] for s in ref_sample_str_list]
+                    weights = 1/np.array([st_row[s] for s in ref_err_str_list])**2
+                    y_ref = np.average(y_ref, weights=weights)
+                    yerr_ref = np.std(y_ref)/np.sqrt(len(ref_sample_str_list))
+                    
+                    # y_var is the fitness for the barcoded variant for st_row
+                    y_var = np.array([st_row[s] for s in sample_str_list])
+                    yerr_var = np.array([st_row[s] for s in err_str_list])
+                    
+                    # y is the fitness effect of TMP; this is the data that gets used in the Stan model
+                    y = (y_var - y_ref)/y_ref
+                    yerr = np.sqrt((yerr_var/y_ref)**2 + (y_var*yerr_ref/y_ref**2)**2)
+                    
+                    y_arr.append(y)
+                    yerr_arr.append(yerr)
+                    log_g_max_arr.append(max_log_dhfr_dict[sal])
+                    log_g_sigma_arr.append(log_dhfr_err_dict[sal])
+                    
+                y_arr = np.array(y_arr).transpose()
+                yerr_arr = np.array(yerr_arr).transpose()
+                log_g_max_arr = np.array(log_g_max_arr)
+                log_g_sigma_arr = np.array(log_g_sigma_arr)
+                
+                stan_data = {}|stan_data_protease_0
+                stan_data['y'] = y_arr
+                stan_data['yerr'] = yerr_arr
+                stan_data['log_initial_dhfr_mu'] = log_g_max_arr
+                stan_data['log_initial_dhfr_sigma'] = log_g_sigma_arr
+                
+                stan_data['N_van'] = y_arr.shape[0]
+                stan_data['N_sal'] = y_arr.shape[1]
+                
+                #****************************************************
+                
+                
+                stan_fit = stan_model.sample(data=stan_data, 
+                                             iter_sampling=iter_sampling, 
+                                             iter_warmup=iter_warmup,
+                                             inits=stan_init, 
+                                             chains=chains, 
+                                             adapt_delta=adapt_delta, 
+                                             show_progress=show_progress, 
+                                             output_dir=stan_output_dir)
+                                             
+                if re_stan_on_rhat:
+                    rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                    if len(rhat_params) > 0:
+                        print(f'Re-running Stan fit becasue the following parameterrs had r_hat > {rhat_cutoff}: {rhat_params}')
+                        stan_fit = stan_model.sample(data=stan_data, iter_sampling=iter_sampling*10, iter_warmup=iter_warmup*10,
+                                                     inits=stan_init, chains=chains, adapt_delta=adapt_delta, show_progress=show_progress, 
+                                                     output_dir=stan_output_dir)
+                        
+                        rhat_params = stan_utility.check_rhat_by_params(stan_fit, rhat_cutoff=rhat_cutoff, stan_parameters=key_params)
+                        if len(rhat_params) > 0:
+                            print(f'    The following parameters still had r_hat > {rhat_cutoff}: {rhat_params}')
+                        else:
+                            print(f'    All parameters now have r_hat < {rhat_cutoff}')
+                            stan_return_dict['stan_passed_rhat'] = True
+                    else:
+                        stan_return_dict['stan_passed_rhat'] = True
+                
+                if return_fit:
+                    return stan_fit
+                
+                for p in mean_std_params:
+                    stan_samples = stan_fit.stan_variable(p)
+                    samp_shape = stan_samples.shape
+                    if len(samp_shape)!=1:
+                        raise ValueError(f'Parameters in mean_std_params must be simple real parameters, but {p} samples has shape {samp_shape}.')
+                    stan_return_dict[p] = stan_samples.mean()
+                    stan_return_dict[f'{p}_err'] = stan_samples.std()
+                
+                for p in per_sal_parameters:
+                    stan_out_arr = stan_fit.stan_variable(p)
+                    for stan_samples, sal in zip(stan_out_arr.transpose(), sal_conc_list):
+                        if int(sal) == sal:
+                            sal = int(sal)
+                        column_name = f'{p}_Sal{sal}'
+                        stan_return_dict[column_name] = stan_samples.mean()
+                        stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                
+                for p in per_sample_parameters:
+                    for samp_arr, stan_out_arr in zip(per_sample_arr, stan_fit.stan_variable(p).transpose([1,2,0])):
+                        for samp, stan_samples in zip(samp_arr, stan_out_arr):
+                            column_name = f'{p}_S{samp}'
+                            stan_return_dict[column_name] = stan_samples.mean()
+                            stan_return_dict[f'{column_name}_err'] = stan_samples.std()
+                            
+                
+            except Exception as err:
+                for p in mean_std_params:
+                    stan_return_dict[p] = np.nan
+                    stan_return_dict[f'{p}_err'] = np.nan
+                
+                for p in per_sal_parameters:
+                    for sal in sal_conc_list:
+                        if int(sal) == sal:
+                            sal = int(sal)
+                        column_name = f'{p}_Sal{sal}'
+                        stan_return_dict[column_name] = np.nan
+                        stan_return_dict[f'{column_name}_err'] = np.nan
+                    
+                for p in per_sample_parameters:
+                    for samp_arr in per_sample_arr:
+                        for samp in samp_arr:
+                            column_name = f'{p}_S{samp}'
+                            stan_return_dict[column_name] = np.nan
+                            stan_return_dict[f'{column_name}_err'] = np.nan
+                
+                print(f"Error during Stan fitting for index {stan_index}: {err}", sys.exc_info()[0])
+                tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
+                print(tb_str)
+            
+                
+            return stan_return_dict
+        
+        if refit_indexes is None:
+            print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
+            fit_list = [ stan_fit_row(row) for (index, row) in barcode_frame.iterrows() ]
+        else:
+            if return_fit:
+                row_to_fit = barcode_frame.loc[refit_indexes[0]]
+                return stan_fit_row(row_to_fit)
+            
+            print(f'Running Stan fits for selected rows in dataframe, number of rows: {len(refit_indexes)}')
+            print(f'    selected rows: {refit_indexes}')
+            row_list = [barcode_frame.loc[index] for index in refit_indexes]
+            fit_list = [stan_fit_row(row) for row in row_list]
+        
+        columns_to_add = [x for x in fit_list[0] if x!='stan_index']
+        
+        index_list = [x['stan_index'] for x in fit_list]
+        if refit_indexes is None:
+            if index_list == list(barcode_frame.index):
+                print("index lists match")
+            else:
+                raise ValueError("Error after Stan fitting: index lists do not match!")
+            
+            for c in columns_to_add:
+                barcode_frame[c] = [x[c] for x in fit_list]
+            
+        else:
+            if index_list == list(refit_indexes):
+                print("index lists match")
+            else:
+                raise ValueError("Error after Stan fitting: index lists do not match!")
+            
+            for stan_return in fit_list:
+                ind = stan_return['stan_index']
+                for c in columns_to_add:
+                    barcode_frame.loc[ind, c] = stan_return[c]
+        
+        self.barcode_frame = barcode_frame
+        
+        if auto_save:
+            self.save_as_pickle(overwrite=overwrite)
     
     
     def get_df_samples(self):
