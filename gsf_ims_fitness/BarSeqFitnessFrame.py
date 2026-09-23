@@ -2301,15 +2301,12 @@ class BarSeqFitnessFrame:
         barcode_frame = self.barcode_frame
         
         if plasmid in ['Align-Protease', 'Align-Protease-2']:
-            if plasmid == 'Align-Protease':
-                sm_file = 'fitness_to_dhfr_function_align_protease.stan'
-            elif plasmid == 'Align-Protease-2':
-                sm_file = 'fitness_to_dhfr_function_align_protease_2.stan'
+            sm_file = 'fitness_to_dhfr_function_align_protease_2.stan'
             
             # list of parameters that are checked with rhat convergence test after Stan model fit.
             # Generally, these are the parameters that will have results saved to the data table.
             key_params = ['log_ec50_prot', 'log_fraction_inf', 'n_prot', 'log_initial_dhfr', 'sigma',
-                          'log_fraction_intact', 'mean_y']
+                          'log_fraction_intact', 'log_dhfr', 'mean_y']
             '''
             Stan parameters:
               ordered[N_sal] log_ec50_prot;          //log10 of the ec50 for the fraction_intact curve vs. protease expression
@@ -2332,33 +2329,57 @@ class BarSeqFitnessFrame:
             # 1D vector outputs from the Stan model that get saved as barcode_frame columns for each non-zero Sal concentration, 
             #     with a mean and std for each sample:
             per_sal_parameters = ['log_ec50_prot', 'n_prot', 'log_initial_dhfr']
-            # Also need a list of non-zero Sal concentrations
+            
+            # Also need a list of Sal concentrations that were used for the two protease expression gradients:
             df = self.sample_plate_map
             df = df[df.growth_plate==5]
             df = df[df.antibiotic_conc>0]
+            df = df[df.Van>0]
             sal_conc_list = np.unique(df.Sal)
             
-            # 2D vector/array outputs from the Stan model that get saved as barcode_frame columns for each sample, 
-            #     with a mean and std for each sample:
-            per_sample_parameters = ['log_fraction_intact', 'log_dhfr', 'mean_y']
+            # 1D vectors from the Stan model that get saved as barcode_frame columns for each sample, 
+            #     with a mean and std for each sample, and separate lists of parameters for each Sal concentration:
+            per_sample_parameters = {}
+            per_sample_parameters[sal_conc_list[0]] = ['log_fraction_intact_1', 'log_dhfr_1', 'mean_y_1']
+            per_sample_parameters[sal_conc_list[1]] = ['log_fraction_intact_2', 'log_dhfr_2', 'mean_y_2']
+            for k, v in per_sample_parameters.items():
+                key_params += v
             
-            # A 2D array of the samples associated with each of the per_sample_parameters, 
+            # 1D arrays of the samples associated with each of the per_sample_parameters, 
             #     matched to the stan_fit.stan_variable() output:
-            per_sample_arr = np.array([[n for n in range(3, 13)], [n for n in range(15, 25)]]).transpose()
+            per_sample_arr_dict = {}
+            for sal in sal_conc_list:
+                df = self.sample_plate_map
+                df = df[df.growth_plate==5]
+                df = df[df.antibiotic_conc>0]
+                df = df[df.Sal==sal]
+                df = df.sort_values(by='Van')
+                per_sample_arr_dict[sal] = list(df.sample_id)
             
             # The column names for the reference fitness used in fitness normalization
             ref_sample_str_list = [f'fitness_S{n}_{nrm_initial}' for n in self.ref_samples]
             ref_err_str_list = [f'fitness_S{n}_err_{nrm_initial}' for n in self.ref_samples]
             
             # Make a dictionary of the max log-DHFR levels (the level with zero TEV activity for each Sal concentration)
-            max_log_dhfr_dict = {s:d for s, d in zip(sal_conc_list, self.log_dhfr_levels)}
             # and for the uncertainty of the log-DHFR levels
-            log_dhfr_err_dict = {s:d for s, d in zip(sal_conc_list, self.log_dhfr_err)}
+            max_log_dhfr_dict = {}
+            log_dhfr_err_dict = {}
+            for sal in sal_conc_list:
+                df = self.sample_plate_map
+                df = df[df.growth_plate==5]
+                df = df[df.antibiotic_conc>0]
+                df = df[df.Sal==sal]
+                samp = df.iloc[0].sample_id
+                max_log_dhfr_dict[sal] = self.log_dhfr_levels[samp]
+                log_dhfr_err_dict[sal] = self.log_dhfr_err[samp]
             
             # Make a dictionary here for the parts of the Stan data that are the same for every row
             #     (e.g., prior parameters, upper and lower bounds, etc.)
             stan_data_protease_0 = {}|self.fit_fitness_difference_params
-            stan_data_protease_0['log_x'] = self.log_protease_levels
+            stan_data_protease_0['log_x_1'] = np.array([self.log_protease_levels[s] for s in per_sample_arr_dict[sal_conc_list[0]]])
+            stan_data_protease_0['log_x_2'] = np.array([self.log_protease_levels[s] for s in per_sample_arr_dict[sal_conc_list[1]]])
+            stan_data_protease_0['N_van_1'] = len(stan_data_protease_0['log_x_1'])
+            stan_data_protease_0['N_van_2'] = len(stan_data_protease_0['log_x_2'])
             
             stan_data_protease_0['log_prot_min'] = 0
             stan_data_protease_0['log_prot_max'] = 8
@@ -2371,17 +2392,17 @@ class BarSeqFitnessFrame:
             stan_data_protease_0['n_prot_sigma'] = 0.2
             
             # Dictionary for the initialization of the parameters for the Stan fit:
-            log_ec50_prot_init = np.array([self.log_protease_levels.mean()-0.5, self.log_protease_levels.mean()+0.5])
+            log_prot_mean = np.mean([v for k, v in self.log_protease_levels.items()])
+            log_ec50_prot_init = np.array([log_prot_mean-0.5, log_prot_mean+0.5])
             stan_init = {'log_ec50_prot': log_ec50_prot_init, 
                          'log_fraction_inf': -1.5,
                          'n_prot': np.array([0.9, 1.1]),
-                         'log_initial_dhfr': self.log_dhfr_levels, 
+                         'log_initial_dhfr': np.array([max_log_dhfr_dict[sal] for sal in sal_conc_list]), 
                          'sigma': 1.0}
             
         print(f'    Using model from file: {sm_file}')
         stan_model = stan_utility.compile_model(sm_file)
         
-        rng = np.random.default_rng()
         def stan_fit_row(st_row, return_fit=False):
             stan_index = st_row.name
             rs_name = st_row.RS_name
@@ -2397,46 +2418,22 @@ class BarSeqFitnessFrame:
             print(f"{now}, fitting row index: {stan_index} {rs_name}")
 
             try:
-                #****************************************************
-                # Code to be moved to bs_frame_stan_data() method???
-                #     or is it better to just keep it here?
                 if 'norm' in rs_name.lower():
-                    for p in mean_std_params:
-                        stan_return_dict[p] = np.nan
-                        stan_return_dict[f'{p}_err'] = np.nan
-                
-                    for p in per_sal_parameters:
-                        for sal in sal_conc_list:
-                            if int(sal) == sal:
-                                sal = int(sal)
-                            column_name = f'{p}_Sal{sal}'
-                            stan_return_dict[column_name] = np.nan
-                            stan_return_dict[f'{column_name}_err'] = np.nan
-                    
-                    for p in per_sample_parameters:
-                        for samp_arr in per_sample_arr:
-                            for samp in samp_arr:
-                                column_name = f'{p}_S{samp}'
-                                stan_return_dict[column_name] = np.nan
-                                stan_return_dict[f'{column_name}_err'] = np.nan
-                    
+                    output_nans_to_return_dict(stan_return_dict)
                     print(f"Skipping Stan fitting for {rs_name}, index {stan_index}")
                     return stan_return_dict
                 
-                y_arr = []
-                yerr_arr = []
-                log_g_max_arr = []
-                log_g_sigma_arr = []
-                for sample_id_list in per_sample_arr.transpose():
+                y_1_arr = []
+                yerr_1_arr = []
+                y_2_arr = []
+                yerr_2_arr = []
+                log_g_max_arr = [max_log_dhfr_dict[sal] for sal in sal_conc_list]
+                log_g_sigma_arr = [log_dhfr_err_dict[sal] for sal in sal_conc_list]
+                
+                for sal, y_arr, yerr_arr in zip(sal_conc_list, [y_1_arr, y_2_arr], [yerr_1_arr, yerr_2_arr]):
+                    sample_id_list = per_sample_arr_dict[sal]
                     sample_str_list = [f'fitness_S{n}_{nrm_initial}' for n in sample_id_list]
                     err_str_list = [f'fitness_S{n}_err_{nrm_initial}' for n in sample_id_list]
-                    
-                    df = self.sample_plate_map
-                    df = df[df.growth_plate==5]
-                    df = df[[x in sample_id_list for x in df.sample_id]]
-                    df = df.sort_values(by='sample_id')
-                    
-                    sal = df.Sal.iloc[0]
                     
                     # y_ref is the average fitness measured in the reference conditions:
                     y_ref = [st_row[s] for s in ref_sample_str_list]
@@ -2452,27 +2449,23 @@ class BarSeqFitnessFrame:
                     y = (y_var - y_ref)/y_ref
                     yerr = np.sqrt((yerr_var/y_ref)**2 + (y_var*yerr_ref/y_ref**2)**2)
                     
-                    y_arr.append(y)
-                    yerr_arr.append(yerr)
-                    log_g_max_arr.append(max_log_dhfr_dict[sal])
-                    log_g_sigma_arr.append(log_dhfr_err_dict[sal])
+                    y_arr += list(y)
+                    yerr_arr += list(yerr)
                     
-                y_arr = np.array(y_arr).transpose()
-                yerr_arr = np.array(yerr_arr).transpose()
+                y_1_arr = np.array(y_1_arr)
+                yerr_1_arr = np.array(yerr_1_arr)
+                y_2_arr = np.array(y_2_arr)
+                yerr_2_arr = np.array(yerr_2_arr)
                 log_g_max_arr = np.array(log_g_max_arr)
                 log_g_sigma_arr = np.array(log_g_sigma_arr)
                 
                 stan_data = {}|stan_data_protease_0
-                stan_data['y'] = y_arr
-                stan_data['yerr'] = yerr_arr
+                stan_data['y_1'] = y_1_arr
+                stan_data['yerr_1'] = yerr_1_arr
+                stan_data['y_2'] = y_2_arr
+                stan_data['yerr_2'] = yerr_2_arr
                 stan_data['log_initial_dhfr_mu'] = log_g_max_arr
                 stan_data['log_initial_dhfr_sigma'] = log_g_sigma_arr
-                
-                stan_data['N_van'] = y_arr.shape[0]
-                stan_data['N_sal'] = y_arr.shape[1]
-                
-                #****************************************************
-                
                 
                 stan_fit = stan_model.sample(data=stan_data, 
                                              iter_sampling=iter_sampling, 
@@ -2520,33 +2513,18 @@ class BarSeqFitnessFrame:
                         stan_return_dict[column_name] = stan_samples.mean()
                         stan_return_dict[f'{column_name}_err'] = stan_samples.std()
                 
-                for p in per_sample_parameters:
-                    for samp_arr, stan_out_arr in zip(per_sample_arr, stan_fit.stan_variable(p).transpose([1,2,0])):
-                        for samp, stan_samples in zip(samp_arr, stan_out_arr):
-                            column_name = f'{p}_S{samp}'
+                for sal in sal_conc_list:
+                    params = per_sample_parameters[sal]
+                    samp_arr = per_sample_arr_dict[sal]
+                    for p in params:
+                        stan_out_arr = stan_fit.stan_variable(p)
+                        for stan_samples, samp in zip(stan_out_arr.transpose(), samp_arr):
+                            column_name = f'{p[:-2]}_S{samp}'
                             stan_return_dict[column_name] = stan_samples.mean()
                             stan_return_dict[f'{column_name}_err'] = stan_samples.std()
-                            
                 
             except Exception as err:
-                for p in mean_std_params:
-                    stan_return_dict[p] = np.nan
-                    stan_return_dict[f'{p}_err'] = np.nan
-                
-                for p in per_sal_parameters:
-                    for sal in sal_conc_list:
-                        if int(sal) == sal:
-                            sal = int(sal)
-                        column_name = f'{p}_Sal{sal}'
-                        stan_return_dict[column_name] = np.nan
-                        stan_return_dict[f'{column_name}_err'] = np.nan
-                    
-                for p in per_sample_parameters:
-                    for samp_arr in per_sample_arr:
-                        for samp in samp_arr:
-                            column_name = f'{p}_S{samp}'
-                            stan_return_dict[column_name] = np.nan
-                            stan_return_dict[f'{column_name}_err'] = np.nan
+                output_nans_to_return_dict(stan_return_dict)
                 
                 print(f"Error during Stan fitting for index {stan_index}: {err}", sys.exc_info()[0])
                 tb_str = ''.join(traceback.format_exception(None, err, err.__traceback__))
@@ -2554,6 +2532,28 @@ class BarSeqFitnessFrame:
             
                 
             return stan_return_dict
+        
+        def output_nans_to_return_dict(loc_return_dict):
+            for p in mean_std_params:
+                loc_return_dict[p] = np.nan
+                loc_return_dict[f'{p}_err'] = np.nan
+        
+            for p in per_sal_parameters:
+                for sal in sal_conc_list:
+                    if int(sal) == sal:
+                        sal = int(sal)
+                    column_name = f'{p}_Sal{sal}'
+                    loc_return_dict[column_name] = np.nan
+                    loc_return_dict[f'{column_name}_err'] = np.nan
+            
+            for sal in sal_conc_list:
+                params = per_sample_parameters[sal]
+                samp_arr = per_sample_arr_dict[sal]
+                for p in params:
+                    for samp in samp_arr:
+                        column_name = f'{p[:-2]}_S{samp}'
+                        loc_return_dict[column_name] = np.nan
+                        loc_return_dict[f'{column_name}_err'] = np.nan
         
         if refit_indexes is None:
             print(f'Running Stan fits for all rows in dataframe, number of rows: {len(barcode_frame)}')
